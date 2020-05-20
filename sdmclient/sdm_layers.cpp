@@ -43,6 +43,10 @@
 #include <atomic>
 #include <utils/debug.h>
 
+#ifdef UDFPS_ZPOS
+#include <display/drm/sde_drm.h>
+#endif
+
 #define __CLASS__ "SDMLayer"
 
 using sdm::DisplayError;
@@ -487,6 +491,15 @@ DisplayError SDMLayer::SetLayerVisibleRegion(SDMRegion visible) {
 }
 
 DisplayError SDMLayer::SetLayerZOrder(uint32_t z) {
+#ifdef UDFPS_ZPOS
+  bool fod_pressed = z & FOD_PRESSED_LAYER_ZORDER;
+  if (fod_pressed_ != fod_pressed) {
+    fod_pressed_ = fod_pressed;
+    z &= ~FOD_PRESSED_LAYER_ZORDER;
+    geometry_changes_ |= kZOrder;
+  }
+#endif
+
   if (z_ != z) {
     geometry_changes_ |= kZOrder;
     z_ = z;
