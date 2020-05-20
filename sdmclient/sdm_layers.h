@@ -181,6 +181,9 @@ public:
   void IgnoreSdrHistogramMetadata(bool disable) {
     ignore_sdr_histogram_md_ = disable;
   }
+#ifdef UDFPS_ZPOS
+  bool IsFodPressed() { return fod_pressed_; }
+#endif
 
 private:
   std::shared_ptr<ISnapMapper> snapmapper_;
@@ -207,6 +210,9 @@ private:
   bool secure_ = false;
   bool compatible_ = false;
   bool ignore_sdr_histogram_md_ = false;
+#ifdef UDFPS_ZPOS
+  bool fod_pressed_ = false;
+#endif
 
   // SDMCompositionType requested by client(SF) Original
   SDMCompositionType client_requested_orig_ = SDMCompositionType::COMP_DEVICE;

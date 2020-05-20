@@ -840,6 +840,12 @@ void SDMDisplay::BuildLayerStack() {
       layer->flags.solid_fill = true;
     }
 
+#ifdef UDFPS_ZPOS
+    if (sdm_layer->IsFodPressed()) {
+      layer->flags.fod_pressed = true;
+    }
+#endif
+
     if (!sdm_layer->IsDataSpaceSupported()) {
       layer->flags.skip = true;
       DLOGV_IF(kTagClient,
