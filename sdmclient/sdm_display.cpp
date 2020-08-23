@@ -843,6 +843,10 @@ void SDMDisplay::BuildLayerStack() {
 #ifdef UDFPS_ZPOS
     if (sdm_layer->IsFodPressed()) {
       layer->flags.fod_pressed = true;
+      layer_stack_.flags.fod_pressed_present = true;
+    } else {
+      layer->flags.fod_pressed = false;
+      layer_stack_.flags.fod_pressed_present = false;
     }
 #endif
 
