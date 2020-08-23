@@ -428,6 +428,8 @@ struct LayerStackFlags {
       uint32_t front_buffer_layer_present : 1;  //!< Set if stack has front buffer layer.
 
       uint32_t only_video_updating : 1;  //!< This flag indicates only video layers are updating
+
+      uint32_t fod_pressed_present : 1;
     };
 
     uint32_t flags = 0;               //!< For initialization purpose only.
