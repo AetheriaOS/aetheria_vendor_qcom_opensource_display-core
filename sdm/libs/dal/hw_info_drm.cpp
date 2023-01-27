@@ -68,7 +68,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -470,6 +470,7 @@ void HWInfoDRM::GetSystemInfo(HWResourceInfo *hw_resource) {
   hw_resource->use_baselayer_for_stage = info.use_baselayer_for_stage;
   hw_resource->ubwc_version = info.ubwc_version;
   // RC
+  hw_resource->rc_count = info.rc_count;
   hw_resource->rc_total_mem_size = info.rc_total_mem_size;
   hw_resource->dsc_block_count = info.dsc_block_count;
 }

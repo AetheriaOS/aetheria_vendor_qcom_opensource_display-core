@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -339,6 +339,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   bool IsHdrMode(const AttrVal &attr);
   void InsertBT2020PqHlgModes(const std::string &str_render_intent);
   DisplayError InitRC();
+  bool EnableRC();
   DisplayError HandlePendingVSyncEnable(const shared_ptr<Fence> &retire_fence);
   DisplayError ResetPendingPowerState(const shared_ptr<Fence> &retire_fence);
   DisplayError GetPendingDisplayState(DisplayState *disp_state);
@@ -465,8 +466,10 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   bool cwb_active_ = false;
   DisplayClientContext client_ctx_ = {};
   DisplayDeviceContext device_ctx_;
+  static std::atomic<uint32_t> hw_rc_blocks_in_use_;
+  uint32_t rc_blocks_reserved_ = 0;
 
- private:
+private:
   // Max tolerable power-state-change wait-times in milliseconds.
   static const int kPowerStateTimeout = 5000;
 

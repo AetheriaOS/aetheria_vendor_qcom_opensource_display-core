@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -470,6 +470,7 @@ struct HWResourceInfo {
   bool use_baselayer_for_stage = false;
   bool has_micro_idle = false;
   uint32_t ubwc_version = 1;
+  uint32_t rc_count = 0;
   uint32_t rc_total_mem_size = 0;
   std::map<uint32_t, uint32_t> plane_to_connector = {};
   std::vector<uint32_t> initial_demura_planes = {};
