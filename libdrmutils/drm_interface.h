@@ -656,6 +656,12 @@ enum struct DRMOps {
    *      uint32_t - BppMode24-1, BppMode30-2
    */
   CONNECTOR_SET_BPP_MODE,
+  /*
+   * Op: Enable / disable AVR Step on connector
+   * Arg: uint32_t - Connector ID
+   *      uint32_t - Enable or disable state
+   */
+  CONNECTOR_SET_AVR_STEP_STATE,
 };
 
 enum struct DRMRotation {
@@ -992,6 +998,7 @@ struct DRMModeInfo {
   std::vector<DRMSubModeInfo> sub_modes;
   uint32_t qsync_min_fps;
   uint32_t curr_bpp_mode;
+  uint32_t avr_step_fps;
 };
 
 /* Per Connector Info*/
@@ -1351,6 +1358,12 @@ struct DRMFp16Config {
 enum struct DRMCacheWBState {
   DISABLED = 0,
   ENABLED,
+};
+
+enum struct DRMAvrStepState {
+  NONE = 0,
+  ENABLE,
+  DISABLE,
 };
 
 /* DRM Atomic Request Property Set.

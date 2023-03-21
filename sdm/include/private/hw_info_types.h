@@ -797,9 +797,16 @@ struct HWAIScalerInfo {
 
 typedef std::map<uint32_t, HWAIScalerInfo *> AIScalerInfoMap;
 
+enum {
+  kUpdateAVRModeFlag,
+  kUpdateAVRStepFlag,
+  kUpdateAVRFlagMax,
+};
+
 struct HWAVRInfo {
-  bool update = false;                // Update avr setting.
+  std::bitset<kUpdateAVRFlagMax> update = {};
   HWAVRModes mode = kContinuousMode;  // Specifies the AVR mode
+  bool step_enabled = false;
 };
 
 struct HWPipeCscInfo {

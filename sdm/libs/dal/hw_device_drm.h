@@ -207,6 +207,7 @@ class HWDeviceDRM : public HWInterface {
   }
   virtual DisplayError CancelDeferredPowerMode();
   virtual void HandleCwbTeardown(bool sync_teardown);
+  virtual bool IsAVRStepSupported(uint32_t config_index) { return false; }
 
   enum {
     kHWEventVSync,

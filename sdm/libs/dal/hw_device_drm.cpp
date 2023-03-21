@@ -1871,7 +1871,7 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
     SetQOSData(qos_data);
   }
 
-  if (hw_layers_info->common_info->hw_avr_info.update) {
+  if (hw_layers_info->common_info->hw_avr_info.update.test(kUpdateAVRModeFlag)) {
     sde_drm::DRMQsyncMode mode = sde_drm::DRMQsyncMode::NONE;
     if (hw_layers_info->common_info->hw_avr_info.mode == kContinuousMode) {
       mode = sde_drm::DRMQsyncMode::CONTINUOUS;
@@ -1879,6 +1879,13 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
       mode = sde_drm::DRMQsyncMode::ONESHOT;
     }
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_QSYNC_MODE, token_.conn_id, mode);
+  }
+
+  if (hw_layers_info->common_info->hw_avr_info.update.test(kUpdateAVRStepFlag)) {
+    sde_drm::DRMAvrStepState state = hw_layers_info->common_info->hw_avr_info.step_enabled
+                                         ? sde_drm::DRMAvrStepState::ENABLE
+                                         : sde_drm::DRMAvrStepState::DISABLE;
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_AVR_STEP_STATE, token_.conn_id, state);
   }
 
   // dpps commit feature ops doesn't use the obj id, set it as -1

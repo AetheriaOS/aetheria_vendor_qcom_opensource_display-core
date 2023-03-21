@@ -30,7 +30,7 @@
 /*
  * Changes from Qualcomm Innovation Center are provided under the following license:
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted (subject to the limitations in the
@@ -808,6 +808,7 @@ void DRMConnector::ParseModeProperties(uint64_t blob_id, DRMConnectorInfo *info)
   const string preferred_submode_string = "preferred_submode_idx=";
   const string qsync_min_fps = "qsync_min_fps=";
   const string bpp_mode = "bpp_mode=";
+  const string avr_step_fps = "avr_step_fps=";
 
   DRMModeInfo *mode_item = &info->modes.at(0);
   DRMSubModeInfo *submode_item = NULL;
@@ -921,6 +922,8 @@ void DRMConnector::ParseModeProperties(uint64_t blob_id, DRMConnectorInfo *info)
         submode_index = 0;
       }
       submode_item->bpp_mode = std::stoi(string(line, bpp_mode.length()));
+    } else if (line.find(avr_step_fps) != string::npos) {
+      mode_item->avr_step_fps = std::stoi(string(line, avr_step_fps.length()));
     }
   }
 
@@ -1236,6 +1239,17 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::QSYNC_MODE),
                                qsync_mode);
       DRM_LOGD("Connector %d: Setting Qsync mode %d", obj_id, qsync_mode);
+    } break;
+
+    case DRMOps::CONNECTOR_SET_AVR_STEP_STATE: {
+      if (!prop_mgr_.IsPropertyAvailable(DRMProperty::AVR_STEP_STATE)) {
+        return;
+      }
+      int enable = va_arg(args, int);
+      uint32_t state = static_cast<uint32_t>(enable);
+      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::AVR_STEP_STATE),
+                               state);
+      DRM_LOGD("Connector %d: Setting AVR Step state %d", obj_id, state);
     } break;
 
     case DRMOps::CONNECTOR_SET_TOPOLOGY_CONTROL: {

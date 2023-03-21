@@ -282,6 +282,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
     return kErrorNotSupported;
   }
   virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
+  virtual DisplayError SetVRRState(bool state) { return kErrorNotSupported; }
 
  protected:
   struct DisplayMutex {
@@ -439,7 +440,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   bool vsync_enable_pending_ = false;
   HWPowerState pending_power_state_ = kPowerStateNone;
   QSyncMode qsync_mode_ = kQSyncModeNone;
-  bool needs_avr_update_ = false;
+  std::bitset<kUpdateAVRFlagMax> needs_avr_update_ = {};
 
   static Locker display_power_reset_lock_;
   static bool display_power_reset_pending_;

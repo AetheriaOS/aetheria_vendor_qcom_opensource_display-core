@@ -171,6 +171,7 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(PanelOprInfo(const std::string &client_name, bool enable,
                           SdmDisplayCbInterface<PanelOprPayload> *cb_intf));
   MAKE_NO_OP(SetSsrcMode(const std::string &mode));
+  MAKE_NO_OP(SetVRRState(bool));
 
  protected:
   DisplayConfigVariableInfo default_variable_config_ = {};

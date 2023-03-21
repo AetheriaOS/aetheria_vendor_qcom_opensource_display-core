@@ -1359,6 +1359,14 @@ class DisplayInterface {
   */
   virtual DisplayError SetSsrcMode(const std::string &mode) = 0;
 
+  /*! @brief Method to set Variable Refresh Rate feature state.
+
+    @param[in] Enable or Disable
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError SetVRRState(bool state) = 0;
+
  protected:
   virtual ~DisplayInterface() { }
 };
