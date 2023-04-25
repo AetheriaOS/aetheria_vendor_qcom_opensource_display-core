@@ -153,6 +153,10 @@ ColorManagerProxy::ColorManagerProxy(int32_t id, DisplayType type, DPUCoreMux *d
       color_intf_(NULL), pp_features_(), feature_intf_(NULL), core_id_(core_id) {
   int32_t enable_posted_start_dyn = 0;
   bool dyn_switch = false;
+
+  // Initialize PCC with identity
+  curr_color_xform_.coeff_array = COLOR_TRANSFORM_IDENTITY;
+
   Debug::Get()->GetProperty(ENABLE_POSTED_START_DYN_PROP, &enable_posted_start_dyn);
   if (info.mode == kModeCommand) {
     switch (enable_posted_start_dyn) {
@@ -509,6 +513,18 @@ DisplayError ColorManagerProxy::ColorMgrGetModeInfo(int32_t mode_id, AttrVal *qu
   return color_intf_->ColorIntfGetModeInfo(&pp_features_, 0, mode_id, query);
 }
 
+static bool TransformIsIdentity(std::array<float, snapdragoncolor::kMatrixSize> &coeff) {
+  if (coeff.at(0) == 1.0 && coeff.at(5) == 1.0 && coeff.at(10) == 1.0 && coeff.at(15) == 1.0) {
+    if (coeff.at(1) == 0.0 && coeff.at(2) == 0.0 && coeff.at(3) == 0.0 && coeff.at(4) == 0.0 &&
+        coeff.at(6) == 0.0 && coeff.at(7) == 0.0 && coeff.at(8) == 0.0 && coeff.at(9) == 0.0 &&
+        coeff.at(11) == 0.0 && coeff.at(12) == 0.0 && coeff.at(13) == 0.0 && coeff.at(14) == 0.0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 DisplayError ColorManagerProxy::ColorMgrSetColorTransform(uint32_t length,
                                                           const double *trans_data) {
   if (!trans_data) {
@@ -532,6 +548,7 @@ DisplayError ColorManagerProxy::ColorMgrSetColorTransform(uint32_t length,
     color_transform.coeff_array[i] = static_cast<float>(*(trans_data + i));
   }
 
+  curr_color_xform_.coeff_array = color_transform.coeff_array;
   ScPayload in_data = {};
   in_data.prop = snapdragoncolor::kSetColorTransform;
   in_data.len = sizeof(color_transform);
@@ -899,6 +916,68 @@ DisplayError ColorManagerProxy::ConfigureCWBDither(CwbConfig *cwb_cfg, bool free
   if (dither_payload && (dither_payload->enable_flags_ & kOpsEnable))
     cwb_cfg->dither_info = dither_payload;
   DLOGV_IF(kTagQDCM, "config cwb dither data done");
+  return error;
+}
+
+DisplayError ColorManagerProxy::ColorMgrIdleFallback(bool idle_fallback_hint) {
+  DisplayError error = kErrorNone;
+
+  if(prev_idle_fallback_hint_ == idle_fallback_hint) {
+    return kErrorNone;
+  }
+
+  prev_idle_fallback_hint_ = idle_fallback_hint;
+  bool curr_xform_is_identity = TransformIsIdentity(curr_color_xform_.coeff_array);
+
+  if (idle_fallback_hint) {
+    ColorMode idle_fallback_mode;
+    struct snapdragoncolor::ColorTransform color_transform = {};
+    color_transform.coeff_array = COLOR_TRANSFORM_IDENTITY;
+
+    // Storing current ColorMode which will be used while exiting IdleFallBack
+    prev_idle_fallback_mode_ = curr_mode_;
+
+    //Set Native mode on idle fallback
+    idle_fallback_mode.gamut = ColorPrimaries_BT709_5;
+    idle_fallback_mode.gamma = Transfer_sRGB;
+    idle_fallback_mode.intent = snapdragoncolor::RenderIntent::kNative;
+    idle_fallback_mode.intent_name = "Standard";
+
+    DLOGV_IF(kTagQDCM, "idle fallback entry mode: gamut: %d, gamma: %d, intent: %d",
+      idle_fallback_mode.gamut, idle_fallback_mode.gamma, idle_fallback_mode.intent);
+    error = ColorMgrSetStcMode(idle_fallback_mode);
+
+    if (stc_intf_ && !curr_xform_is_identity) {
+      ScPayload in_data = {};
+      in_data.prop = snapdragoncolor::kSetColorTransform;
+      in_data.len = sizeof(color_transform);
+      in_data.payload = reinterpret_cast<uint64_t>(&color_transform);
+      if (stc_intf_->SetProperty(in_data)) {
+        DLOGE("Failed to set identity transform on idle fallback entry!");
+        error = kErrorUndefined;
+      }
+    }
+
+    return error;
+  }
+
+  DLOGV_IF(kTagQDCM, "idle fallback exit mode: gamut: %d, gamma: %d, intent: %d",
+      prev_idle_fallback_mode_.gamut, prev_idle_fallback_mode_.gamma,
+      prev_idle_fallback_mode_.intent);
+  error = ColorMgrSetStcMode(prev_idle_fallback_mode_);
+  prev_idle_fallback_mode_ = {};
+
+  if (stc_intf_ && !curr_xform_is_identity) {
+    ScPayload in_data = {};
+    in_data.prop = snapdragoncolor::kSetColorTransform;
+    in_data.len = sizeof(curr_color_xform_);
+    in_data.payload = reinterpret_cast<uint64_t>(&curr_color_xform_);
+    if (stc_intf_->SetProperty(in_data)) {
+      DLOGE("Failed to set color transform on idle fallback exit!");
+      error = kErrorUndefined;
+    }
+  }
+
   return error;
 }
 
@@ -1823,6 +1902,10 @@ DisplayError DPUColorManager::ColorMgrSetLtmPccConfig(void *pcc_input, size_t si
 }
 
 DisplayError DPUColorManager::ColorMgrSetSprIntf(std::shared_ptr<SPRIntf> spr_intf) {
+  return kErrorNotSupported;
+}
+
+DisplayError DPUColorManager::ColorMgrIdleFallback(bool idle_fallback_hint) {
   return kErrorNotSupported;
 }
 
