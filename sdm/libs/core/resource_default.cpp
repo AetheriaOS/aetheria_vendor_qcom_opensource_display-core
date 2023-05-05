@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -232,6 +232,8 @@ DisplayError ResourceDefault::ReconfigureDisplay(Handle display_ctx,
 
   return kErrorNone;
 }
+
+void ResourceDefault::UpdateWBstatus(Handle display_resource_ctx, LayerFeedback *feedback) {}
 
 DisplayError ResourceDefault::Precheck(Handle display_ctx, DispLayerStack *disp_layer_stack,
                                        LayerFeedback* feedback) {

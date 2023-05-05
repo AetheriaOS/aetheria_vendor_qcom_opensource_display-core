@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -64,6 +64,7 @@ class ResourceDefault : public ResourceInterface {
   virtual DisplayError PostPrepare(Handle display_ctx, DispLayerStack *disp_layer_stack);
   virtual DisplayError Commit(Handle display_ctx, DispLayerStack *disp_layer_stack);
   virtual DisplayError PostCommit(Handle display_ctx, DispLayerStack *disp_layer_stack);
+  virtual void UpdateWBstatus(Handle display_resource_ctx, LayerFeedback *feedback);
   virtual DisplayError Precheck(Handle display_ctx, DispLayerStack *disp_layer_stack,
                                 LayerFeedback* feedback);
   virtual void Purge(Handle display_ctx);
