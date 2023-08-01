@@ -76,6 +76,7 @@
 #include "xf86drm.h"
 #include "xf86drmMode.h"
 #include <drm/msm_drm.h>
+#include <display/drm/msm_drm_aiqe.h>
 #include <display/drm/msm_drm_pp.h>
 #include <display/drm/msm_drm_aiqe.h>
 #include <display/drm/sde_drm.h>
@@ -1177,6 +1178,9 @@ enum DRMPanelFeatureID {
   kDRMPanelFeatureAiqeSSRCConfig,
   kDRMPanelFeatureAiqeSSRCData,
   kDRMPanelFeatureAIScalerCfg,
+  kDRMPanelFeatureAiqeMdnie,
+  kDRMPanelFeatureAiqeMdnieArt,
+  kDRMPanelFeatureAiqeCopr,
   kDRMPanelFeatureMax,
 };
 
