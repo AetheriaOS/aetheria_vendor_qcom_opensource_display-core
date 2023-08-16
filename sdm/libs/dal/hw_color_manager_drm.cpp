@@ -163,6 +163,8 @@ uint32_t HWColorManagerDrm::GetFeatureVersion(const DRMPPFeatureInfo &feature) {
         version = PPFeatureVersion::kSDEPccV17;
       } else if (feature.version == 4) {
         version = PPFeatureVersion::kSDEPccV4;
+      } else if (feature.version == 6) {
+        version = PPFeatureVersion::kSDEPccV6;
       }
       break;
     case kFeatureIgc:
@@ -373,7 +375,8 @@ DisplayError HWColorManagerDrm::GetDrmPCC(const PPFeatureInfo &in_data,
 
   switch (in_data.feature_version_) {
   case PPFeatureVersion::kSDEPccV4:
-    sde_pcc = (struct SDEPccV4Cfg *) in_data.GetConfigData();
+  case PPFeatureVersion::kSDEPccV6:
+    sde_pcc = (struct SDEPccV4Cfg *)in_data.GetConfigData();
     break;
   default:
     DLOGE("Unsupported pcc feature version: %d", in_data.feature_version_);

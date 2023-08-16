@@ -204,6 +204,7 @@ struct PPFeatureVersion {
   static const uint32_t kSDEIgcV40 = 20;
   static const uint32_t kSDECWBDitherV2 = 21;
   static const uint32_t kSDEPaV2 = 22;
+  static const uint32_t kSDEPccV6 = 23;
 
   uint32_t version[kMaxNumPPFeatures];
   PPFeatureVersion() { memset(version, 0, sizeof(version)); }
