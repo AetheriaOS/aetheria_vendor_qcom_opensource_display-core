@@ -1022,6 +1022,7 @@ struct LayerStackInfo {
   bool demura_present = false;  // Indicates there is demura layer or not
   bool cwb_present = false;  // Indicates there is cwb layer or not
   bool lower_fps = false;  // This field hints to lower the fps in case of idle fallback
+  bool notify_idle = false;
   bool enable_self_refresh = false;  // This field hints to enable self refresh when idle timeout
   std::shared_ptr<LayerBuffer> output_buffer = nullptr;
                                      //!< Pointer to the buffer where composed buffer would be
