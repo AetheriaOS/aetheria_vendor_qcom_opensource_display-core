@@ -23,7 +23,7 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -294,6 +294,7 @@ enum SplashType {
   kSplashNone,
   kSplashLayer,
   kSplashDemura,
+  kSplashABC,
 };
 
 enum HWPipeCacMode {
@@ -476,6 +477,7 @@ struct HWResourceInfo {
   std::map<uint32_t, uint32_t> plane_to_connector = {};
   std::vector<uint32_t> initial_demura_planes = {};
   uint32_t demura_count = 0;
+  uint32_t abc_count = 0;
   uint32_t dspp_count = 0;
   bool skip_inline_rot_threshold = false;
   bool has_noise_layer = false;

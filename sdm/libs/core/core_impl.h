@@ -23,11 +23,11 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
-*
-* Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
-* SPDX-License-Identifier: BSD-3-Clause-Clear
-*/
+ * ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
+ *
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #ifndef __CORE_IMPL_H__
 #define __CORE_IMPL_H__
@@ -110,7 +110,7 @@ class CoreImpl : public CoreInterface {
   virtual DisplayError GetDisplaysStatus(HWDisplaysInfo *hw_displays_info);
   virtual DisplayError GetMaxDisplaysSupported(SDMDisplayType type, int32_t *max_displays);
   virtual bool IsRotatorSupportedFormat(LayerBufferFormat format);
-  virtual DisplayError ReserveDemuraResources();
+  virtual DisplayError ReserveDemuraPipeResources();
   virtual DisplayError RequestVirtualDisplayId(int32_t *vdisp_id);
 #ifdef PROFILE_COVERAGE_DATA
   virtual DisplayError DumpCodeCoverage();
@@ -122,6 +122,8 @@ class CoreImpl : public CoreInterface {
   void OverRideDemuraPanelIds(std::vector<uint64_t> *panel_ids);
   DisplayError CreateNullDisplayLocked(DisplayInterface **intf);
   DisplayError HandleNullDisplay();
+  DisplayError ReserveDemuraResources(std::map<uint32_t, uint8_t> required_demura_fetch_cnt);
+  DisplayError ReserveABCResources(std::map<uint32_t, uint8_t> required_abc_fetch_cnt);
 
   Locker locker_;
   BufferAllocator *buffer_allocator_ = NULL;

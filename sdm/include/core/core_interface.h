@@ -28,11 +28,11 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
-*
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
-* SPDX-License-Identifier: BSD-3-Clause-Clear
-*/
+ * ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
+ *
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 /*! @file core_interface.h
   @brief Interface file for core of the display subsystem.
@@ -318,11 +318,11 @@ class CoreInterface {
   */
   virtual bool IsRotatorSupportedFormat(LayerBufferFormat format) = 0;
 
-  /*! @brief Method to reserve the resources for demura at bootup.
+  /*! @brief Method to reserve the resources for demura/ABC feature at bootup.
 
     @return returns true if resources are successfully reserved.
   */
-  virtual DisplayError ReserveDemuraResources() = 0;
+  virtual DisplayError ReserveDemuraPipeResources() = 0;
 
   /*! @brief Method to request to get virtual display ID (h/w writeback block ID).
 

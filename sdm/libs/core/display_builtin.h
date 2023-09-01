@@ -23,8 +23,7 @@
 */
 
 /*
- * Changes from Qualcomm Innovation Center are provided under the following
- * license:
+ * ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
  *
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -36,6 +35,7 @@
 #include <core/dpps_interface.h>
 #include <core/ipc_interface.h>
 #include <private/aiqe_ssrc_feature_interface.h>
+#include <private/abc_feature_fact_intf.h>
 #include <private/demuratn_core_uvm_fact_intf.h>
 #include <private/display_event_proxy_intf.h>
 #include <private/extension_interface.h>
@@ -198,7 +198,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError GetStcColorModes(snapdragoncolor::ColorModeList *mode_list) override;
   DisplayError SetStcColorMode(const snapdragoncolor::ColorMode &color_mode) override;
   DisplayError NotifyDisplayCalibrationMode(bool in_calibration) override;
-  bool HasDemura() override { return demura_intended_; }
+  bool HasDemura() override { return (demura_intended_ || abc_enabled_); }
   std::string Dump() override;
   DisplayError GetConfig(DisplayConfigFixedInfo *fixed_info) override;
   DisplayError PrePrepare(LayerStack *layer_stack) override;
@@ -264,10 +264,14 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   PrimariesTransfer GetBlendSpaceFromStcColorMode(const snapdragoncolor::ColorMode &color_mode);
   DisplayError SetupSPR();
   DisplayError SetupDemura();
+  DisplayError SetupCorrectionLayer();
   DisplayError SetupDemuraLayer();
+  DisplayError SetupABCLayer();
   DisplayError SetupDemuraTn();
   DisplayError EnableDemuraTn(bool enable);
   DisplayError SetupDemuraT0AndTn();
+  DisplayError SetupABCFeature();
+  DisplayError SetupABC();
   DisplayError SetDisplayStateForDemuraTn(DisplayState state);
   DisplayError BuildLayerStackStats(LayerStack *layer_stack) override;
   void UpdateDisplayModeParams();
@@ -332,10 +336,12 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   bool demuratn_enabled_ = false;
   std::shared_ptr<DemuraTnCoreUvmIntf> demuratn_ = nullptr;
   uint64_t panel_id_;
-  Layer demura_layer_ = {};
+  std::vector<Layer> demura_layer_ = {};
   bool demura_intended_ = false;
   bool demura_dynamic_enabled_ = true;
   int demura_current_idx_ = -1;
+  bool abc_enabled_ = false;
+  bool abc_prop_ = false;
   bool enable_dpps_dyn_fps_ = false;
   HWDisplayMode last_panel_mode_ = kModeDefault;
   bool hdr_present_ = false;

@@ -23,7 +23,7 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
@@ -51,6 +51,8 @@
 #define __CLASS__ "DisplayBase"
 
 namespace sdm {
+
+#define ABC_LIBRARY_NAME "libabc.so"
 
 std::atomic<uint32_t> DisplayBase::hw_rc_blocks_in_use_(0);
 bool DisplayBase::display_power_reset_pending_ = false;
@@ -533,6 +535,29 @@ DisplayError DisplayBase::SetupPanelFeatureFactory() {
     if (!demuratn_factory_) {
       DLOGE("Failed to create DemuraTnFactory");
       return kErrorResources;
+    }
+  }
+
+  int enable_abc = 0;
+  Debug::Get()->GetProperty(ENABLE_ABC, &enable_abc);
+  GetABCFactory get_abc_factory_ptr = nullptr;
+  if (enable_abc) {
+    if (abc_feature_impl_lib_.Open(ABC_LIBRARY_NAME)) {
+      if (!abc_feature_impl_lib_.Sym(GET_ABC_FACTORY,
+                                     reinterpret_cast<void **>(&get_abc_factory_ptr))) {
+        DLOGW("Unable to load ABC symbols, error = %s", abc_feature_impl_lib_.Error());
+        return kErrorNone;
+      }
+    } else {
+      DLOGW("Unable to load = %s, error = %s", ABC_LIBRARY_NAME, abc_feature_impl_lib_.Error());
+      DLOGW("ABC Library is not supported");
+      return kErrorNone;
+    }
+
+    abc_factory_ = get_abc_factory_ptr();
+    if (!abc_factory_) {
+      DLOGE("Failed to create ABC feature Factory");
+      return kErrorNone;
     }
   }
 
@@ -3271,7 +3296,7 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
 
   for (uint32_t i = 0; i < layer_count; i++) {
     Layer *layer = layers.at(i);
-    if (layer->flags.is_demura) {
+    if (layer->flags.is_demura || layer->flags.is_abc) {
       continue;
     }
 

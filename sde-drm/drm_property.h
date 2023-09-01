@@ -258,7 +258,7 @@ enum struct DRMProperty {
   SDE_DSPP_AIQE_MDNIE_V1,
   SDE_DSPP_AIQE_MDNIE_ART_V1,
   SDE_DSPP_AIQE_COPR_V1,
-
+  AIQE_ABC_V1,
   // Insert above
   MAX
 };

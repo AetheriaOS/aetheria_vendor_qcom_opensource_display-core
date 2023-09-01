@@ -23,11 +23,11 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
-*
-* Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
-* SPDX-License-Identifier: BSD-3-Clause-Clear
-*/
+ * ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
+ *
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #include <dlfcn.h>
 #include <signal.h>
@@ -157,7 +157,7 @@ DisplayError CoreImpl::Init() {
   // To-Do: Find primary card id, needed by GetFirstDisplayOnterfaceType
 
   // Must only call after GetDisplaysStatus
-  if (ReserveDemuraResources() != kErrorNone) {
+  if (ReserveDemuraPipeResources() != kErrorNone) {
     comp_mgr_.SetDemuraStatus(false);
   }
 #ifndef TRUSTED_VM
@@ -566,58 +566,73 @@ void CoreImpl::OverRideDemuraPanelIds(std::vector<uint64_t> *panel_ids) {
   }
 }
 
-DisplayError CoreImpl::ReserveDemuraResources() {
+DisplayError CoreImpl::ReserveABCResources(std::map<uint32_t, uint8_t> required_demura_fetch_cnt) {
   DisplayError err = kErrorNone;
-  int enable = 0;
-  if (reserve_done_)
-    return kErrorNone;
-
-  Debug::Get()->GetProperty(ENABLE_DEMURA, &enable);
-  if (!enable) {
-    comp_mgr_.SetDemuraStatus(false);
-    DLOGI("Demura is disabled");
-    return kErrorNone;
-  } else {
-    DLOGI("Demura is enabled");
-    comp_mgr_.SetDemuraStatus(true);
-  }
-
-  // TODO(user): get demura fetch resouce count for multi-dpu
-  std::map<uint32_t, uint8_t> dpu_required_demura_fetch_cnt;  // display_id, count
-  if ((err = hw_info_intf_[0]->
-        GetRequiredDemuraFetchResourceCount(&dpu_required_demura_fetch_cnt)) != kErrorNone) {
-    DLOGE("Unable to get required demura pipes count");
-    return err;
-  }
-
-  // TODO(user): Workaround to append core_id to get display_id
-  // to be removed after making changes for Demura on multi-dpu
-  std::map<uint32_t, uint8_t> required_demura_fetch_cnt;
-  for (auto r = dpu_required_demura_fetch_cnt.begin();
-       r != dpu_required_demura_fetch_cnt.end(); r++) {
-    uint32_t disp_id = r->first;
-    for (auto display_info : hw_displays_info_) {
-      uint32_t base_core_id = DisplayId::GetBaseCoreId(display_info.first);
-      if (DisplayId::GetConnId(display_info.first, base_core_id) == r->first) {
-        disp_id = display_info.first;
-      }
-    }
-
-    required_demura_fetch_cnt.insert({disp_id, r->second});
-  }
-
-  if (!required_demura_fetch_cnt.size()) {
-    DLOGW("Demura is enabled but no panels support it. Disabling..");
-    comp_mgr_.SetDemuraStatus(false);
-    return kErrorNone;
-  }
-
   int primary_off = 0;
   int secondary_off = 0;
+  int available_blocks = 0;
+
+  available_blocks = hw_resource_[0].abc_count;
+  Debug::Get()->GetProperty(DISABLE_ABC_PRIMARY, &primary_off);
+  Debug::Get()->GetProperty(DISABLE_ABC_SECONDARY, &secondary_off);
+
+  for (auto r = required_demura_fetch_cnt.begin(); r != required_demura_fetch_cnt.end();) {
+    HWDisplayInfo &info = hw_displays_info_[r->first];
+    DLOGI("[%d] is_primary = %d, p_off = %d, s_off = %d", r->first, info.is_primary, primary_off,
+          secondary_off);
+    if (info.is_primary && primary_off) {
+      r = required_demura_fetch_cnt.erase(r);
+      continue;
+    } else if (!info.is_primary && secondary_off) {
+      r = required_demura_fetch_cnt.erase(r);
+      continue;
+    }
+
+    if (r->second == 1 || r->second == 2) {
+      available_blocks--;
+    } else {
+      DLOGE("Invaid ABC block request, topology %d", r->second);
+      return kErrorResources;
+    }
+
+    if (available_blocks < 0) {
+      DLOGE("Not enough ABC blocks (%u)", hw_resource_[0].abc_count);
+      return kErrorResources;
+    }
+    ++r;
+  }
+
+  for (auto &req : required_demura_fetch_cnt) {
+    DLOGI("Reserving ABC resources for [%u] %u", req.first, req.second);
+    uint8_t req_cnt = req.second;
+    if (req_cnt != 0) {
+      DLOGI("[%u] Needs ABC resources %u", req.first, req_cnt);
+      // Reserving ABC resources requires knowledge of which rect to reserve
+      // based on display type.
+      HWDisplayInfo &info = hw_displays_info_[req.first];
+      if ((err = comp_mgr_.ReserveABCFetchResources(req.first, info.is_primary, req_cnt)) !=
+          kErrorNone) {
+        DLOGE("Failed to reserve ABC pipe resources error = %d", err);
+        return err;
+      }
+
+      demura_display_ids_.push_back(req.first);
+    }
+  }
+  return err;
+}
+
+DisplayError CoreImpl::ReserveDemuraResources(
+    std::map<uint32_t, uint8_t> required_demura_fetch_cnt) {
+  DisplayError err = kErrorNone;
+  int primary_off = 0;
+  int secondary_off = 0;
+  int available_blocks = 0;
+
+  available_blocks = hw_resource_[0].demura_count;
   Debug::Get()->GetProperty(DISABLE_DEMURA_PRIMARY, &primary_off);
   Debug::Get()->GetProperty(DISABLE_DEMURA_SECONDARY, &secondary_off);
 
-  int available_blocks = hw_resource_[0].demura_count;
   for (auto r = required_demura_fetch_cnt.begin(); r != required_demura_fetch_cnt.end();) {
     HWDisplayInfo &info = hw_displays_info_[r->first];
     DLOGI("[%d] is_primary = %d, p_off = %d, s_off = %d", r->first, info.is_primary, primary_off,
@@ -680,24 +695,87 @@ DisplayError CoreImpl::ReserveDemuraResources() {
       demura_display_ids_.push_back(req.first);
     }
   }
+  return err;
+}
 
-  GetPanelFeatureFactory get_factory_f_ptr = nullptr;
-  if (!extension_lib_.Sym(GET_PANEL_FEATURE_FACTORY,
-                          reinterpret_cast<void **>(&get_factory_f_ptr))) {
-    DLOGE("Unable to load symbols, error = %s", extension_lib_.Error());
-    return kErrorUndefined;
+DisplayError CoreImpl::ReserveDemuraPipeResources() {
+  DisplayError err = kErrorNone;
+  int enable = 0;
+  int enable_demura = 0, enable_abc = 0;
+  if (reserve_done_)
+    return kErrorNone;
+
+  Debug::Get()->GetProperty(ENABLE_DEMURA, &enable_demura);
+  Debug::Get()->GetProperty(ENABLE_ABC, &enable_abc);
+  DLOGI("Feature Enable Demura = %d, ABC = %d", enable_demura, enable_abc);
+  enable = (enable_demura | enable_abc) ? 1 : 0;
+
+  if (!enable) {
+    comp_mgr_.SetDemuraStatus(false);
+    DLOGI("Both ABC and Demura is disabled");
+    return kErrorNone;
   }
 
-  panel_feature_factory_intf_ = get_factory_f_ptr();
-  pm_intf_ = panel_feature_factory_intf_->CreateDemuraParserManager(ipc_intf_,
-                                buffer_allocator_);
-  if (!pm_intf_) {
-    DLOGE("Failed to get Parser Manager intf");
-    return kErrorResources;
+  comp_mgr_.SetDemuraStatus(true);
+  // TODO(user): get demura fetch resouce count for multi-dpu
+  std::map<uint32_t, uint8_t> dpu_required_demura_fetch_cnt;  // display_id, count
+  if ((err = hw_info_intf_[0]->GetRequiredDemuraFetchResourceCount(
+           &dpu_required_demura_fetch_cnt)) != kErrorNone) {
+    DLOGE("Unable to get required ABC/demura pipes count");
+    return err;
   }
-  if (pm_intf_->Init() != 0) {
-    DLOGE("Failed to init Parser Manager intf");
-    return kErrorResources;
+
+  // TODO(user): Workaround to append core_id to get display_id
+  // to be removed after making changes for Demura on multi-dpu
+  std::map<uint32_t, uint8_t> required_demura_fetch_cnt;
+  for (auto r = dpu_required_demura_fetch_cnt.begin(); r != dpu_required_demura_fetch_cnt.end();
+       r++) {
+    uint32_t disp_id = r->first;
+    for (auto display_info : hw_displays_info_) {
+      uint32_t base_core_id = DisplayId::GetBaseCoreId(display_info.first);
+      if (DisplayId::GetConnId(display_info.first, base_core_id) == r->first) {
+        disp_id = display_info.first;
+      }
+    }
+
+    required_demura_fetch_cnt.insert({disp_id, r->second});
+  }
+
+  if (!required_demura_fetch_cnt.size()) {
+    DLOGW("ABC/Demura is enabled but no panels support it. Disabling..");
+    comp_mgr_.SetDemuraStatus(false);
+    return kErrorNone;
+  }
+
+  if (enable_abc) {
+    if ((err = ReserveABCResources(required_demura_fetch_cnt)) != kErrorNone) {
+      DLOGE("Failed to reserve ABC feature resources error = %d", err);
+      return err;
+    }
+  } else if (enable_demura) {
+    if ((err = ReserveDemuraResources(required_demura_fetch_cnt)) != kErrorNone) {
+      DLOGE("Failed to reserve Demura feature resources error = %d", err);
+      return err;
+    }
+
+    GetPanelFeatureFactory get_factory_f_ptr = nullptr;
+    if (!extension_lib_.Sym(GET_PANEL_FEATURE_FACTORY,
+                            reinterpret_cast<void **>(&get_factory_f_ptr))) {
+      DLOGE("Unable to load symbols, error = %s", extension_lib_.Error());
+      return kErrorUndefined;
+    }
+
+    panel_feature_factory_intf_ = get_factory_f_ptr();
+    pm_intf_ = panel_feature_factory_intf_->CreateDemuraParserManager(ipc_intf_, buffer_allocator_);
+    if (!pm_intf_) {
+      DLOGE("Failed to get Parser Manager intf");
+      return kErrorResources;
+    }
+
+    if (pm_intf_->Init() != 0) {
+      DLOGE("Failed to init Parser Manager intf");
+      return kErrorResources;
+    }
   }
 
   std::vector<uint64_t> *panel_ids;
@@ -718,8 +796,7 @@ DisplayError CoreImpl::ReserveDemuraResources() {
   }
   OverRideDemuraPanelIds(panel_ids);
 
-
-  if ((ret = pm_intf_->SetParameter(kDemuraParserManagerParamPanelIds, in))) {
+  if (enable_demura && (ret = pm_intf_->SetParameter(kDemuraParserManagerParamPanelIds, in))) {
     DLOGE("Failed to set the panel ids to the parser manager");
     return kErrorResources;
   }
