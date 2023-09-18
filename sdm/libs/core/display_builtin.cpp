@@ -230,6 +230,12 @@ DisplayError DisplayBuiltIn::Init() {
   left_frame_roi_.resize(core_count_);
   right_frame_roi_.resize(core_count_);
 
+  if (event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this,
+                             extension_lib_) != kErrorNone) {
+    DLOGW("Failed to initialize event proxy info");
+    event_proxy_info_.Deinit();
+  }
+
   return error;
 }
 
@@ -261,6 +267,7 @@ DisplayError DisplayBuiltIn::Deinit() {
     hw_rc_blocks_in_use_ -= rc_blocks_reserved_;
   }
   dpps_info_.Deinit();
+  event_proxy_info_.Deinit();
   return DisplayBase::Deinit();
 }
 
@@ -3391,6 +3398,101 @@ DisplayError DisplayBuiltIn::PerformCacConfig(CacConfig config, bool enable) {
   cac_config_ = config;
   validated_ = false;
   event_handler_->Refresh();
+
+  return kErrorNone;
+}
+
+DisplayError
+DisplayBuiltIn::PanelOprInfo(const std::string &client_name, bool enable,
+                             SdmDisplayCbInterface<PanelOprPayload> *cb_intf) {
+  return event_proxy_info_.PanelOprInfo(client_name, enable, cb_intf);
+}
+
+DisplayError EventProxyInfo::Init(const std::string &panel_name,
+                                  DisplayInterface *intf,
+                                  DynLib &extension_lib) {
+  std::lock_guard<std::mutex> guard(lock_);
+
+  if (!intf) {
+    DLOGE("Invalid display interface");
+    return kErrorParameters;
+  }
+
+  if (event_proxy_intf_.get()) {
+    DLOGV("Event proxy interface is already created");
+    return kErrorNone;
+  }
+
+  typedef DispEventProxyFactIntf *(*GetDispEventProxyFactFunc)();
+  GetDispEventProxyFactFunc get_disp_event_proxy_fact_func;
+
+  if (!extension_lib.Sym(
+          "GetDispEventProxyFactIntf",
+          reinterpret_cast<void **>(&get_disp_event_proxy_fact_func))) {
+    DLOGW("Fail to retrieve GetDispEventProxyFactIntf from %s",
+          EXTENSION_LIBRARY_NAME);
+    return kErrorUndefined;
+  }
+
+  DispEventProxyFactIntf *factory_intf = get_disp_event_proxy_fact_func();
+  if (!factory_intf) {
+    DLOGW("Failed to get display event proxy factory interface");
+    return kErrorUndefined;
+  }
+
+  std::shared_ptr<DisplayEventProxyIntf> proxy_intf =
+      factory_intf->CreateDispEventProxyIntf(panel_name, intf);
+  if (!proxy_intf) {
+    DLOGW("Failed to create display event proxy interface");
+    return kErrorMemory;
+  }
+
+  int ret = proxy_intf->Init();
+  if (ret) {
+    DLOGW("Failed to initialize event proxy interface, ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  event_proxy_intf_ = proxy_intf;
+  return kErrorNone;
+}
+
+DisplayError EventProxyInfo::Deinit() {
+  std::lock_guard<std::mutex> guard(lock_);
+  if (event_proxy_intf_) {
+    event_proxy_intf_->Deinit();
+    event_proxy_intf_.reset();
+    event_proxy_intf_ = nullptr;
+  }
+  return kErrorNone;
+}
+
+DisplayError
+EventProxyInfo::PanelOprInfo(const std::string &client_name, bool enable,
+                             SdmDisplayCbInterface<PanelOprPayload> *cb_intf) {
+  if (!event_proxy_intf_.get()) {
+    DLOGW("Event proxy intf is not available");
+    return kErrorParameters;
+  }
+
+  PanelOprInfoParam *opr_info = nullptr;
+  GenericPayload payload;
+  int ret = payload.CreatePayload(opr_info);
+  if (ret || !opr_info) {
+    DLOGE("Failed to create payload for OPR info, ret %d", ret);
+    return kErrorParameters;
+  }
+
+  opr_info->name = client_name;
+  opr_info->enable = enable;
+  opr_info->cb_intf = cb_intf;
+
+  ret = event_proxy_intf_->SetParameter(kSetPanelOprInfoEnable, payload);
+  if (ret) {
+    DLOGE("Failed to set panel Opr info enablement, ret %d", ret);
+    return kErrorUndefined;
+  }
+
   return kErrorNone;
 }
 
