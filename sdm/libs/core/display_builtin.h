@@ -117,20 +117,32 @@ class DppsInfo {
 
 class EventProxyInfo {
 public:
-  DisplayError Init(const std::string &panel_name, DisplayInterface *intf,
-                    DynLib &extension_lib);
-  DisplayError Deinit();
-  DisplayError PanelOprInfo(const std::string &client_name, bool enable,
-                            SdmDisplayCbInterface<PanelOprPayload> *cb_intf);
-  DisplayError SetPaHistCollection(const std::string &client_name, bool enable,
-                                   SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf);
-  DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf);
-  DisplayError PanelBacklightInfo(const std::string &client_name, bool enable,
-                                  SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf);
+ DisplayError Init(const std::string &panel_name, DisplayInterface *intf, DynLib &extension_lib,
+                   PanelFeaturePropertyIntf *prop_intf);
+ DisplayError Deinit();
+ DisplayError PanelOprInfo(const std::string &client_name, bool enable,
+                           SdmDisplayCbInterface<PanelOprPayload> *cb_intf);
+ DisplayError EnableCopr(const std::string &client_name, bool enable,
+                         SdmDisplayCbInterface<CoprEventPayload> *cb_intf);
+ DisplayError SetPaHistCollection(const std::string &client_name, bool enable,
+                                  SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf);
+ DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf);
+ DisplayError PanelBacklightInfo(const std::string &client_name, bool enable,
+                                 SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf);
+
+private:
+ std::mutex lock_;
+ std::shared_ptr<DisplayEventProxyIntf> event_proxy_intf_ = nullptr;
+};
+
+class CoprInfo : public SdmDisplayCbInterface<CoprEventPayload> {
+ public:
+  DisplayError GetStats(std::vector<int32_t> *stats);
+  int Notify(const CoprEventPayload &);
 
  private:
   std::mutex lock_;
-  std::shared_ptr<DisplayEventProxyIntf> event_proxy_intf_ = nullptr;
+  std::vector<int32_t> copr_stats_;
 };
 
 class DisplayIPCVmCallbackImpl : public IPCVmCallbackIntf {
@@ -246,6 +258,8 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError StartTvmServices();
   DisplayError StartService(TvmDispServiceManagerParams service);
   DisplayError ExportDemuraFiles();
+  DisplayError EnableCopr(bool en) override;
+  DisplayError GetCoprStats(std::vector<int> *stats) override;
 
   // Implement the HWEventHandlers
   DisplayError VSync(int64_t timestamp) override;
@@ -391,6 +405,8 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   BufferInfo output_buffer_info_ = {};
   EventProxyInfo event_proxy_info_ = {};
   bool enable_brightness_drm_prop_ = false;
+  CoprInfo copr_info_ = {};
+  bool copr_enabled_ = false;
 
   DynLib ssrc_lib_;
   std::shared_ptr<aiqe::SsrcFeatureInterface> ssrc_feature_interface_;

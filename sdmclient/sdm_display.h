@@ -522,6 +522,8 @@ public:
                                              uint32_t frame_interval_ns);
   virtual void SetFrameIntervalNs(uint32_t fi) { frame_interval_ns_ = fi; }
   virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
+  virtual DisplayError EnableCopr(bool en) { return kErrorNotSupported; }
+  virtual DisplayError GetCoprStats(std::vector<int> *stats) { return kErrorNotSupported; }
   virtual int GetNotifyEptConfig() { return -1; }
   virtual DisplayError SetPanelFeatureConfig(int32_t type, void *data) {
     return kErrorNotSupported;

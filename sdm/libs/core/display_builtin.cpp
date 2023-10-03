@@ -268,8 +268,9 @@ DisplayError DisplayBuiltIn::Init() {
   Debug::Get()->GetProperty(DEFER_FPS_FRAME_COUNT, &value);
   deferred_config_.frame_count = (value > 0) ? UINT32(value) : 0;
 
-  if (event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this, extension_lib_) !=
-      kErrorNone) {
+  error = event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this, extension_lib_,
+                                 prop_intf_);
+  if (error != kErrorNone) {
     DLOGW("Failed to initialize event proxy info");
     event_proxy_info_.Deinit();
   }
@@ -3804,13 +3805,41 @@ DisplayError DisplayBuiltIn::PanelBacklightInfo(
   return event_proxy_info_.PanelBacklightInfo(client_name, enable, cb_intf);
 }
 
-DisplayError EventProxyInfo::Init(const std::string &panel_name,
-                                  DisplayInterface *intf,
-                                  DynLib &extension_lib) {
+DisplayError DisplayBuiltIn::EnableCopr(bool en) {
+  DisplayError ret = kErrorNone;
+
+  DLOGI("%s COPR", en ? "Enable" : "Disable");
+  ret = event_proxy_info_.EnableCopr("copr_test", en, &copr_info_);
+  if (ret) {
+    DLOGW("Failed to enable COPR ret %d", ret);
+  } else {
+    event_handler_->Refresh();
+    copr_enabled_ = en;
+  }
+
+  return ret;
+}
+
+DisplayError DisplayBuiltIn::GetCoprStats(std::vector<int> *stats) {
+  DisplayError ret = kErrorNone;
+
+  if (!copr_enabled_) {
+    DLOGW("COPR is not enabled");
+    return kErrorResources;
+  }
+
+  ret = copr_info_.GetStats(stats);
+  if (ret)
+    DLOGE("Failed to get COPR stats ret %d", ret);
+  return ret;
+}
+
+DisplayError EventProxyInfo::Init(const std::string &panel_name, DisplayInterface *intf,
+                                  DynLib &extension_lib, PanelFeaturePropertyIntf *prop_intf) {
   std::lock_guard<std::mutex> guard(lock_);
 
-  if (!intf) {
-    DLOGE("Invalid display interface");
+  if (!intf || !prop_intf) {
+    DLOGE("Invalid display_intf %pK prop_intf %pK", intf, prop_intf);
     return kErrorParameters;
   }
 
@@ -3837,7 +3866,7 @@ DisplayError EventProxyInfo::Init(const std::string &panel_name,
   }
 
   std::shared_ptr<DisplayEventProxyIntf> proxy_intf =
-      factory_intf->CreateDispEventProxyIntf(panel_name, intf);
+      factory_intf->CreateDispEventProxyIntf(panel_name, intf, prop_intf);
   if (!proxy_intf) {
     DLOGW("Failed to create display event proxy interface");
     return kErrorMemory;
@@ -3890,6 +3919,59 @@ EventProxyInfo::PanelOprInfo(const std::string &client_name, bool enable,
   }
 
   return kErrorNone;
+}
+
+DisplayError EventProxyInfo::EnableCopr(const std::string &client_name, bool enable,
+                                        SdmDisplayCbInterface<CoprEventPayload> *cb_intf) {
+  if (!event_proxy_intf_.get()) {
+    DLOGW("Event proxy intf is not available");
+    return kErrorParameters;
+  }
+
+  CoprParam *copr_info = nullptr;
+  GenericPayload payload;
+  int ret = payload.CreatePayload(copr_info);
+  if (ret || !copr_info) {
+    DLOGE("Failed to create payload for COPR info, ret %d", ret);
+    return kErrorParameters;
+  }
+
+  copr_info->name = client_name;
+  copr_info->enable = enable;
+  copr_info->cb_intf = cb_intf;
+
+  ret = event_proxy_intf_->SetParameter(kSetCoprEnable, payload);
+  if (ret) {
+    DLOGE("Failed to set Copr info enablement, ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  return kErrorNone;
+}
+
+DisplayError CoprInfo::GetStats(std::vector<int32_t> *stats) {
+  std::lock_guard<std::mutex> guard(lock_);
+
+  if (!stats) {
+    DLOGE("Invalid input parameter stats %pK", stats);
+    return kErrorUndefined;
+  }
+
+  *stats = copr_stats_;
+  return kErrorNone;
+}
+
+int CoprInfo::Notify(const CoprEventPayload &payload) {
+  std::lock_guard<std::mutex> guard(lock_);
+  struct drm_msm_copr_status *copr_info =
+      reinterpret_cast<struct drm_msm_copr_status *>(payload.payload);
+
+  copr_stats_.clear();
+  for (auto i = 0; i < AIQE_COPR_STATUS_LEN; i++) {
+    copr_stats_.push_back(copr_info->status[i]);
+  }
+
+  return 0;
 }
 
 DisplayError EventProxyInfo::SetPaHistCollection(

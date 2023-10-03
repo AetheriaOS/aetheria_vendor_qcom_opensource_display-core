@@ -307,6 +307,8 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
                                           SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) {
     return kErrorNotSupported;
   }
+  virtual DisplayError EnableCopr(bool en) { return kErrorNotSupported; }
+  virtual DisplayError GetCoprStats(std::vector<int> *stats) { return kErrorNotSupported; }
 
  protected:
   struct DisplayMutex {

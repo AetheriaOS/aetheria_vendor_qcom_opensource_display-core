@@ -213,6 +213,7 @@
 //AIQE Properties
 #define AIQE_SSRC_ENABLE               DISPLAY_PROP("enable_aiqe_ssrc")
 #define AIQE_SSRC_DEFAULT_MODE         DISPLAY_PROP("default_aiqe_ssrc_mode")
+#define AIQE_COPR_ENABLE               DISPLAY_PROP("enable_aiqe_copr")
 
 // Add all vendor.display properties above
 

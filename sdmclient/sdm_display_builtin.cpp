@@ -1794,4 +1794,12 @@ DisplayError SDMDisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) 
   return display_intf_->SetPanelFeatureConfig(type, data);
 }
 
+DisplayError SDMDisplayBuiltIn::EnableCopr(bool en) {
+  return display_intf_->EnableCopr(en);
+}
+
+DisplayError SDMDisplayBuiltIn::GetCoprStats(std::vector<int> *stats) {
+  return display_intf_->GetCoprStats(stats);
+}
+
 } // namespace sdm

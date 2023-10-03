@@ -1470,6 +1470,22 @@ class DisplayInterface {
   */
   virtual DisplayError SetPanelFeatureConfig(int32_t type, void *data) = 0;
 
+  /*! @brief Method to enable/disable COPR feature.
+
+   @param[in] en: enable or disable COPR feature
+
+   @return \link DisplayError \endlink
+  */
+  virtual DisplayError EnableCopr(bool en) = 0;
+
+  /*! @brief Method to get COPR statistics.
+
+   @param[out] vector of COPR statistics
+
+   @return \link DisplayError \endlink
+  */
+  virtual DisplayError GetCoprStats(std::vector<int> *stats) = 0;
+
  protected:
   virtual ~DisplayInterface() { }
 };
