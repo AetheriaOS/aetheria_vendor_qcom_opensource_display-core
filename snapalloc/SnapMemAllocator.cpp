@@ -1,0 +1,126 @@
+// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// SPDX-License-Identifier: BSD-3-Clause-Clear
+
+#include "SnapMemAllocator.h"
+#include <log/log.h>
+#include <iostream>
+#include "ISnapMemAllocBackend.h"
+
+#define DEBUG 0
+
+namespace snapalloc {
+
+SnapMemAllocator *SnapMemAllocator::instance_{nullptr};
+std::mutex SnapMemAllocator::mem_allocator_mutex_;
+
+SnapMemAllocator *SnapMemAllocator::GetInstance() {
+  std::lock_guard<std::mutex> lock(mem_allocator_mutex_);
+
+  if (instance_ == nullptr) {
+    instance_ = new SnapMemAllocator();
+  }
+  return instance_;
+}
+
+Error SnapMemAllocator::AllocateMem(AllocData *alloc_data,
+                                    vendor_qti_hardware_display_common_BufferUsage usage,
+                                    vendor_qti_hardware_display_common_PixelFormat format) {
+  int ret = -1;
+  int err = 0;
+
+  ISnapMemAllocBackend *alloc_intf = ISnapMemAllocBackend::GetInstance();
+  if (!alloc_intf) {
+    return Error::NO_RESOURCES;
+  }
+
+  if (!alloc_data->size) {
+    ALOGE("Failed to allocate buffer with size 0");
+    return Error::BAD_VALUE;
+  }
+
+  // After this point we should have the right heap set, there is no fallback
+  alloc_intf->GetHeapInfo(usage, use_system_heap_for_sensors_, &alloc_data->heap_name,
+                          &alloc_data->vm_names, &alloc_data->alloc_type, &alloc_data->flags,
+                          &alloc_data->size);
+
+  ret = alloc_intf->AllocBuffer(alloc_data);
+
+  if (ret < 0) {
+    ALOGE("Failed to allocate buffer - heap name: %s, flags 0x%x ret %d ",
+          alloc_data->heap_name.c_str(), alloc_data->flags, ret);
+    return Error::BAD_VALUE;
+  }
+
+  if (!alloc_data->vm_names.empty()) {
+    err = alloc_intf->SecureMemPerms(alloc_data);
+  }
+
+  if (err) {
+    ALOGE("Failed to modify secure use permissions - heap name: %s, flags 0x%x err %d",
+          alloc_data->heap_name.c_str(), alloc_data->flags, err);
+  }
+
+  return Error::NONE;
+}
+
+Error SnapMemAllocator::FreeBuffer(void *base, unsigned int size, int fd, std::string buffer_path) {
+  ISnapMemAllocBackend *alloc_intf = ISnapMemAllocBackend::GetInstance();
+  if (!alloc_intf) {
+    return Error::NO_RESOURCES;
+  }
+  ALOGD_IF(DEBUG, "Freeing buffer base:%p size:%u fd:%d", base, size, fd);
+  if (alloc_intf) {
+    return alloc_intf->FreeBuffer(base, size, fd, std::move(buffer_path));
+  }
+
+  return Error::BAD_BUFFER;
+}
+
+Error SnapMemAllocator::MapBuffer(void **base, unsigned int size, int fd) {
+  ISnapMemAllocBackend *alloc_intf = ISnapMemAllocBackend::GetInstance();
+  if (!alloc_intf) {
+    return Error::NO_RESOURCES;
+  }
+  if (alloc_intf) {
+    return alloc_intf->MapBuffer(base, size, fd);
+  }
+
+  return Error::BAD_BUFFER;
+}
+
+Error SnapMemAllocator::CleanBuffer(void *base, unsigned int size, int op, int fd) {
+  ISnapMemAllocBackend *alloc_intf = ISnapMemAllocBackend::GetInstance();
+  if (!alloc_intf) {
+    return Error::NO_RESOURCES;
+  }
+  if (alloc_intf) {
+    return alloc_intf->CleanBuffer(base, size, op, fd);
+  }
+
+  return Error::BAD_BUFFER;
+}
+
+int SnapMemAllocator::ImportBuffer(int fd) {
+  ISnapMemAllocBackend *alloc_intf = ISnapMemAllocBackend::GetInstance();
+  if (alloc_intf) {
+    return alloc_intf->ImportBuffer(fd);
+  }
+  ALOGE("ISnapMemAllocBackend is not available");
+  return -1;
+}
+
+Error SnapMemAllocator::SetBufferPermission(
+    int fd, vendor_qti_hardware_display_common_BufferPermission *buffer_perm,
+    int64_t *mem_hdl) {
+  ISnapMemAllocBackend *alloc_intf = ISnapMemAllocBackend::GetInstance();
+  if (!alloc_intf) {
+    return Error::NO_RESOURCES;
+  }
+  if (alloc_intf) {
+    return alloc_intf->SetBufferPermission(fd, buffer_perm, mem_hdl);
+  }
+
+  return Error::BAD_BUFFER;
+}
+
+}  // namespace  snapalloc
