@@ -179,6 +179,8 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf));
   MAKE_NO_OP(SetSsrcMode(const std::string &mode));
   MAKE_NO_OP(SetVRRState(bool));
+  MAKE_NO_OP(PanelBacklightInfo(const std::string &client_name, bool enable,
+                                SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf));
 
  protected:
   DisplayConfigVariableInfo default_variable_config_ = {};

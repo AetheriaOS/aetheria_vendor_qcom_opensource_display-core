@@ -294,6 +294,11 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   virtual DisplayError NotifyExpectedPresent(uint64_t expected_present_time,
                                              uint32_t frame_interval_ns);
 
+  virtual DisplayError PanelBacklightInfo(const std::string &client_name, bool enable,
+                                          SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) {
+    return kErrorNotSupported;
+  }
+
  protected:
   struct DisplayMutex {
     std::recursive_mutex client_mutex;

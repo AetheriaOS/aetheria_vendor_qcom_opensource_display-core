@@ -124,6 +124,8 @@ public:
   DisplayError SetPaHistCollection(const std::string &client_name, bool enable,
                                    SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf);
   DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf);
+  DisplayError PanelBacklightInfo(const std::string &client_name, bool enable,
+                                  SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf);
 
  private:
   std::mutex lock_;
@@ -232,6 +234,8 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf) override;
   DisplayError SetSsrcMode(const std::string &mode) override;
   DisplayError SetVRRState(bool state) override;
+  DisplayError PanelBacklightInfo(const std::string &client_name, bool enable,
+                                  SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) override;
 
   // Implement the HWEventHandlers
   DisplayError VSync(int64_t timestamp) override;
