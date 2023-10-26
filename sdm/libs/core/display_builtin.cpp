@@ -2632,7 +2632,7 @@ bool DisplayBuiltIn::CanCompareFrameROI(LayerStack *layer_stack) {
     DisablePartialUpdateOneFrameInternal();
   }
 
-  if (!partial_update_control_ || disable_pu_one_frame_ || disable_pu_on_dest_scaler_) {
+  if (!partial_update_control_ || disable_pu_one_frame_) {
     return false;
   }
 
@@ -2961,12 +2961,9 @@ DisplayError DisplayBuiltIn::ReconfigureDisplay() {
   client_ctx_.hw_panel_info = hw_panel_info;
   device_ctx_ = device_ctx;
 
-  // TODO(user): Temporary changes, to be removed when DRM driver supports
-  // Partial update with Destination scaler enabled.
-  SetPUonDestScaler();
-  if (client_ctx_.hw_panel_info.partial_update && !disable_pu_on_dest_scaler_) {
-    // If current panel supports Partial Update and destination scalar isn't enabled, then add
-    // a pending PU request to be served in the first PU enable frame after the modeset frame.
+  if (client_ctx_.hw_panel_info.partial_update) {
+    // If current panel supports Partial Update, then add a pending PU request
+    // to be served in the first PU enable frame after the modeset frame.
     // Because if first PU enable frame, after transition, has a partial Frame-ROI and
     // is followed by Skip Validate frames, then it can benefit those frames.
     pu_pending_ = true;

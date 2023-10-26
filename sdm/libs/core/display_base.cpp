@@ -290,10 +290,6 @@ DisplayError DisplayBase::Init() {
     }
   }
 
-  // TODO(user): Temporary changes, to be removed when DRM driver supports
-  // Partial update with Destination scaler enabled.
-  SetPUonDestScaler();
-
   Debug::GetProperty(DISABLE_HW_RECOVERY_DUMP_PROP, &disable_hw_recovery_dump_);
   DLOGI("disable_hw_recovery_dump_ set to %d", disable_hw_recovery_dump_);
 
@@ -896,7 +892,7 @@ DisplayError DisplayBase::ValidateGPUTargetParams() {
 bool DisplayBase::IsValidateNeeded() {
   // This api checks on special cases for which Validate call may be needed.
   if (pu_pending_ && partial_update_control_ && !disable_pu_one_frame_ &&
-      !disable_pu_on_dest_scaler_ && !(color_mgr_ && color_mgr_->NeedsPartialUpdateDisable())) {
+      !(color_mgr_ && color_mgr_->NeedsPartialUpdateDisable())) {
     // If a PU request is pending and PU is enabled for the current frame,
     // then prevent Skip Validate in order to recalculate PU.
     pu_pending_ = false;
@@ -1084,9 +1080,8 @@ DisplayError DisplayBase::Prepare(LayerStack *layer_stack) {
   if (color_mgr_ && color_mgr_->NeedsPartialUpdateDisable()) {
     DisablePartialUpdateOneFrameInternal();
   }
-  // TODO(user): Temporary changes, to be removed when DRM driver supports
-  // Partial update with Destination scaler enabled.
-  if (!partial_update_control_ || disable_pu_one_frame_ || disable_pu_on_dest_scaler_) {
+
+  if (!partial_update_control_ || disable_pu_one_frame_) {
     comp_manager_->ControlPartialUpdate(display_comp_ctx_, false /* enable */);
     disable_pu_one_frame_ = false;
   }
@@ -3141,12 +3136,9 @@ DisplayError DisplayBase::ReconfigureDisplay() {
   client_ctx_ = client_ctx;
   device_ctx_ = device_ctx;
 
-  // TODO(user): Temporary changes, to be removed when DRM driver supports
-  // Partial update with Destination scaler enabled.
-  SetPUonDestScaler();
-  if (client_ctx_.hw_panel_info.partial_update && !disable_pu_on_dest_scaler_) {
-    // If current panel supports Partial Update and destination scalar isn't enabled, then add
-    // a pending PU request to be served in the first PU enable frame after the modeset frame.
+  if (client_ctx_.hw_panel_info.partial_update) {
+    // If current panel supports Partial Update, then add a pending PU request
+    // to be served in the first PU enable frame after the modeset frame.
     // Because if first PU enable frame, after transition, has a partial Frame-ROI and
     // is followed by Skip Validate frames, then it can benefit those frames.
     pu_pending_ = true;
@@ -3422,14 +3414,6 @@ DisplayError DisplayBase::SetDetailEnhancerData(const DisplayDetailEnhancerData 
   if (error != kErrorNone) {
     return error;
   }
-  // TODO(user): Temporary changes, to be removed when DRM driver supports
-  // Partial update with Destination scaler enabled.
-  if (de_data.enable) {
-    de_enabled_ = true;
-  } else {
-    de_enabled_ = false;
-  }
-  SetPUonDestScaler();
 
   return kErrorNone;
 }
@@ -3778,18 +3762,6 @@ DisplayError DisplayBase::ValidateDataspace(const Dataspace &color_metadata) {
   }
 
   return kErrorNone;
-}
-
-// TODO(user): Temporary changes, to be removed when DRM driver supports
-// Partial update with Destination scaler enabled.
-void DisplayBase::SetPUonDestScaler() {
-  uint32_t mixer_width = client_ctx_.mixer_attributes.width;
-  uint32_t mixer_height = client_ctx_.mixer_attributes.height;
-  uint32_t display_width = client_ctx_.display_attributes.x_pixels;
-  uint32_t display_height = client_ctx_.display_attributes.y_pixels;
-
-  disable_pu_on_dest_scaler_ =
-      (mixer_width != display_width || mixer_height != display_height) || de_enabled_;
 }
 
 void DisplayBase::ClearColorInfo() {
@@ -4491,14 +4463,6 @@ DisplayError DisplayBase::SetHWDetailedEnhancerConfig(void *params) {
       DLOGW("SetDetailEnhancerConfig failed. err = %d", err);
       return err;
     }
-    // TODO(user): Temporary changes, to be removed when DRM driver supports
-    // Partial update with Destination scaler enabled.
-    if (de_data.enable) {
-      de_enabled_ = true;
-    } else {
-      de_enabled_ = false;
-    }
-    SetPUonDestScaler();
 
     if (color_mgr_) {
       color_mgr_->SetDETuningCFGpending(false);

@@ -1563,19 +1563,35 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
       DRMRect conn_rects[kNumMaxROIs] = {{0, 0, display_attributes_[index].x_pixels,
                                           display_attributes_[index].y_pixels}};
       DRMRect spr_rects[kNumMaxROIs] = {{0, 0, mixer_attributes_.width, mixer_attributes_.height}};
+      DestScaleInfoMap &dest_scale_info_map = hw_layers_info->dest_scale_info_map;
+
+      if (dest_scale_info_map.size() && hw_layers_info->left_frame_roi.size() != 1) {
+        DLOGE("left_frame_roi size %d, only 1 ROI supported in PU+DS case",
+              hw_layers_info->left_frame_roi.size());
+      }
 
       for (uint32_t i = 0; i < hw_layers_info->left_frame_roi.size(); i++) {
         auto &roi = hw_layers_info->left_frame_roi.at(i);
         // TODO(user): In multi PU, stitch ROIs vertically adjacent and upate plane destination
+
+        LayerRect panel_roi = {};
+        if (dest_scale_info_map.size() && dest_scale_info_map[0]->scale_data.enable.scale) {
+          for (uint32_t i = 0; i < dest_scale_info_map.size(); i++) {
+            panel_roi = Union(panel_roi, dest_scale_info_map[i]->panel_roi);
+          }
+        } else {
+          panel_roi = roi;
+          panel_roi.top += FLOAT(hw_layers_info->common_info->spr_overfetch_lines.top);
+        }
+
         crtc_rects[i].left = UINT32(roi.left);
         crtc_rects[i].right = UINT32(roi.right);
         crtc_rects[i].top = UINT32(roi.top);
         crtc_rects[i].bottom = UINT32(roi.bottom);
-        conn_rects[i].left = UINT32(roi.left);
-        conn_rects[i].right = UINT32(roi.right);
-        conn_rects[i].top = UINT32(roi.top +
-                            FLOAT(hw_layers_info->common_info->spr_overfetch_lines.top));
-        conn_rects[i].bottom = UINT32(roi.bottom);
+        conn_rects[i].left = UINT32(panel_roi.left);
+        conn_rects[i].right = UINT32(panel_roi.right);
+        conn_rects[i].top = UINT32(panel_roi.top);
+        conn_rects[i].bottom = UINT32(panel_roi.bottom);
         spr_rects[i].left = UINT32(roi.left);
         spr_rects[i].right = UINT32(roi.right);
         spr_rects[i].top = UINT32(roi.top +
