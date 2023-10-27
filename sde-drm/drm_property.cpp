@@ -248,6 +248,7 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "dst_rect_extn") { return DRMProperty::DST_RECT_EXT; }
   if (name == "bg_alpha") { return DRMProperty::BG_ALPHA; }
   if (name == "src_img_size") { return DRMProperty::IMG_SIZE_RECT; }
+  if (name == "ubwc_clk") { return DRMProperty::UBWC_CLK; }
 
   return DRMProperty::INVALID;
 }

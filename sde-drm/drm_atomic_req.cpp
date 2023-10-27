@@ -162,7 +162,8 @@ int DRMAtomicReq::Perform(DRMOps opcode, uint32_t obj_id, ...) {
     case DRMOps::CRTC_SET_CACHE_STATE:
     case DRMOps::CRTC_SET_VM_REQ_STATE:
     case DRMOps::CRTC_RESET_CACHE:
-    case DRMOps::CRTC_SET_NOISELAYER_CONFIG: {
+    case DRMOps::CRTC_SET_NOISELAYER_CONFIG:
+    case DRMOps::CRTC_SET_UBWC_CLK: {
       drm_mgr_->GetCrtcMgr()->Perform(opcode, obj_id, drm_atomic_req_, args);
     } break;
     case DRMOps::CONNECTOR_SET_CRTC:

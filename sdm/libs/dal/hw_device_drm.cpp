@@ -1529,6 +1529,11 @@ void HWDeviceDRM::SetQOSData(const HWQosData &qos_data) {
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ROT_PREFILL_BW, token_.crtc_id,
                             qos_data.rot_prefill_bw_bps);
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ROT_CLK, token_.crtc_id, qos_data.rot_clock_hz);
+
+  if (hw_resource_.has_cesta) {
+    drm_atomic_intf_->Perform(DRMOps::CRTC_SET_UBWC_CLK, token_.crtc_id,
+                              qos_data.ubwc_clock_hz);
+  }
 }
 
 DisplayError HWDeviceDRM::Standby(SyncPoints *sync_points) {

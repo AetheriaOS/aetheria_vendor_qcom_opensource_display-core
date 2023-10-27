@@ -336,6 +336,7 @@ DisplayError HWInfoDRM::GetHWResourceInfo(HWResourceInfo *hw_resource) {
   DLOGI("Has Micro Idle = %d", hw_resource->has_micro_idle);
   DLOGI("Has Noise Layer = %d", hw_resource->has_noise_layer);
   DLOGI("Has Concurrent Writeback = %d", hw_resource->has_concurrent_writeback);
+  DLOGI("Has CESTA = %d", hw_resource->has_cesta);
   string tap_points = "Tap Points: ";
   for (CwbTapPoint &tap_point : hw_resource->tap_points) {
     tap_points += std::to_string(tap_point) + " ";
@@ -402,6 +403,7 @@ void HWInfoDRM::GetSystemInfo(HWResourceInfo *hw_resource) {
   hw_resource->dspp_count = info.dspp_count;
   hw_resource->skip_inline_rot_threshold = info.skip_inline_rot_threshold;
   hw_resource->has_noise_layer = info.has_noise_layer;
+  hw_resource->has_cesta = info.has_cesta;
 
   if (info.cac_version == sde_drm::CacVersion::V1) {
     hw_resource->cac_version = kCacVersion1;
