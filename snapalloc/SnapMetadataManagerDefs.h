@@ -95,6 +95,7 @@ struct SnapMetadata {
   bool isVendorMetadataSet[METADATA_SET_SIZE];
   uint64_t reservedSize;
   char heapName[QTI_MAX_NAME_LEN];
+  vendor_qti_hardware_display_common_PixelFormat pixel_format_requested;
 };
 }  // namespace snapalloc
 
