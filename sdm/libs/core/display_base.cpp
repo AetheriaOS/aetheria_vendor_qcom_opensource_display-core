@@ -590,6 +590,13 @@ DisplayError DisplayBase::InitRC() {
     input_cfg.display_xres = client_ctx_.display_attributes.x_pixels;
     input_cfg.display_yres = client_ctx_.display_attributes.y_pixels;
     input_cfg.max_mem_size = rc_total_mem_size;
+
+    std::string panel_name = std::string(client_ctx_.hw_panel_info.panel_name);
+    std::string::size_type pos;
+    while ((pos = panel_name.find(' ')) != std::string::npos)
+      panel_name.replace(pos, 1, "_");
+    input_cfg.panel_name = panel_name;
+
     rc_core_ = pf_factory_->CreateRCIntf(input_cfg, prop_intf_);
     GenericPayload dummy;
     int err = 0;
@@ -1851,6 +1858,17 @@ DisplayError DisplayBase::FlushLocked(LayerStack *layer_stack) {
   if (!active_) {
     return kErrorPermission;
   }
+
+#ifdef TRUSTED_VM
+  // Reset RC hardware on TUI session end.
+  if (rc_core_) {
+    GenericPayload in, out;
+    int ret = rc_core_->ProcessOps(kRCFeatureReset, in, &out);
+    if (ret) {
+      DLOGW("RC HW reset failed err:%d", ret);
+    }
+  }
+#endif
 
   for (auto& info : disp_layer_stack_->info) {
     info.second.hw_layers.clear();

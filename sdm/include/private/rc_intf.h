@@ -27,6 +27,11 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
+
 #ifndef __RC_INTF_H__
 #define __RC_INTF_H__
 
@@ -49,6 +54,7 @@ struct RCInputConfig {
   uint32_t mixer_height = 0;
   uint32_t fb_width = 0;
   uint32_t fb_height = 0;
+  std::string panel_name = {};
 };
 
 struct RCOutputConfig {
@@ -96,6 +102,7 @@ enum RCFeatureOps {
   kRCFeaturePrepare,
   kRCFeaturePostPrepare,
   kRCFeatureCommit,
+  kRCFeatureReset,
   kRCFeatureOpsMax,
 };
 
