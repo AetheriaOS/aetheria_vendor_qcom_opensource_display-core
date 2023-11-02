@@ -865,6 +865,11 @@ void DRMPlane::ParseProperties() {
       PopulateUcscGcMode(info);
     }
 
+    if (prop_enum == DRMProperty::ALPHA) {
+      alpha_range_.first = info->values[0];
+      alpha_range_.second = info->values[1];
+    }
+
     prop_mgr_.SetPropertyId(prop_enum, info->prop_id);
     prop_map[prop_enum] = std::make_tuple(props->prop_values[j], info);
     csc = prop_enum == DRMProperty::CSC_V1 ? true : csc;
@@ -1380,6 +1385,8 @@ void DRMPlane::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
     case DRMOps::PLANE_SET_ALPHA:
     case DRMOps::PLANE_SET_BG_ALPHA: {
       uint32_t alpha = va_arg(args, uint32_t);
+      // reset plane alpha to 8 bit if range max is UINT8_MAX
+      alpha = (alpha_range_.second == UINT8_MAX) ? alpha >> 8 : alpha;
       prop_id = prop_mgr_.GetPropertyId(DRMProperty::ALPHA);
       std::string prop_name = "alpha";
       if (code == DRMOps::PLANE_SET_BG_ALPHA) {

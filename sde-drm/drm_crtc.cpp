@@ -959,7 +959,7 @@ void DRMCrtc::SetSolidfillStages(drmModeAtomicReq *req, uint32_t obj_id,
   drm_dim_layer_v1_.num_layers = solid_fills->size();
   for (uint32_t i = 0; i < solid_fills->size(); i++) {
     const DRMSolidfillStage &sf = solid_fills->at(i);
-    float plane_alpha = (sf.plane_alpha / 255.0f);
+    float plane_alpha = (sf.plane_alpha / 65535.0f);
     drm_dim_layer_v1_.layer_cfg[i].stage = sf.z_order;
     drm_dim_layer_v1_.layer_cfg[i].rect.x1 = (uint16_t)sf.bounding_rect.left;
     drm_dim_layer_v1_.layer_cfg[i].rect.y1 = (uint16_t)sf.bounding_rect.top;
@@ -974,9 +974,17 @@ void DRMCrtc::SetSolidfillStages(drmModeAtomicReq *req, uint32_t obj_id,
     drm_dim_layer_v1_.layer_cfg[i].color_fill.color_0 = (sf.green & 0x3FF) << shift;
     drm_dim_layer_v1_.layer_cfg[i].color_fill.color_1 = (sf.blue & 0x3FF) << shift;
     drm_dim_layer_v1_.layer_cfg[i].color_fill.color_2 = (sf.red & 0x3FF) << shift;
-    // alpha is 8 bit
-    drm_dim_layer_v1_.layer_cfg[i].color_fill.color_3 =
-      ((uint32_t)((((sf.alpha & 0xFF)) * plane_alpha)));
+    // alpha is set as 8 or 16 bit depending on range max
+    if (alpha_range_.second == UINT8_MAX) {
+      uint32_t alpha = (sf.color_bit_depth == 8) ? sf.alpha : sf.alpha >> 8;
+      drm_dim_layer_v1_.layer_cfg[i].color_fill.color_3 = (uint32_t)((alpha & 0xFF) * plane_alpha);
+    } else {
+      uint32_t alpha = (sf.color_bit_depth == 8) ? (sf.alpha << 8) + sf.alpha : sf.alpha;
+      drm_dim_layer_v1_.layer_cfg[i].color_fill.color_3 =
+          (uint32_t)((alpha & 0xFFFF) * plane_alpha);
+    }
+    DRM_LOGD("CRTC %d: Set solid fill alpha %d", obj_id,
+             drm_dim_layer_v1_.layer_cfg[i].color_fill.color_3);
   }
   AddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::DIM_STAGES_V1),
               reinterpret_cast<uint64_t> (&drm_dim_layer_v1_), false /* cache */,
@@ -993,8 +1001,16 @@ void DRMCrtc::SetNoiseLayerConfig(drmModeAtomicReq *req, uint32_t obj_id,
     drm_noise_layer_v1_.zposn = noise_cfg->zpos_noise;
     drm_noise_layer_v1_.zposattn = noise_cfg->zpos_attn;
     drm_noise_layer_v1_.strength = noise_cfg->noise_strength;
-    drm_noise_layer_v1_.attn_factor = noise_cfg->attn_factor;
-    drm_noise_layer_v1_.alpha_noise = noise_cfg->alpha_noise;
+    // set noise alpha and attn to 16 bit if range max is not UINT8_MAX
+    // TODO(user): invert and reset when attn factor and alpha noise is given as 16 bit
+    drm_noise_layer_v1_.attn_factor = (alpha_range_.second == UINT8_MAX)
+                                          ? noise_cfg->attn_factor
+                                          : (noise_cfg->attn_factor << 8) + noise_cfg->attn_factor;
+    drm_noise_layer_v1_.alpha_noise = (alpha_range_.second == UINT8_MAX)
+                                          ? noise_cfg->alpha_noise
+                                          : (noise_cfg->alpha_noise << 8) + noise_cfg->alpha_noise;
+    DRM_LOGD("CRTC %d: Set noise attn %d alpha %d", obj_id, drm_noise_layer_v1_.attn_factor,
+             drm_noise_layer_v1_.alpha_noise);
     cfg = &drm_noise_layer_v1_;
   }
   AddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::NOISE_LAYER_V1),

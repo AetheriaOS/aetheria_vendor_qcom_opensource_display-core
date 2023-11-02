@@ -1265,7 +1265,7 @@ struct DRMSolidfillStage {
   uint32_t alpha = 0xff;
   uint32_t color_bit_depth = 0;
   uint32_t z_order = 0;
-  uint32_t plane_alpha = 0xff;
+  uint32_t plane_alpha = 0xffff;
 };
 
 struct DRMNoiseLayerConfig {
