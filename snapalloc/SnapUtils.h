@@ -131,13 +131,14 @@ class MmmColorFormatMapper {
       case vendor_qti_hardware_display_common_PixelFormat::RGBA_8888:
       case vendor_qti_hardware_display_common_PixelFormat::RGBX_8888: {
         if (ubwc_enabled) {
-          // TODO: uncomment when mmm_color_fmt change is available
+          #ifdef DRM_FORMAT_MOD_QCOM_LOSSY_8_5
           if (usage & vendor_qti_hardware_display_common_BufferUsage::QTI_ALLOC_UBWC_L_8_TO_5) {
-            //return mmm_color_fmts::MMM_COLOR_FMT_RGBA8888_L_8_5_UBWC;
+            return mmm_color_fmts::MMM_COLOR_FMT_RGBA8888_L_8_5_UBWC;
           }
           if (usage & vendor_qti_hardware_display_common_BufferUsage::QTI_ALLOC_UBWC_L_2_TO_1) {
-            //return mmm_color_fmts::MMM_COLOR_FMT_RGBA8888_L_2_1_UBWC;
+            return mmm_color_fmts::MMM_COLOR_FMT_RGBA8888_L_2_1_UBWC;
           }
+          #endif
           return mmm_color_fmts::MMM_COLOR_FMT_RGBA8888_UBWC;
         }
         return mmm_color_fmts::MMM_COLOR_FMT_RGBA8888;

@@ -373,7 +373,8 @@ class SnapMetadataManager {
           {{.format = vendor_qti_hardware_display_common_PixelFormat::R_8,
             .compression_type = COMPRESSION_NONE},
            {.drm_format = DRM_FORMAT_R8, .drm_modifier = 0}},
-          /*{{.format = vendor_qti_hardware_display_common_PixelFormat::RGBA_8888,
+#ifdef DRM_FORMAT_MOD_QCOM_LOSSY_8_5
+          {{.format = vendor_qti_hardware_display_common_PixelFormat::RGBA_8888,
             .compression_type = QTI_COMPRESSION_UBWC_LOSSY_8_TO_5},
            {.drm_format = DRM_FORMAT_ABGR8888,
             .drm_modifier =
@@ -382,7 +383,8 @@ class SnapMetadataManager {
             .compression_type = QTI_COMPRESSION_UBWC_LOSSY_2_TO_1},
            {.drm_format = DRM_FORMAT_ABGR8888,
             .drm_modifier =
-                static_cast<int>(DRM_FORMAT_MOD_QCOM_COMPRESSED | DRM_FORMAT_MOD_QCOM_LOSSY_2_1)}}, */
+                static_cast<int>(DRM_FORMAT_MOD_QCOM_COMPRESSED | DRM_FORMAT_MOD_QCOM_LOSSY_2_1)}},
+#endif
   };
 
   std::unordered_map<vendor_qti_hardware_display_common_MetadataType, MetadataHelper>
