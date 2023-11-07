@@ -92,6 +92,12 @@
 #ifndef DRM_FORMAT_MOD_QCOM_TIGHT
 #define DRM_FORMAT_MOD_QCOM_TIGHT fourcc_mod_code(QCOM, 0x4)
 #endif
+#ifndef DRM_FORMAT_MOD_QCOM_LOSSY_8_5
+#define DRM_FORMAT_MOD_QCOM_LOSSY_8_5 fourcc_mod_code(QCOM, 0x20)
+#endif
+#ifndef DRM_FORMAT_MOD_QCOM_LOSSY_2_1
+#define DRM_FORMAT_MOD_QCOM_LOSSY_2_1 fourcc_mod_code(QCOM, 0x40)
+#endif
 
 #define DEST_SCALAR_OVERFETCH_SIZE 5
 
@@ -320,6 +326,16 @@ static void GetDRMFormat(LayerBufferFormat format, uint32_t *drm_format,
     case kFormatRGBA16161616FUbwc:
       *drm_format = DRM_FORMAT_ABGR16161616F;
       *drm_format_modifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
+      break;
+    case kFormatRGBA8888UbwcLossy2To1:
+      *drm_format = DRM_FORMAT_ABGR8888;
+      *drm_format_modifier =
+          DRM_FORMAT_MOD_QCOM_COMPRESSED | DRM_FORMAT_MOD_QCOM_LOSSY_2_1;
+      break;
+    case kFormatRGBA8888UbwcLossy8To5:
+      *drm_format = DRM_FORMAT_ABGR8888;
+      *drm_format_modifier =
+          DRM_FORMAT_MOD_QCOM_COMPRESSED | DRM_FORMAT_MOD_QCOM_LOSSY_8_5;
       break;
     default:
       DLOGW("Unsupported format %s", GetFormatString(format));

@@ -52,6 +52,8 @@ bool IsUBWCFormat(LayerBufferFormat format) {
   case kFormatYCbCr420TP10Ubwc:
   case kFormatYCbCr420P010Ubwc:
   case kFormatRGBA16161616FUbwc:
+  case kFormatRGBA8888UbwcLossy2To1:
+  case kFormatRGBA8888UbwcLossy8To5:
     return true;
   default:
     return false;
@@ -120,6 +122,8 @@ bool IsRgbFormat(const LayerBufferFormat &format) {
     case kFormatRGB101010:
     case kFormatRGBA16161616F:
     case kFormatRGBA16161616FUbwc:
+    case kFormatRGBA8888UbwcLossy2To1:
+    case kFormatRGBA8888UbwcLossy8To5:
       return true;
     default:
       return false;
@@ -177,6 +181,8 @@ const char *GetFormatString(const LayerBufferFormat &format) {
   case kFormatRGBA16161616F:            return "RGBA16161616F";
   case kFormatRGBA16161616FUbwc:        return "RGBA16161616F_UBWC";
   case kFormatA8:                       return "A8";
+  case kFormatRGBA8888UbwcLossy2To1:    return "RGBA_8888_UBWC_LOSSY_2_TO_1";
+  case kFormatRGBA8888UbwcLossy8To5:    return "RGBA_8888_UBWC_LOSSY_8_TO_5";
   default:                              return "UNKNOWN";
   }
 }
@@ -218,6 +224,8 @@ float GetBufferFormatBpp(LayerBufferFormat format) {
     case kFormatXBGR2101010:
     case kFormatRGBA1010102Ubwc:
     case kFormatRGBX1010102Ubwc:
+    case kFormatRGBA8888UbwcLossy2To1:
+    case kFormatRGBA8888UbwcLossy8To5:
       return 4.0f;
     case kFormatRGB888:
     case kFormatBGR888:
@@ -338,6 +346,8 @@ bool HasAlphaChannel(LayerBufferFormat format) {
   case kFormatRGBA1010102Ubwc:
   case kFormatRGBA16161616F:
   case kFormatRGBA16161616FUbwc:
+  case kFormatRGBA8888UbwcLossy2To1:
+  case kFormatRGBA8888UbwcLossy8To5:
     return true;
   default:
     return false;
