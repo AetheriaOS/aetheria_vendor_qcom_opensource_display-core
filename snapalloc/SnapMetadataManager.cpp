@@ -111,6 +111,22 @@ Error SnapMetadataManager::PixelFormatRequestedHelper(SnapMetadata *metadata,
         static_cast<vendor_qti_hardware_display_common_PixelFormat>(buf_des->format);
     return Error::NONE;
   } else if (out_get != nullptr) {
+    *static_cast<vendor_qti_hardware_display_common_PixelFormat *>(out_get) = metadata->pixel_format_requested;
+    return Error::NONE;
+  } else if (in_set != nullptr) {
+    return Error::BAD_VALUE;
+  }
+  return Error::BAD_VALUE;
+}
+
+Error SnapMetadataManager::PixelFormatAllocatedHelper(SnapMetadata *metadata,
+                                                      SnapHandleInternal *handle, void *in_set,
+                                                      void *out_get, BufferDescriptor *buf_des) {
+  if (buf_des != nullptr) {
+    *static_cast<vendor_qti_hardware_display_common_PixelFormat *>(out_get) =
+        static_cast<vendor_qti_hardware_display_common_PixelFormat>(buf_des->format);
+    return Error::NONE;
+  } else if (out_get != nullptr) {
     *static_cast<vendor_qti_hardware_display_common_PixelFormat *>(out_get) = handle->format;
     return Error::NONE;
   } else if (in_set != nullptr) {
@@ -1028,18 +1044,18 @@ uint32_t SnapMetadataManager::GetCustomContentMetadataSize(
 }
 
 Error SnapMetadataManager::InitializeMetadata(
-    SnapHandleInternal *hnd, BufferDescriptor desc, const AllocData ad,
-    vendor_qti_hardware_display_common_BufferLayout *layout) {
+    SnapHandleInternal *hnd, BufferDescriptor in_desc, BufferDescriptor out_desc,
+    const AllocData ad, vendor_qti_hardware_display_common_BufferLayout *layout) {
   UBWCPolicy *ubwc_policy = UBWCPolicy::GetInstance();
-  bool ubwc_enable = ubwc_policy->IsUBWCAlloc(desc);
+  bool ubwc_enable = ubwc_policy->IsUBWCAlloc(out_desc);
   auto err = Error::NONE;
 
   GraphicsConstraintProvider *graphics_provider = GraphicsConstraintProvider::GetInstance();
   CapabilitySet caps;
-  graphics_provider->GetCapabilities(desc, &caps);
+  graphics_provider->GetCapabilities(out_desc, &caps);
   if (caps.enabled) {
     vendor_qti_hardware_display_common_GraphicsMetadata graphics_metadata;
-    int ret = graphics_provider->GetInitialMetadata(desc, &graphics_metadata, ubwc_enable);
+    int ret = graphics_provider->GetInitialMetadata(out_desc, &graphics_metadata, ubwc_enable);
 
     if (ret == 0) {
       err = Set(hnd, vendor_qti_hardware_display_common_MetadataType::GRAPHICS_METADATA,
@@ -1053,7 +1069,7 @@ Error SnapMetadataManager::InitializeMetadata(
   } else {
     ALOGD_IF(DEBUG,
              "Graphics does not support format %d. Skipping initialization of graphics metadata",
-             static_cast<uint64_t>(desc.format));
+             static_cast<uint64_t>(out_desc.format));
   }
 
   // This metadata types cannot be changed via set API
@@ -1072,8 +1088,8 @@ Error SnapMetadataManager::InitializeMetadata(
   }
 
   // Populate name
-  auto name_length = std::min(std::string(desc.name).size(), static_cast<size_t>(QTI_MAX_NAME_LEN - 1));
-  memcpy(data->name, std::string(desc.name).data(), name_length);
+  auto name_length = std::min(std::string(out_desc.name).size(), static_cast<size_t>(QTI_MAX_NAME_LEN - 1));
+  memcpy(data->name, std::string(out_desc.name).data(), name_length);
   data->name[name_length] = '\0';
 
   // Populate Buffer Layout
@@ -1093,6 +1109,9 @@ Error SnapMetadataManager::InitializeMetadata(
   auto heap_name_length = std::min(ad.heap_name.size(), static_cast<size_t>(QTI_MAX_NAME_LEN - 1));
   memcpy(data->heapName, ad.heap_name.data(), heap_name_length);
   data->heapName[heap_name_length] = '\0';
+
+  // Populate pixel format requested
+  data->pixel_format_requested = in_desc.format;
 
   UnmapAndReset(hnd);
   return Error::NONE;

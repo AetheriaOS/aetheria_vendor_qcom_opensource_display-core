@@ -106,7 +106,7 @@ Error SnapAllocCore::Allocate(BufferDescriptor desc, int count,
     hnd->custom_content_md_reserved_size = custom_content_md_size;
     hnd->pixel_format_modifier = GetPixelFormatModifier(out_desc);
 
-    err = metadata_mgr_->InitializeMetadata(hnd, out_desc, ad, &layout);
+    err = metadata_mgr_->InitializeMetadata(hnd, desc, out_desc, ad, &layout);
     if (err != Error::NONE) {
       ALOGE("Failed to initialize metadata for hnd %lu", hnd->id);
     }
