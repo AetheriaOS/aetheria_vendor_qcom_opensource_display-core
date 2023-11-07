@@ -84,6 +84,7 @@ bool UBWCPolicy::IsUBWCAlloc(BufferDescriptor desc) {
 vendor_qti_hardware_display_common_Compression UBWCPolicy::GetUBWCScheme(
     vendor_qti_hardware_display_common_PixelFormat format,
     vendor_qti_hardware_display_common_BufferUsage usage) {
+#ifdef DRM_FORMAT_MOD_QCOM_LOSSY_8_5
   if (format == vendor_qti_hardware_display_common_PixelFormat::RGBA_8888) {
     if (usage & vendor_qti_hardware_display_common_BufferUsage::QTI_ALLOC_UBWC_L_8_TO_5) {
       return QTI_COMPRESSION_UBWC_LOSSY_8_TO_5;
@@ -92,6 +93,8 @@ vendor_qti_hardware_display_common_Compression UBWCPolicy::GetUBWCScheme(
       return QTI_COMPRESSION_UBWC_LOSSY_2_TO_1;
     }
   }
+#endif
+
   if (usage & vendor_qti_hardware_display_common_BufferUsage::QTI_ALLOC_UBWC ||
       usage & vendor_qti_hardware_display_common_BufferUsage::QTI_PRIVATE_ALLOC_UBWC_PI) {
     return QTI_COMPRESSION_UBWC;
