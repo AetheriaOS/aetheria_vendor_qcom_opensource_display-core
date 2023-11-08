@@ -39,8 +39,8 @@ class SnapMetadataManager {
   Error GetCustomDimensions(SnapHandleInternal *hnd, SnapMetadata *metadata, int32_t *stride,
                             int32_t *height);
   Error InitializeMetadata(
-      SnapHandleInternal *hnd, BufferDescriptor desc, const AllocData ad,
-      vendor_qti_hardware_display_common_BufferLayout *layout);  // TODO: make this API extensible
+      SnapHandleInternal *hnd, BufferDescriptor in_desc, BufferDescriptor out_desc,
+      const AllocData ad, vendor_qti_hardware_display_common_BufferLayout *layout);  // TODO: make this API extensible
   uint32_t GetCustomContentMetadataSize(vendor_qti_hardware_display_common_PixelFormat format,
                                         vendor_qti_hardware_display_common_BufferUsage usage);
   Error GetMetadataState(SnapHandleInternal *hnd, vendor_qti_hardware_display_common_MetadataType type, bool *out);
@@ -223,6 +223,9 @@ class SnapMetadataManager {
                        void *out_get = nullptr, BufferDescriptor *buf_des = nullptr);
   Error HeapNameHelper(SnapMetadata *metadata, SnapHandleInternal *handle, void *in_set = nullptr,
                        void *out_get = nullptr, BufferDescriptor *buf_des = nullptr);
+  Error PixelFormatAllocatedHelper(SnapMetadata *metadata, SnapHandleInternal *handle,
+                                 void *in_set = nullptr, void *out_get = nullptr,
+                                 BufferDescriptor *buf_des = nullptr);
 
   struct DRMFormatDescriptor {
     uint32_t drm_format;
@@ -370,7 +373,8 @@ class SnapMetadataManager {
           {{.format = vendor_qti_hardware_display_common_PixelFormat::R_8,
             .compression_type = COMPRESSION_NONE},
            {.drm_format = DRM_FORMAT_R8, .drm_modifier = 0}},
-          /*{{.format = vendor_qti_hardware_display_common_PixelFormat::RGBA_8888,
+#ifdef DRM_FORMAT_MOD_QCOM_LOSSY_8_5
+          {{.format = vendor_qti_hardware_display_common_PixelFormat::RGBA_8888,
             .compression_type = QTI_COMPRESSION_UBWC_LOSSY_8_TO_5},
            {.drm_format = DRM_FORMAT_ABGR8888,
             .drm_modifier =
@@ -379,7 +383,8 @@ class SnapMetadataManager {
             .compression_type = QTI_COMPRESSION_UBWC_LOSSY_2_TO_1},
            {.drm_format = DRM_FORMAT_ABGR8888,
             .drm_modifier =
-                static_cast<int>(DRM_FORMAT_MOD_QCOM_COMPRESSED | DRM_FORMAT_MOD_QCOM_LOSSY_2_1)}}, */
+                static_cast<int>(DRM_FORMAT_MOD_QCOM_COMPRESSED | DRM_FORMAT_MOD_QCOM_LOSSY_2_1)}},
+#endif
   };
 
   std::unordered_map<vendor_qti_hardware_display_common_MetadataType, MetadataHelper>
@@ -441,6 +446,7 @@ class SnapMetadataManager {
           {IS_TILE_RENDERED, &SnapMetadataManager::IsTileRenderedHelper},
           {IS_CACHED, &SnapMetadataManager::IsCachedHelper},
           {HEAP_NAME, &SnapMetadataManager::HeapNameHelper},
+          {PIXEL_FORMAT_ALLOCATED, &SnapMetadataManager::PixelFormatAllocatedHelper},
   };
   struct metadata_traits {
     bool is_default_metadata;
@@ -505,7 +511,7 @@ class SnapMetadataManager {
           {IS_TILE_RENDERED, {true, false}},
           {IS_CACHED, {true, false}},
           {HEAP_NAME, {true, false}},
-
+          {PIXEL_FORMAT_ALLOCATED, {true, false}},
       };
 };
 }  // namespace snapalloc

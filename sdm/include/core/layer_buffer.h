@@ -97,6 +97,8 @@ enum LayerBufferFormat {
   kFormatRGBA16161616FUbwc,  //!< UBWC aligned floating point 16-bits Red, Green, Blue, Alpha
                              //!< interleaved in RGBA order.
   kFormatA8,                 //!< 8-bits Alpha format.
+  kFormatRGBA8888UbwcLossy2To1,  //!< UBWC aligned RGBA8888 format with lossy 2:1 compression
+  kFormatRGBA8888UbwcLossy8To5,  //!< UBWC aligned RGBA8888 format with lossy 8:5 compression
 
   /* All YUV-Planar formats, Any new format will be added towards end of this group to maintain
      backward compatibility.
