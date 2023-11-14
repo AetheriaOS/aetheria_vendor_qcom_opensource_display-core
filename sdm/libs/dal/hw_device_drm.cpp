@@ -1664,10 +1664,10 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
 
         if (update_config) {
           uint32_t fg_alpha = layer.plane_alpha;
-          uint32_t bg_alpha = 0xff - layer.plane_alpha;
+          uint32_t bg_alpha = 0xffff - layer.plane_alpha;
 
           if (pipe_info->cac_mode) {
-            fg_alpha = bg_alpha = 0xff;
+            fg_alpha = bg_alpha = 0xffff;
           }
 
           drm_atomic_intf_->Perform(DRMOps::PLANE_SET_ALPHA, pipe_id, fg_alpha);
@@ -2057,8 +2057,11 @@ void HWDeviceDRM::AddSolidfillStage(const HWSolidfillStage &sf, uint32_t plane_a
     solidfill.blue = sf.solid_fill_info.blue;
   }
   solid_fills_.push_back(solidfill);
-  DLOGI_IF(kTagDriverConfig, "Add a solidfill stage at z_order:%d argb_color:%x plane_alpha:%x",
-           solidfill.z_order, solidfill.color, solidfill.plane_alpha);
+  DLOGI_IF(kTagDriverConfig,
+           "Add a solidfill stage at z_order: %d argb: [%x %x %x %x]"
+           "plane_alpha: %x",
+           solidfill.z_order, solidfill.alpha, solidfill.red, solidfill.green, solidfill.blue,
+           solidfill.plane_alpha);
 }
 
 void HWDeviceDRM::SetSolidfillStages() {
@@ -3139,7 +3142,7 @@ void HWDeviceDRM::AddDimLayerIfNeeded() {
     sf.z_order = UINT32(hw_resource_.secure_disp_blend_stage);
     sf.roi = { 0.0, 0.0, FLOAT(mixer_attributes_.width), FLOAT(mixer_attributes_.height) };
     solid_fills_.clear();
-    AddSolidfillStage(sf, 0xFF);
+    AddSolidfillStage(sf, 0xffff);
     SetSolidfillStages();
   }
 

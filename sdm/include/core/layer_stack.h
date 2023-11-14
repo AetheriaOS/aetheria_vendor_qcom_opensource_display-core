@@ -91,15 +91,15 @@ namespace sdm {
 */
 enum LayerBlending {
   kBlendingPremultiplied,   //!< Pixel color is expressed using premultiplied alpha in RGBA tuples.
-                            //!< If plane alpha is less than 0xFF, apply modulation as well.
+                            //!< If plane alpha is less than 0xFFFF, apply modulation as well.
                             //!<   pixel.rgb = src.rgb + dest.rgb x (1 - src.a)
 
   kBlendingOpaque,          //!< Pixel color is expressed using straight alpha in color tuples. It
                             //!< is constant blend operation. The layer would appear opaque if plane
-                            //!< alpha is 0xFF.
+                            //!< alpha is 0xFFFF.
 
   kBlendingCoverage,        //!< Pixel color is expressed using straight alpha in color tuples. If
-                            //!< plane alpha is less than 0xff, apply modulation as well.
+                            //!< plane alpha is less than 0xffff, apply modulation as well.
                             //!<   pixel.rgb = src.rgb x src.a + dest.rgb x (1 - src.a)
 
   kBlendingSkip,            //!< Used only to denote layer should not be staged for blending, but
@@ -498,12 +498,12 @@ struct Layer {
                                                    //!< applied to the layer buffer during
                                                    //!< composition.
 
-  uint8_t plane_alpha = 0xff;                      //!< Alpha value applied to the whole layer.
+  uint16_t plane_alpha = 0xffff;                   //!< Alpha value applied to the whole layer.
                                                    //!< Value of each pixel is computed as:
-                                                   //!<    if(kBlendingPremultiplied) {
-                                                   //!<      pixel.RGB = pixel.RGB * planeAlpha/255
-                                                   //!<    }
-                                                   //!<    pixel.a = pixel.a * planeAlpha
+                                                   //!<  if(kBlendingPremultiplied) {
+                                                   //!<    pixel.RGB = pixel.RGB * planeAlpha/65535
+                                                   //!<  }
+                                                   //!<  pixel.a = pixel.a * planeAlpha
 
   uint32_t frame_rate = 0;                         //!< Rate at which frames are being updated for
                                                    //!< this layer.
