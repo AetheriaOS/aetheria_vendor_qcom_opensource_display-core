@@ -22,11 +22,12 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
-*
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
-* SPDX-License-Identifier: BSD-3-Clause-Clear
-*/
+ * Changes from Qualcomm Innovation Center are provided under the
+ * following license:
+ *
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #include <dlfcn.h>
 #include <private/color_interface.h>
@@ -260,6 +261,16 @@ ColorManagerProxy *ColorManagerProxy::CreateColorManagerProxy(DisplayType type,
         int ret = color_manager_proxy->stc_intf_->SetProperty(payload);
         if (ret) {
           DLOGW("Failed to SetProperty, property = %d error = %d", payload.prop, ret);
+        }
+
+        ScPayload pp_ver_pay;
+        pp_ver_pay.len = sizeof(versions);
+        pp_ver_pay.prop = snapdragoncolor::kSetPPFeatureVersion;
+        pp_ver_pay.payload = reinterpret_cast<uint64_t>(&versions);
+        ret = color_manager_proxy->stc_intf_->SetProperty(pp_ver_pay);
+        if (ret) {
+          DLOGW("Failed to SetProperty, property = %d error = %d",
+                pp_ver_pay.prop, ret);
         }
       }
 
