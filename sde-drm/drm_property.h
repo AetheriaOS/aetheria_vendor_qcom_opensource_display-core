@@ -223,8 +223,8 @@ enum struct DRMProperty {
   DIMMING_BL_LUT,
   DIMMING_DYN_CTRL,
   DIMMING_MIN_BL,
-  DYN_TRANSFER_TIME,  // Setter
-  TRANSFER_TIME,      // Getter
+  DYN_TRANSFER_TIME, // Setter
+  TRANSFER_TIME,     // Getter
   JITTER_CONFIG,
   EARLY_FENCE_LINE,
   DNSC_BLR,
@@ -246,6 +246,7 @@ enum struct DRMProperty {
   DST_RECT_EXT,
   BG_ALPHA,
   IMG_SIZE_RECT,
+  UBWC_CLK,
 
   // Insert above
   MAX

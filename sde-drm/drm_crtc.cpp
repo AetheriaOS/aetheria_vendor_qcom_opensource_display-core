@@ -1,5 +1,42 @@
 /*
-* Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Changes from Qualcomm Innovation Center are provided under the following
+ * license:
+ *
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted (subject to the limitations in the
+ * disclaimer below) provided that the following conditions are met:
+ *
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *
+ *    * Redistributions in binary form must reproduce the above
+ *      copyright notice, this list of conditions and the following
+ *      disclaimer in the documentation and/or other materials provided
+ *      with the distribution.
+ *
+ *    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of
+ * its contributors may be used to endorse or promote products derived from this
+ * software without specific prior written permission.
+ *
+ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+ * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+* Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -383,6 +420,10 @@ void DRMCrtc::ParseProperties() {
 
     if (prop_enum == DRMProperty::VM_REQ_STATE) {
       PopulateVMRequestStates(info);
+    }
+
+    if (prop_enum == DRMProperty::UBWC_CLK) {
+      crtc_info_.has_cesta = true;
     }
 
     prop_mgr_.SetPropertyId(prop_enum, info->prop_id);
@@ -907,6 +948,16 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       committed_prop_val_map_.clear();
     } break;
 
+    case DRMOps::CRTC_SET_UBWC_CLK: {
+      if (!prop_mgr_.IsPropertyAvailable(DRMProperty::UBWC_CLK)) {
+          return;
+      }
+
+      uint32_t ubwc_clk = va_arg(args, uint32_t);
+      AddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::UBWC_CLK),
+                  ubwc_clk, true /* cache */, tmp_prop_val_map_);
+    }; break;
+
     default:
       DRM_LOGE("Invalid opcode %d to set the property on crtc %d", code, obj_id);
       break;
@@ -959,7 +1010,7 @@ void DRMCrtc::SetSolidfillStages(drmModeAtomicReq *req, uint32_t obj_id,
   drm_dim_layer_v1_.num_layers = solid_fills->size();
   for (uint32_t i = 0; i < solid_fills->size(); i++) {
     const DRMSolidfillStage &sf = solid_fills->at(i);
-    float plane_alpha = (sf.plane_alpha / 255.0f);
+    float plane_alpha = (sf.plane_alpha / 65535.0f);
     drm_dim_layer_v1_.layer_cfg[i].stage = sf.z_order;
     drm_dim_layer_v1_.layer_cfg[i].rect.x1 = (uint16_t)sf.bounding_rect.left;
     drm_dim_layer_v1_.layer_cfg[i].rect.y1 = (uint16_t)sf.bounding_rect.top;
@@ -974,9 +1025,17 @@ void DRMCrtc::SetSolidfillStages(drmModeAtomicReq *req, uint32_t obj_id,
     drm_dim_layer_v1_.layer_cfg[i].color_fill.color_0 = (sf.green & 0x3FF) << shift;
     drm_dim_layer_v1_.layer_cfg[i].color_fill.color_1 = (sf.blue & 0x3FF) << shift;
     drm_dim_layer_v1_.layer_cfg[i].color_fill.color_2 = (sf.red & 0x3FF) << shift;
-    // alpha is 8 bit
-    drm_dim_layer_v1_.layer_cfg[i].color_fill.color_3 =
-      ((uint32_t)((((sf.alpha & 0xFF)) * plane_alpha)));
+    // alpha is set as 8 or 16 bit depending on range max
+    if (alpha_range_.second == UINT8_MAX) {
+      uint32_t alpha = (sf.color_bit_depth == 8) ? sf.alpha : sf.alpha >> 8;
+      drm_dim_layer_v1_.layer_cfg[i].color_fill.color_3 = (uint32_t)((alpha & 0xFF) * plane_alpha);
+    } else {
+      uint32_t alpha = (sf.color_bit_depth == 8) ? (sf.alpha << 8) + sf.alpha : sf.alpha;
+      drm_dim_layer_v1_.layer_cfg[i].color_fill.color_3 =
+          (uint32_t)((alpha & 0xFFFF) * plane_alpha);
+    }
+    DRM_LOGD("CRTC %d: Set solid fill alpha %d", obj_id,
+             drm_dim_layer_v1_.layer_cfg[i].color_fill.color_3);
   }
   AddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::DIM_STAGES_V1),
               reinterpret_cast<uint64_t> (&drm_dim_layer_v1_), false /* cache */,
@@ -993,8 +1052,16 @@ void DRMCrtc::SetNoiseLayerConfig(drmModeAtomicReq *req, uint32_t obj_id,
     drm_noise_layer_v1_.zposn = noise_cfg->zpos_noise;
     drm_noise_layer_v1_.zposattn = noise_cfg->zpos_attn;
     drm_noise_layer_v1_.strength = noise_cfg->noise_strength;
-    drm_noise_layer_v1_.attn_factor = noise_cfg->attn_factor;
-    drm_noise_layer_v1_.alpha_noise = noise_cfg->alpha_noise;
+    // set noise alpha and attn to 16 bit if range max is not UINT8_MAX
+    // TODO(user): invert and reset when attn factor and alpha noise is given as 16 bit
+    drm_noise_layer_v1_.attn_factor = (alpha_range_.second == UINT8_MAX)
+                                          ? noise_cfg->attn_factor
+                                          : (noise_cfg->attn_factor << 8) + noise_cfg->attn_factor;
+    drm_noise_layer_v1_.alpha_noise = (alpha_range_.second == UINT8_MAX)
+                                          ? noise_cfg->alpha_noise
+                                          : (noise_cfg->alpha_noise << 8) + noise_cfg->alpha_noise;
+    DRM_LOGD("CRTC %d: Set noise attn %d alpha %d", obj_id, drm_noise_layer_v1_.attn_factor,
+             drm_noise_layer_v1_.alpha_noise);
     cfg = &drm_noise_layer_v1_;
   }
   AddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::NOISE_LAYER_V1),

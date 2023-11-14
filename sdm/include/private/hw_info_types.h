@@ -481,6 +481,7 @@ struct HWResourceInfo {
   uint32_t core_id = 0;
   CacVersion cac_version = kCacVersionNone;
   DDRVersion ddr_version = kDDRVersion5;
+  bool has_cesta = false;
 };
 
 struct HWSplitInfo {
@@ -913,6 +914,7 @@ struct HWQosData {
   uint64_t rot_prefill_bw_bps = 0;
   uint32_t clock_hz = 0;
   uint32_t rot_clock_hz = 0;
+  uint32_t ubwc_clock_hz = 0;
 };
 
 enum UpdateType {
@@ -1299,4 +1301,4 @@ typedef std::map<uint32_t, DisplayInfoContext> DisplayDeviceContext;
 // clang-format on
 }  // namespace sdm
 
-#endif  // __HW_INFO_TYPES_H__
+#endif // __HW_INFO_TYPES_H__

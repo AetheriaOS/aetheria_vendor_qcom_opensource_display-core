@@ -143,7 +143,8 @@ enum struct DRMOps {
   /*
    * Op: Sets source config flags
    * Arg: uint32_t - Plane ID
-   *      uint32_t - flags to enable or disable a specific op. E.g. deinterlacing
+   *      uint32_t - flags to enable or disable a specific op. E.g.
+   * deinterlacing
    */
   PLANE_SET_SRC_CONFIG,
   /*
@@ -159,9 +160,8 @@ enum struct DRMOps {
    */
   PLANE_SET_CRTC,
   /*
-   * Op: Sets acquire fence for this plane's buffer. Set together with FB_ID, CRTC.
-   * Arg: uint32_t - Plane ID
-   *      uint32_t - Input fence
+   * Op: Sets acquire fence for this plane's buffer. Set together with FB_ID,
+   * CRTC. Arg: uint32_t - Plane ID uint32_t - Input fence
    */
   PLANE_SET_INPUT_FENCE,
   /*
@@ -383,10 +383,9 @@ enum struct DRMOps {
    */
   CRTC_SET_DEST_SCALER_CONFIG,
   /*
-   * Op: Returns release fence for this frame. Should be called after Commit() on
-   * DRMAtomicReqInterface.
-   * Arg: uint32_t - CRTC ID
-   *      int * - Pointer to an integer that will hold the returned fence
+   * Op: Returns release fence for this frame. Should be called after Commit()
+   * on DRMAtomicReqInterface. Arg: uint32_t - CRTC ID int * - Pointer to an
+   * integer that will hold the returned fence
    */
   CRTC_GET_RELEASE_FENCE,
   /*
@@ -456,10 +455,15 @@ enum struct DRMOps {
    */
   CRTC_RESET_CACHE,
   /*
-   * Op: Returns retire fence for this commit. Should be called after Commit() on
-   * DRMAtomicReqInterface.
-   * Arg: uint32_t - Connector ID
-   *      int * - Pointer to an integer that will hold the returned fence
+   * Op: Sets UBWC clock of the display
+   * Args: uint32_t CRTC ID
+   *       uin32_t - ubwc_clk
+   */
+  CRTC_SET_UBWC_CLK,
+  /*
+   * Op: Returns retire fence for this commit. Should be called after Commit()
+   * on DRMAtomicReqInterface. Arg: uint32_t - Connector ID int * - Pointer to
+   * an integer that will hold the returned fence
    */
   CONNECTOR_GET_RETIRE_FENCE,
   /*
@@ -599,7 +603,8 @@ enum struct DRMOps {
   CONNECTOR_SET_TRANSFER_TIME,
   /*
    * Op: Get new transfer time value for the current mode from driver
-   * Arg: int * - Pointer to an integer that will hold the returned transfer time
+   * Arg: int * - Pointer to an integer that will hold the returned transfer
+   * time
    */
   CONNECTOR_GET_TRANSFER_TIME,
   /*
@@ -823,6 +828,7 @@ struct DRMCrtcInfo {
   uint32_t dsc_block_count = 0;
   CacVersion cac_version = CacVersion::NONE;
   DDRVersion ddr_version = DDRVersion::kDDRVersion5;
+  bool has_cesta = false;
 };
 
 enum struct DRMPlaneType {
@@ -1266,7 +1272,7 @@ struct DRMSolidfillStage {
   uint32_t alpha = 0xff;
   uint32_t color_bit_depth = 0;
   uint32_t z_order = 0;
-  uint32_t plane_alpha = 0xff;
+  uint32_t plane_alpha = 0xffff;
 };
 
 struct DRMNoiseLayerConfig {
