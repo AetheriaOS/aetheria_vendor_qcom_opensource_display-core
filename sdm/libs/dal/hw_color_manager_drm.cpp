@@ -55,6 +55,7 @@ static const uint32_t kPgcShift = 16;
 
 static const uint32_t kIgcDataMask = 0xFFF;
 static const uint32_t kIgcShift = 16;
+static const uint32_t kRegU16Mask = 0xFFFF;
 
 #ifdef DRM_MSM_PA_HSIC
 static const uint32_t kPAHueMask = (1 << 12);
@@ -172,6 +173,8 @@ uint32_t HWColorManagerDrm::GetFeatureVersion(const DRMPPFeatureInfo &feature) {
         version = PPFeatureVersion::kSDEIgcV30;
       } else if (feature.version == 4) {
         version = PPFeatureVersion::kSDEIgcV40;
+      } else if (feature.version == 5) {
+        version = PPFeatureVersion::kSDEIgcV50;
       }
       break;
     case kFeaturePgc:
@@ -450,16 +453,20 @@ DisplayError HWColorManagerDrm::GetDrmIGC(const PPFeatureInfo &in_data,
                                           DRMPPFeatureInfo *out_data) {
   DisplayError ret = kErrorNone;
 #ifdef PP_DRM_ENABLE
-  struct SDEIgcV30LUTData *sde_igc;
+  struct SDEIgcV30LUTData *sde_igc = nullptr;
   struct drm_msm_igc_lut *mdp_igc;
   uint32_t *c0_c1_data_ptr = NULL;
   uint32_t *c2_data_ptr = NULL;
+  struct SDEIgcV50LUTData *sde_igc_v5 = nullptr;
 
   switch (in_data.feature_version_) {
   case PPFeatureVersion::kSDEIgcV30:
   case PPFeatureVersion::kSDEIgcV40:
   case kSourceFeatureV5:
     sde_igc = (struct SDEIgcV30LUTData *) in_data.GetConfigData();
+    break;
+  case PPFeatureVersion::kSDEIgcV50:
+    sde_igc_v5 = (struct SDEIgcV50LUTData *)in_data.GetConfigData();
     break;
   default:
     DLOGE("Unsupported igc feature version: %d", in_data.feature_version_);
@@ -485,31 +492,70 @@ DisplayError HWColorManagerDrm::GetDrmIGC(const PPFeatureInfo &in_data,
     return kErrorMemory;
   }
 
-  if (sde_igc->flags & IGC_DITHER_EN)
-    mdp_igc->flags = IGC_DITHER_ENABLE;
-  mdp_igc->strength = sde_igc->strength;
+  if (sde_igc) {
+    if (sde_igc->flags & IGC_DITHER_EN)
+      mdp_igc->flags = IGC_DITHER_ENABLE;
+    mdp_igc->strength = sde_igc->strength;
 
-  c0_c1_data_ptr = reinterpret_cast<uint32_t*>(sde_igc->c0_c1_data);
-  c2_data_ptr = reinterpret_cast<uint32_t*>(sde_igc->c2_data);
+    c0_c1_data_ptr = reinterpret_cast<uint32_t *>(sde_igc->c0_c1_data);
+    c2_data_ptr = reinterpret_cast<uint32_t *>(sde_igc->c2_data);
 
-  if (!c0_c1_data_ptr || !c2_data_ptr) {
-    DLOGE("Invaid igc data pointer");
-    delete mdp_igc;
-    out_data->payload = NULL;
-    return kErrorParameters;
+    if (!c0_c1_data_ptr || !c2_data_ptr) {
+      DLOGE("Invaid igc data pointer");
+      delete mdp_igc;
+      out_data->payload = NULL;
+      return kErrorParameters;
+    }
+
+    int i;
+    for (i = 0; i < IGC_TBL_LEN; i++) {
+      mdp_igc->c0[i] = c0_c1_data_ptr[i] & kIgcDataMask;
+      mdp_igc->c1[i] = (c0_c1_data_ptr[i] >> kIgcShift) & kIgcDataMask;
+      mdp_igc->c2[i] = c2_data_ptr[i] & kIgcDataMask;
+    }
+    mdp_igc->c0_last = c0_c1_data_ptr[i] & kIgcDataMask;
+    mdp_igc->c1_last = (c0_c1_data_ptr[i] >> kIgcShift) & kIgcDataMask;
+    mdp_igc->c2_last = c2_data_ptr[i] & kIgcDataMask;
+
+    out_data->payload = mdp_igc;
+  } else if (sde_igc_v5) {
+    if (sde_igc_v5->flags & IGC_DITHER_EN)
+      mdp_igc->flags = IGC_DITHER_ENABLE;
+    mdp_igc->strength = sde_igc_v5->strength;
+
+    c0_c1_data_ptr = reinterpret_cast<uint32_t *>(sde_igc_v5->c0_c1_data);
+    c2_data_ptr = reinterpret_cast<uint32_t *>(sde_igc_v5->c2_data);
+
+    if (!c0_c1_data_ptr || !c2_data_ptr) {
+      DLOGE("Invaid igc data pointer");
+      delete mdp_igc;
+      out_data->payload = NULL;
+      return kErrorParameters;
+    }
+
+    int i;
+    for (i = 0; i < IGC_TBL_LEN; i++) {
+      mdp_igc->c0[i] = c0_c1_data_ptr[i] & kRegU16Mask;
+      mdp_igc->c1[i] = (c0_c1_data_ptr[i] >> kIgcShift) & kRegU16Mask;
+      mdp_igc->c2[i] = c2_data_ptr[i] & kRegU16Mask;
+    }
+    mdp_igc->c0_last = c0_c1_data_ptr[i] & kRegU16Mask;
+    mdp_igc->c1_last = (c0_c1_data_ptr[i] >> kIgcShift) & kRegU16Mask;
+    mdp_igc->c2_last = c2_data_ptr[i] & kRegU16Mask;
+ #ifdef IGC_HIGH_PREC_ENABLE
+    if (sde_igc_v5->flags & SDM_IGC_HIGH_PREC_EN) {
+      mdp_igc->flags = IGC_HIGH_PREC_ENABLE;
+      for (i = 0; i < IGC_TBL_LEN_EXTENDED; i++) {
+        mdp_igc->c0_extended[i] = c0_c1_data_ptr[i + 1 + IGC_TBL_LEN] & kRegU16Mask;
+        mdp_igc->c1_extended[i] =
+            (c0_c1_data_ptr[i + 1 + IGC_TBL_LEN] >> kIgcShift) & kRegU16Mask;
+        mdp_igc->c2_extended[i] = c2_data_ptr[i + 1 + IGC_TBL_LEN] & kRegU16Mask;
+      }
+    }
+#endif
+
+    out_data->payload = mdp_igc;
   }
-
-  int i;
-  for (i = 0; i < IGC_TBL_LEN; i++) {
-    mdp_igc->c0[i] = c0_c1_data_ptr[i] & kIgcDataMask;
-    mdp_igc->c1[i] = (c0_c1_data_ptr[i] >> kIgcShift) & kIgcDataMask;
-    mdp_igc->c2[i] = c2_data_ptr[i] & kIgcDataMask;
-  }
-  mdp_igc->c0_last = c0_c1_data_ptr[i] & kIgcDataMask;
-  mdp_igc->c1_last = (c0_c1_data_ptr[i] >> kIgcShift) & kIgcDataMask;
-  mdp_igc->c2_last = c2_data_ptr[i] & kIgcDataMask;
-
-  out_data->payload = mdp_igc;
 #endif
   return ret;
 }

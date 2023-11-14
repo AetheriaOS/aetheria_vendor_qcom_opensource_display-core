@@ -129,7 +129,7 @@ void DRMPPManager::Init(const DRMPropertyManager &pm , uint32_t object_type) {
       DRM_LOGI("Pgc version %d, prop_id %d", pp_prop_map_[kFeaturePgc].version,
                pp_prop_map_[kFeaturePgc].prop_id);
     } else if (i >= (uint32_t)DRMProperty::SDE_DSPP_IGC_V2 &&
-               i <= (uint32_t)DRMProperty::SDE_DSPP_IGC_V4) {
+               i <= (uint32_t)DRMProperty::SDE_DSPP_IGC_V5) {
       pp_prop_map_[kFeatureIgc].prop_enum = (DRMProperty)i;
       pp_prop_map_[kFeatureIgc].prop_id = pm.GetPropertyId((DRMProperty)i);
       pp_prop_map_[kFeatureIgc].version = i - (uint32_t)DRMProperty::SDE_DSPP_IGC_V2 + 2;

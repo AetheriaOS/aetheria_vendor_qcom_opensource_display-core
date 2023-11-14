@@ -130,6 +130,8 @@ static const std::string kEnhanced = "enhanced";
 #define SDM_DITHER_LUMA_MODE 0x1
 #define SDM_PCC_BEFORE_POS 0x1
 #define SDM_PGC_HIGHPREC_MODE 0x1
+#define IGC_DITHER_EN (1 << 0)
+#define SDM_IGC_HIGH_PREC_EN (1 << 1)
 
 // Enum to identify type of dynamic range of color mode.
 enum DynamicRangeType {
@@ -205,6 +207,7 @@ struct PPFeatureVersion {
   static const uint32_t kSDECWBDitherV2 = 21;
   static const uint32_t kSDEPaV2 = 22;
   static const uint32_t kSDEPccV6 = 23;
+  static const uint32_t kSDEIgcV50 = 24;
 
   uint32_t version[kMaxNumPPFeatures];
   PPFeatureVersion() { memset(version, 0, sizeof(version)); }
@@ -444,9 +447,18 @@ struct SDEIgcLUTData {
   uint32_t *c2_data = NULL;
 };
 
-#define IGC_DITHER_EN (1 << 0)
 struct SDEIgcV30LUTData {
   static const int kMaxIgcLUTEntries = 257;
+  uint32_t table_fmt = 0;
+  uint32_t len = 0;
+  uint64_t c0_c1_data = 0;
+  uint64_t c2_data = 0;
+  uint32_t strength = 0;
+  uint64_t flags = 0;
+};
+
+struct SDEIgcV50LUTData {
+  static const int kMaxIgcLUTEntries = 385;
   uint32_t table_fmt = 0;
   uint32_t len = 0;
   uint64_t c0_c1_data = 0;
@@ -542,6 +554,24 @@ class SDEIgcV30LUTWrapper : private SDEIgcV30LUTData {
     /* do not create copies */ }
   SDEIgcV30LUTWrapper& operator=(const SDEIgcV30LUTWrapper&) { return *this; }
   SDEIgcV30LUTWrapper() {}
+  uint32_t *buffer_ = NULL;
+};
+
+class SDEIgcV50LUTWrapper : private SDEIgcV50LUTData {
+public:
+  static SDEIgcV50LUTWrapper *Init(uint32_t arg __attribute__((__unused__)));
+  ~SDEIgcV50LUTWrapper() {
+    if (buffer_)
+      delete[] buffer_;
+  }
+  inline SDEIgcV50LUTData *GetConfig(void) { return this; }
+
+private:
+  SDEIgcV50LUTWrapper(const SDEIgcV50LUTWrapper &src
+                      __attribute__((__unused__))) {
+    /* do not create copies */ }
+  SDEIgcV50LUTWrapper &operator=(const SDEIgcV50LUTWrapper &) { return *this; }
+  SDEIgcV50LUTWrapper() {}
   uint32_t *buffer_ = NULL;
 };
 

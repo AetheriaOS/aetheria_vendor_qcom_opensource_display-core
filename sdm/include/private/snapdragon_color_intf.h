@@ -147,6 +147,13 @@ const ScHwCapsType kGcLegacyMode =
 const ScHwCapsType kGcHighPrecMode =
     std::make_tuple("HighPrecMode", true, std::make_pair(1280, 10));
 
+// IGC modes: std::string: "ModeName", bool: ValidPair, pair: <entries,
+// bitdepth>
+const ScHwCapsType kIgcLegacyMode0 =
+    std::make_tuple("LegacyMode0", true, std::make_pair(257, 16));
+const ScHwCapsType kIgcHighPrecMode0 =
+    std::make_tuple("HighPrecMode0", true, std::make_pair(385, 16));
+
 static const uint32_t kMatrixSize = 4 * 4;
 struct ColorTransform {
   const uint32_t version = sizeof(struct ColorTransform);
@@ -267,8 +274,12 @@ const std::string kIgcDitherCap = "HwCapIgcDither";
 struct PostBlendInverseGammaHwConfig {
   uint32_t inverse_gamma_version = sizeof(struct GammaPostBlendConfig);
   uint32_t num_of_entries = 257;
-  uint32_t entries_width = 12;
+  uint32_t entries_width = 16;
   std::vector<ScHwCapsType> hw_caps;
+  PostBlendInverseGammaHwConfig(){};
+  PostBlendInverseGammaHwConfig(const std::vector<ScHwCapsType> &caps) {
+    hw_caps = caps;
+  };
 };
 
 struct HwConfigPayload {

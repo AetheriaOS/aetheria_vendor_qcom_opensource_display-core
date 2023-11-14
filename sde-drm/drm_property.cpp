@@ -139,6 +139,7 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "SDE_DSPP_IGC_V2") { return DRMProperty::SDE_DSPP_IGC_V2; }
   if (name == "SDE_DSPP_IGC_V3") { return DRMProperty::SDE_DSPP_IGC_V3; }
   if (name == "SDE_DSPP_IGC_V4") { return DRMProperty::SDE_DSPP_IGC_V4; }
+  if (name == "SDE_DSPP_IGC_V5") { return DRMProperty::SDE_DSPP_IGC_V5; }
   if (name == "SDE_DSPP_PCC_V3") { return DRMProperty::SDE_DSPP_PCC_V3; }
   if (name == "SDE_DSPP_PCC_V4") { return DRMProperty::SDE_DSPP_PCC_V4; }
   if (name == "SDE_DSPP_PCC_V5") { return DRMProperty::SDE_DSPP_PCC_V5; }
