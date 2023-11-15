@@ -305,6 +305,10 @@ DisplayError DisplayBase::Init() {
   if (Debug::Get()->GetProperty(ALLOW_TONEMAP_NATIVE, &prop) == kErrorNone) {
     allow_tonemap_native_ = (prop == 1);
   }
+  prop = 0;
+  if (Debug::Get()->GetProperty(ENABLE_CWB_CPU_BOOSTING, &prop) == kErrorNone) {
+    enable_cwb_cpu_boosting_ = (prop == 1);
+  }
 
   Debug::GetIdleTimeoutMs(&idle_active_ms_, &inactive_ms);
 
@@ -688,7 +692,9 @@ void DisplayBase::ConfigureCwbParams(LayerStack *layer_stack) {
   // CWB requested
   if (HasConcurrentWriteback() && layer_stack->output_buffer && layer_stack->cwb_config) {
     cwb_configured_ = true;
-    comp_manager_->HandleCwbFrequencyBoost(true);
+    if (enable_cwb_cpu_boosting_) {
+      comp_manager_->HandleCwbFrequencyBoost(true);
+    }
 
     // Config dither data
     layer_stack->cwb_config->dither_info = nullptr;
@@ -714,7 +720,9 @@ void DisplayBase::ConfigureCwbParams(LayerStack *layer_stack) {
       }
     }
     cwb_configured_ = false;
-    comp_manager_->HandleCwbFrequencyBoost(false);
+    if (enable_cwb_cpu_boosting_) {
+      comp_manager_->HandleCwbFrequencyBoost(false);
+    }
   }
 }
 

@@ -511,6 +511,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   Layer noise_layer_ = {};
   DisplayError ConfigureCwbForIdleFallback(LayerStack *layer_stack);
   bool cwb_fence_wait_ = false;
+  bool enable_cwb_cpu_boosting_ = false;
   std::vector<Layer> border_layers_;
   bool windowed_display_ = false;
   LayerRect window_rect_ = {};
