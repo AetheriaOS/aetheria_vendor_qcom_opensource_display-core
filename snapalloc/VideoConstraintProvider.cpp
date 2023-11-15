@@ -56,6 +56,10 @@ int VideoConstraintProvider::GetCapabilities(BufferDescriptor desc, CapabilitySe
     out->enabled = false;
   }
 
+  if (IsAstc(desc.format)) {
+    out->enabled = false;
+  }
+
   return 0;
 }
 

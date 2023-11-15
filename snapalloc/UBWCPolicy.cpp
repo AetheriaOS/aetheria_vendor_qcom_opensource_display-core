@@ -73,6 +73,10 @@ bool UBWCPolicy::IsUBWCAlloc(BufferDescriptor desc) {
     enable = graphics_provider->IsUBWCSupportedByGPU(desc.format, pixel_format_modifier);
   }
 
+  if (IsAstc(desc.format)) {
+    enable = false;
+  }
+
   // TODO: remove for UBWC-P
   if (enable && !CpuCanAccess(desc.usage)) {
     return true;
