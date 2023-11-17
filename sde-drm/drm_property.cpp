@@ -30,7 +30,7 @@
 /*
  * Changes from Qualcomm Innovation Center are provided under the following license:
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted (subject to the limitations in the
@@ -186,6 +186,7 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "topology_control") { return DRMProperty::TOPOLOGY_CONTROL; }
   if (name == "EDID") { return DRMProperty::EDID; }
   if (name == "SDE_DSPP_LTM_V1") { return DRMProperty::SDE_LTM_VERSION; }
+  if (name == "SDE_DSPP_LTM_V2") { return DRMProperty::SDE_LTM_VERSION_V2; }
   if (name == "SDE_DSPP_LTM_INIT_V1") { return DRMProperty::SDE_LTM_INIT; }
   if (name == "SDE_DSPP_LTM_ROI_V1") { return DRMProperty::SDE_LTM_CFG; }
   if (name == "SDE_DSPP_LTM_HIST_THRESH_V1") { return DRMProperty::SDE_LTM_NOISE_THRESH; }

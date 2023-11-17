@@ -30,7 +30,7 @@
 /*
  * Changes from Qualcomm Innovation Center are provided under the following license:
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted (subject to the limitations in the
@@ -193,6 +193,7 @@ enum struct DRMProperty {
   TOPOLOGY_CONTROL,
   EDID,
   SDE_LTM_VERSION,
+  SDE_LTM_VERSION_V2,
   SDE_LTM_INIT,
   SDE_LTM_CFG,
   SDE_LTM_NOISE_THRESH,
