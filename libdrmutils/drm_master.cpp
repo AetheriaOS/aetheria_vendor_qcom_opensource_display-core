@@ -37,6 +37,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <utils/sys.h>
 #include <unistd.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
@@ -114,7 +115,7 @@ int DRMMaster::Init(uint32_t core_id) {
     int fd;
 
     snprintf(path_, sizeof(path_), "/dev/dri/card%d", core_id);
-    fd = open(path_, O_RDWR | O_CLOEXEC, 0);
+    fd = sdm::Sys::open_(path_, O_RDWR | O_CLOEXEC, 0);
     if (fd < 0) {
       DRM_LOGI("drmOpen failed with error %d for card %d, retry %d", fd, core_id, retry);
       if (retry >= MAX_RETRY) {
