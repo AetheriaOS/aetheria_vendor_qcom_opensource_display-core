@@ -234,6 +234,16 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
                                vendor_qti_hardware_display_common_BufferLayout *out_layout) {
   (void)desc;
   (void)caps;
+
+#ifdef DRM_FORMAT_MOD_QCOM_LOSSY_8_5
+  if ((desc.usage & vendor_qti_hardware_display_common_BufferUsage::COMPOSER_CLIENT_TARGET) &&
+      ((desc.usage & vendor_qti_hardware_display_common_BufferUsage::QTI_ALLOC_UBWC_L_8_TO_5) ||
+      (desc.usage & vendor_qti_hardware_display_common_BufferUsage::QTI_ALLOC_UBWC_L_2_TO_1))) {
+    ALOGE("Lossy not supported for framebuffer target");
+    return Error::UNSUPPORTED;
+  }
+#endif
+
 #ifdef __ANDROID__
   SnapConstraintParser *parser = SnapConstraintParser::GetInstance();
   if (format_data_map_.empty()) {
