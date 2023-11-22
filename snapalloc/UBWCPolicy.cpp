@@ -456,7 +456,6 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
         ALOGD_IF(DEBUG, "size %d", plane_data->size_in_bytes);
         for (int j = 0; j < plane.components.size(); j++) {
           auto component = plane.components[j];
-          vendor_qti_hardware_display_common_PlaneLayoutComponent plane_component;
           plane_data->components[j].type = component.type;
           plane_data->components[j].offset_in_bits = component.offset_in_bits;
           plane_data->components[j].size_in_bits = component.size_in_bits;

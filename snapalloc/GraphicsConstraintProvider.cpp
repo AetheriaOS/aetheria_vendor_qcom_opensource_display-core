@@ -173,12 +173,14 @@ int GraphicsConstraintProvider::GetCapabilities(BufferDescriptor desc, Capabilit
     out->enabled = false;
   }
 
-  uint64_t pixel_format_modifier = GetPixelFormatModifier(desc);
-  if (GetGpuPixelFormat(
-          desc.format,
-          static_cast<vendor_qti_hardware_display_common_PixelFormatModifier>(
-              pixel_format_modifier)) == ADRENO_PIXELFORMAT_UNKNOWN) {
-    out->enabled = false;
+  if (out->enabled == true) {
+    uint64_t pixel_format_modifier = GetPixelFormatModifier(desc);
+    if (GetGpuPixelFormat(
+            desc.format,
+            static_cast<vendor_qti_hardware_display_common_PixelFormatModifier>(
+                pixel_format_modifier)) == ADRENO_PIXELFORMAT_UNKNOWN) {
+      out->enabled = false;
+    }
   }
 
   ALOGD_IF(DEBUG, (out->enabled == true

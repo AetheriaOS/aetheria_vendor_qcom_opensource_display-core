@@ -53,6 +53,17 @@ using UBWCVersion = vendor_qti_hardware_display_common_UBWCVersion;
 
 std::atomic<LayerId> SDMLayer::next_id_(1);
 
+Error GetMetadata(const SnapHandle *handle, MetadataType type, void *out,
+                  std::shared_ptr<ISnapMapper> snapmapper_) {
+  bool metadata_set = false;
+
+  snapmapper_->GetMetadataState(*handle, type, &metadata_set);
+  if (!metadata_set) {
+    return Error::METADATA_NOT_SET;
+  }
+  return snapmapper_->GetMetadata(*handle, type, out);
+}
+
 Error SetCSC(const SnapHandle *handle, ColorMetadata *color_metadata, std::shared_ptr<ISnapMapper> snapmapper_) {
   snapmapper_->GetMetadata(*handle, MetadataType::DATASPACE, &color_metadata->dataspace);
   snapmapper_->GetMetadata(*handle, MetadataType::MATRIX_COEFFICIENTS, &color_metadata->matrixCoefficients);
@@ -178,11 +189,13 @@ DisplayError SDMLayer::SetLayerBuffer(const SnapHandle *handle,
   layer_buffer->height = UINT32(aligned_height);
 
   uint64_t width_temp, height_temp = 0;
-  auto err_w = snapmapper_->GetMetadata(*handle, MetadataType::WIDTH, &width_temp);
+  auto err_w =
+      GetMetadata(handle, MetadataType::WIDTH, &width_temp, snapmapper_);
   if (err_w != Error::NONE) {
     DLOGE("Failed to retrieve unaligned width: %d", INT32(err_w));
   }
-  auto err_h = snapmapper_->GetMetadata(*handle, MetadataType::HEIGHT, &height_temp);
+  auto err_h =
+      GetMetadata(handle, MetadataType::HEIGHT, &height_temp, snapmapper_);
   if (err_h != Error::NONE) {
     DLOGE("Failed to retrieve unaligned height");
   }
@@ -223,24 +236,29 @@ DisplayError SDMLayer::SetLayerBuffer(const SnapHandle *handle,
 
   layer_buffer->planes[0].fd = buffer_fd_;
   layer_buffer->planes[0].offset = 0;
-  auto err =
-    snapmapper_->GetMetadata(*handle, MetadataType::ALIGNED_WIDTH_IN_PIXELS, &layer_buffer->planes[0].stride);
+  auto err = GetMetadata(handle, MetadataType::ALIGNED_WIDTH_IN_PIXELS,
+                         &layer_buffer->planes[0].stride, snapmapper_);
   if (err != Error::NONE) {
     DLOGW("Failed to retrieve aligned width");
   }
 
-  err = snapmapper_->GetMetadata(*handle, MetadataType::ALLOCATION_SIZE, &layer_buffer->size);
+  err = GetMetadata(handle, MetadataType::ALLOCATION_SIZE, &layer_buffer->size,
+                    snapmapper_);
 
   if (err != Error::NONE) {
     DLOGW("Failed to retrieve allocation size");
   }
   buffer_flipped_ = reinterpret_cast<uint64_t>(handle) != layer_buffer->buffer_id;
   layer_buffer->buffer_id = reinterpret_cast<uint64_t>(handle);
-  err = snapmapper_->GetMetadata(*handle, MetadataType::BUFFER_ID, &layer_buffer->handle_id);
+
+  err = GetMetadata(handle, MetadataType::BUFFER_ID, &layer_buffer->handle_id,
+                    snapmapper_);
+
   if (err != Error::NONE) {
     DLOGW("Failed to retrieve buffer id");
   }
-  err = snapmapper_->GetMetadata(*handle, MetadataType::USAGE, &layer_buffer->usage);
+  err = GetMetadata(handle, MetadataType::USAGE, &layer_buffer->usage,
+                    snapmapper_);
   if (err != Error::NONE) {
     DLOGW("Failed to retrieve handle usage");
   }
@@ -689,7 +707,8 @@ DisplayError SDMLayer::SetMetaData(const SnapHandle *handle, Layer *layer) {
 
   float fps = 0;
   uint32_t frame_rate = layer->frame_rate;
-  if (snapmapper_->GetMetadata(*handle, MetadataType::REFRESH_RATE, &fps) == Error::NONE) {
+  if (GetMetadata(handle, MetadataType::REFRESH_RATE, &fps, snapmapper_) ==
+      Error::NONE) {
     frame_rate = (fps != 0) ? RoundToStandardFPS(fps) : layer->frame_rate;
     has_metadata_refresh_rate_ = true;
   }
@@ -704,8 +723,10 @@ DisplayError SDMLayer::SetMetaData(const SnapHandle *handle, Layer *layer) {
   }
 
   uint32_t linear_format = 0;
-  if (snapmapper_->GetMetadata(*handle, MetadataType::LINEAR_FORMAT, &linear_format) == Error::NONE) {
-    layer_buffer->format = buffer_allocator_->GetSDMFormat(INT32(linear_format), 0, 0);
+  if (GetMetadata(handle, MetadataType::LINEAR_FORMAT, &linear_format,
+                  snapmapper_) == Error::NONE) {
+    layer_buffer->format =
+        buffer_allocator_->GetSDMFormat(INT32(linear_format), 0, 0);
   }
 
   if ((interlace != layer_buffer->flags.interlace) ||
@@ -723,7 +744,8 @@ DisplayError SDMLayer::SetMetaData(const SnapHandle *handle, Layer *layer) {
     layer_buffer->ubwc_crstats[i].clear();
   }
 
-  if (snapmapper_->GetMetadata(*handle, MetadataType::UBWC_CR_STATS_INFO, cr_stats) == Error::NONE) {
+  if (GetMetadata(handle, MetadataType::UBWC_CR_STATS_INFO, cr_stats,
+                  snapmapper_) == Error::NONE) {
     // Only copy top layer for now as only top field for interlaced is used
     GetUBWCStatsFromMetaData(&cr_stats[0], &(layer_buffer->ubwc_crstats[0]));
   }
@@ -761,8 +783,8 @@ DisplayError SDMLayer::SetMetaData(const SnapHandle *handle, Layer *layer) {
                                          layer_buffer->dataspace.transfer)) {
     VideoHistogramMetadata histogram = {};
     if (layer_->update_mask.test(kContentMetadata) == false &&
-        snapmapper_->GetMetadata(*handle, MetadataType::VIDEO_HISTOGRAM_STATS,
-                                 &histogram) == Error::NONE) {
+        GetMetadata(handle, MetadataType::VIDEO_HISTOGRAM_STATS, &histogram,
+                    snapmapper_) == Error::NONE) {
       uint32_t bins = histogram.stat_len / sizeof(histogram.stats_info[0]);
       layer_buffer->hist_data.display_width = layer_buffer->unaligned_width;
       layer_buffer->hist_data.display_height = layer_buffer->unaligned_height;

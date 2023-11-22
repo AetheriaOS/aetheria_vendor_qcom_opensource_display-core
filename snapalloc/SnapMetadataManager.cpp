@@ -1258,17 +1258,19 @@ int SnapMetadataManager::GetDRMFormat(vendor_qti_hardware_display_common_PixelFo
   return 0;
 }
 
-bool SnapMetadataManager::IsMetadataTypeSettable(
-    vendor_qti_hardware_display_common_MetadataType type) {
+Error SnapMetadataManager::IsMetadataTypeSettable(
+    vendor_qti_hardware_display_common_MetadataType type, bool *out) {
+  *out = false;
   auto metadatatype_traits = metadatatype_traits_map.find(type);
   if (metadatatype_traits != metadatatype_traits_map.end()) {
     if (metadatatype_traits->second.is_settable) {
-      return true;
+      *out = true;
     }
   } else {
     ALOGW("Metadata type %d not found in metadatatype traits map", static_cast<int>(type));
+    return Error::BAD_VALUE;
   }
-  return false;
+  return Error::NONE;
 }
 
 Error SnapMetadataManager::Get(SnapHandleInternal *hnd,
@@ -1286,17 +1288,10 @@ Error SnapMetadataManager::Get(SnapHandleInternal *hnd,
     return ret;
   }
 
-  if (IsMetadataTypeSettable(type) && !GetMetadataStateInternal(metadata, type)) {
-    ALOGD_IF(DEBUG, "%s: Metadata type %d not set", __FUNCTION__, type);
-    ret = Error::METADATA_NOT_SET;
-  }
-
   if (metadata_helper_function_map.find(type) != metadata_helper_function_map.end()) {
     MetadataHelper metadata_helper_func = metadata_helper_function_map[type];
-    auto err = ((this->*metadata_helper_func)(metadata, hnd, nullptr, out, nullptr));
-    if (ret == Error::METADATA_NOT_SET) {
-      return Error::METADATA_NOT_SET;
-    }
+    auto err =
+        ((this->*metadata_helper_func)(metadata, hnd, nullptr, out, nullptr));
     return err;
   } else {
     return Error::UNSUPPORTED;
@@ -1400,12 +1395,6 @@ void SnapMetadataManager::SetMetadataState(SnapMetadata *metadata,
 bool SnapMetadataManager::GetMetadataStateInternal(SnapMetadata *metadata,
                                            vendor_qti_hardware_display_common_MetadataType type) {
   int metadata_type = static_cast<int>(type);
-  auto metadata_traits = metadatatype_traits_map.find(type);
-  if (metadata_traits != metadatatype_traits_map.end()) {
-    if (metadata_traits->second.is_default_metadata) {
-      return true;
-    }
-  }
 
   if (IS_VENDOR_METADATA_TYPE(metadata_type)) {
     if (GET_VENDOR_METADATA_STATUS_INDEX(metadata_type) < METADATA_SET_SIZE) {
@@ -1435,10 +1424,16 @@ Error SnapMetadataManager::GetMetadataState(SnapHandleInternal *hnd,
     return ret;
   }
 
-  if (IsMetadataTypeSettable(type) && !GetMetadataStateInternal(metadata, type)) {
+  bool is_settable = false;
+  ret = IsMetadataTypeSettable(type, &is_settable);
+  if (ret == Error::BAD_VALUE) {
+    *out = false;
+    return ret;
+  } else if (is_settable && !GetMetadataStateInternal(metadata, type)) {
     *out = false;
     return Error::NONE;
   }
+
   *out = true;
   return Error::NONE;
 }
