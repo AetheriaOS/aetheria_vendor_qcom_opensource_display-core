@@ -64,6 +64,7 @@ class StrategyInterface {
                                    const std::vector<HWResourceInfo> &hw_res_info) = 0;
   virtual DisplayError SetCompositionState(LayerComposition composition_type, bool enable) = 0;
   virtual DisplayError Purge() = 0;
+  virtual void ResetStrategy(uint32_t *max_attempts) = 0;
   virtual DisplayError SetIdleTimeoutMs(uint32_t active_ms, uint32_t inactive_ms) = 0;
   /* Sets the list of color modes supported on a display */
   virtual DisplayError SetColorModesInfo(const std::vector<PrimariesTransfer> &colormodes_cs) = 0;

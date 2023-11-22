@@ -110,6 +110,8 @@ class ResourceInterface {
   virtual DisplayError AllocateVirtualDisplayId(int32_t *vdisp_id) = 0;
   virtual DisplayError DeallocateVirtualDisplayId(int32_t vdisp_id) = 0;
   virtual void HandleSkipValidate(Handle display_ctx) = 0;
+  virtual DisplayError ValidateQoS(Handle display_ctx,
+                                   DispLayerStack *disp_layer_stack) = 0;
   virtual std::string Dump(Handle display_ctx) = 0;
   virtual uint32_t GetMixerCount(DisplayId display_id) = 0;
   virtual DisplayError SetBlendSpace(Handle display_ctx, const PrimariesTransfer &blend_space) = 0;

@@ -105,7 +105,9 @@ DisplayError Strategy::Start(DispLayerStack *disp_layer_stack, uint32_t *max_att
 
   if (strategy_intf_) {
     error = strategy_intf_->Start(disp_layer_stack_, max_attempts, constraints);
-    if (error == kErrorNone || error == kErrorNeedsValidate || error == kErrorNeedsLutRegen) {
+    if (error == kErrorNone || error == kErrorNeedsValidate ||
+        error == kErrorNeedsLutRegen || error == kErrorNeedsQosRecalc ||
+        error == kErrorNeedsQosRecalcAndLutRegen) {
       extn_start_success_ = true;
     } else {
       *max_attempts = 1;
@@ -295,6 +297,12 @@ DisplayError Strategy::Purge() {
   }
 
   return kErrorNone;
+}
+
+void Strategy::ResetStrategy(uint32_t *max_attempts) {
+  if (strategy_intf_) {
+    strategy_intf_->ResetStrategy(max_attempts);
+  }
 }
 
 DisplayError Strategy::SetDrawMethod(const DisplayDrawMethod &draw_method) {

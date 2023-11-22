@@ -76,6 +76,9 @@ enum DisplayError {
   kErrorNeedsCommit,      //!< Display is expecting a Commit() to be issued.
   kErrorNeedsValidate,    //!< Validate Phase is needed for this draw cycle.
   kErrorNeedsLutRegen,    //!< Tonemapping LUT regen is needed for this draw cycle.
+  kErrorNeedsQosRecalc,   //!< QoS data recalculation is needed for this draw cycle.
+  kErrorNeedsQosRecalcAndLutRegen,  //!< QoS data recalculation and Tonemapping LUT regen is needed
+                                    //   for this draw cycle.
 };
 
 /*! @brief This structure is defined for client and library compatibility check purpose only. This

@@ -156,6 +156,8 @@ class CompManager : public CwbCallback {
 
   void PrepareStrategyConstraints(Handle display_ctx, DispLayerStack *disp_layer_stack);
   void UpdateStrategyConstraints(bool is_primary, bool disabled);
+  DisplayError HandleQosValidation(Handle display_ctx,
+                                   DispLayerStack *disp_layer_stack, DisplayError error);
   std::string StringDisplayList(const std::set<int32_t> &displays);
 
   struct DisplayCompositionContext {
