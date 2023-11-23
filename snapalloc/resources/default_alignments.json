@@ -155,7 +155,6 @@
             {
                 "format" : "YCbCr_420_SP",
                 "constraints" : {
-                    "bpp" : 1.5,
                     "size_align_bytes" : 1,
                     "planes" : [
                         {
@@ -186,7 +185,6 @@
             {
                 "format" : "YCBCR_422_SP",
                 "constraints" : {
-                    "bpp" : 2,
                     "size_align_bytes" : 4096,
                     "planes" : [
                         {
@@ -218,7 +216,6 @@
             {
                 "format" : "YCBCR_422_I",
                 "constraints" : {
-                    "bpp" : 2,
                     "size_align_bytes" : 4096,
                     "planes" : [
                         {
@@ -250,7 +247,6 @@
             {
                 "format" : "YCrCb_420_SP",
                 "constraints" : {
-                    "bpp" : 1.5,
                     "size_align_bytes" : 1,
                     "planes" : [
                         {
@@ -544,7 +540,6 @@
             {
                 "format" : "YCrCb_422_SP",
                 "constraints" : {
-                    "bpp" : 2,
                     "size_align_bytes" : 4096,
                     "planes" : [
                         {
@@ -768,6 +763,55 @@
                                 }
                             ],
                             "horiz_stride_align_bytes" : 256,
+                            "scanline_align" : 1,
+                            "size_align_bytes" : 1
+                        }
+                    ]
+                }
+            },
+            {
+                "format" : "YCrCb_422_I",
+                "constraints" : {
+                    "size_align_bytes" : 4096,
+                    "planes" : [
+                        {
+                            "components": [
+                                {
+                                    "component_type" : "Y"
+                                }
+                            ],
+                            "horiz_stride_align_bytes" :16,
+                            "scanline_align" : 1,
+                            "size_align_bytes" : 1
+                        },
+                        {
+                            "components": [
+                                {
+                                    "component_type" : "CB"
+                                },
+                                {
+                                    "component_type" : "CR"
+                                }
+                            ],
+                            "horiz_stride_align_bytes" : 16,
+                            "scanline_align" : 1,
+                            "size_align_bytes" : 1
+                        }
+                    ]
+                }
+            },
+            {
+                "format" : "CbYCrY_422_I",
+                "constraints" : {
+                    "size_align_bytes" : 4096,
+                    "planes" : [
+                        {
+                            "components": [
+                                {
+                                    "component_type" : "Y"
+                                }
+                            ],
+                            "horiz_stride_align_bytes" :16,
                             "scanline_align" : 1,
                             "size_align_bytes" : 1
                         }

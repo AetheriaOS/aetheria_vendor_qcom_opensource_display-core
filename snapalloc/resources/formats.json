@@ -2294,6 +2294,63 @@
                     }
                 ]
             }
+        },
+        {
+            "format" : "YCrCb_422_I",
+            "data" : {
+                "bits_per_pixel" : 16,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "Y",
+                                "offset_bits" : 0,
+                                "size_bits" : 8
+                            }
+                        ],
+                        "sample_increment_bits" : 8,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    },
+                    {
+                        "components": [
+                            {
+                                "component_type" : "CR",
+                                "offset_bits" : 0,
+                                "size_bits" : 8
+                            },
+                            {
+                                "component_type" : "CB",
+                                "offset_bits" : 8,
+                                "size_bits" : 8
+                            }
+                        ],
+                        "sample_increment_bits" : 16,
+                        "h_subsampling_factor" : 2,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "CbYCrY_422_I",
+            "data" : {
+                "bits_per_pixel" : 16,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "Y",
+                                "offset_bits" : 0,
+                                "size_bits" : 8
+                            }
+                        ],
+                        "sample_increment_bits" : 16,
+                        "h_subsampling_factor" : 2,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
         }
     ]
 }
