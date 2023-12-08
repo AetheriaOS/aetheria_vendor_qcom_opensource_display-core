@@ -152,7 +152,7 @@ DisplayError ResourceDefault::Deinit() {
   return kErrorNone;
 }
 
-DisplayError ResourceDefault::RegisterDisplay(DisplayId disp_id, DisplayType type,
+DisplayError ResourceDefault::RegisterDisplay(DisplayId disp_id, SDMDisplayType type,
                                               DisplayDeviceContext &device_ctx,
                                               DisplayClientContext &client_ctx,
                                               Handle *display_ctx) {

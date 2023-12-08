@@ -44,6 +44,8 @@
 #include <map>
 #include <string>
 #include <mutex>
+#include <color_metadata.h>
+#include <utils/formats.h>
 
 #include "dpu_core_mux.h"
 
@@ -162,7 +164,7 @@ class ColorManagerProxy : public ColorManagerIntf {
    * 3. Populate necessary resources.
    * 4. Need get panel name for hw_panel_info_.
    */
-  static ColorManagerProxy *CreateColorManagerProxy(DisplayType type,
+  static ColorManagerProxy *CreateColorManagerProxy(SDMDisplayType type,
                                                     DPUCoreMux *dpu_core_mux,
                                                     const HWDisplayAttributes &attribute,
                                                     const HWPanelInfo &panel_info,
@@ -211,7 +213,7 @@ class ColorManagerProxy : public ColorManagerIntf {
 
  protected:
   ColorManagerProxy() {}
-  ColorManagerProxy(int32_t id, DisplayType type, DPUCoreMux *dpu_core_mux,
+  ColorManagerProxy(int32_t id, SDMDisplayType type, DPUCoreMux *dpu_core_mux,
                     const HWDisplayAttributes &attr, const HWPanelInfo &info,
                     const uint32_t &core_id);
 
@@ -236,7 +238,7 @@ class ColorManagerProxy : public ColorManagerIntf {
   DisplayError ApplySwAssets();
 
   uint32_t display_id_;
-  DisplayType device_type_;
+  SDMDisplayType device_type_;
   PPHWAttributes pp_hw_attributes_;
   DPUCoreMux *dpu_core_mux_;
   ColorInterface *color_intf_;
@@ -324,7 +326,7 @@ class FeatureStateSerializedTrigger : public FeatureInterface {
 class DPUColorManager : public ColorManagerIntf {
  public:
   static DisplayError Init(const std::vector<HWResourceInfo> &hw_res_info);
-  static DPUColorManager *CreateDpuColorManager(DisplayType type,
+  static DPUColorManager *CreateDpuColorManager(SDMDisplayType type,
                                                   DPUCoreMux *dpu_core_mux,
                                                   DisplayDeviceContext &display_device_ctx,
                                                   DisplayClientContext &display_client_ctx,
@@ -389,7 +391,7 @@ class DPUColorManager : public ColorManagerIntf {
 
 class ColorMgrFactoryIntf {
  public:
-  virtual ColorManagerIntf* CreateColorManagerIntf(DisplayType type,
+  virtual ColorManagerIntf* CreateColorManagerIntf(SDMDisplayType type,
                                                     DPUCoreMux *dpu_core_mux,
                                                     DisplayDeviceContext &display_device_ctx,
                                                     DisplayClientContext &display_client_ctx,
@@ -404,7 +406,7 @@ extern "C" ColorMgrFactoryIntf* GetColorMgrFactoryIntf();
 
 class ColorMgrFactoryIntfImpl : public ColorMgrFactoryIntf {
  public:
-  virtual ColorManagerIntf* CreateColorManagerIntf(DisplayType type,
+  virtual ColorManagerIntf* CreateColorManagerIntf(SDMDisplayType type,
                                                     DPUCoreMux *dpu_core_mux,
                                                     DisplayDeviceContext &display_device_ctx,
                                                     DisplayClientContext &display_client_ctx,

@@ -94,7 +94,7 @@ DisplayError CompManager::Deinit() {
   return kErrorNone;
 }
 
-DisplayError CompManager::RegisterDisplay(DisplayId display_id, DisplayType type,
+DisplayError CompManager::RegisterDisplay(DisplayId display_id, SDMDisplayType type,
                                           DisplayDeviceContext &device_ctx,
                                           DisplayClientContext &client_ctx,
                                           Handle *display_ctx,
