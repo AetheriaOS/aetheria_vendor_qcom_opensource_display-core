@@ -53,7 +53,7 @@ namespace sdm {
 class ColorInterface;
 
 typedef DisplayError (*CreateColorInterface)(uint16_t version, int32_t display_id,
-                                             DisplayType type,
+                                             SDMDisplayType type,
                                              const PPHWAttributes &attributes,
                                              ColorInterface **interface);
 
@@ -74,7 +74,7 @@ class ColorModeInterface {
   virtual ~ColorModeInterface() {}
 };
 
-extern "C" ColorModeInterface* GetColorModeInterface(int32_t display_id, DisplayType type);
+extern "C" ColorModeInterface* GetColorModeInterface(int32_t display_id, SDMDisplayType type);
 extern "C" void ReleaseColorModeInterface(int32_t display_id);
 
 class ColorInterface {

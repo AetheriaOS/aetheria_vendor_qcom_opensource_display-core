@@ -1009,7 +1009,7 @@ struct LayerStackInfo {
   int32_t noise_layer_index = -1;    // Noise layer index. -1 if not present.
   int32_t cwb_target_index = -1;     // CWB target layer index. -1 if not present.
   int32_t iwe_target_index = -1;     // IWE target layer index. -1 if not present.
-  std::vector<ColorPrimaries> wide_color_primaries = {};  // list of wide color primaries
+  std::vector<QtiColorPrimaries> wide_color_primaries = {};  // list of wide color primaries
   std::vector<LayerRect> left_frame_roi = {};   // Left ROI.
   std::vector<LayerRect> right_frame_roi = {};  // Right ROI.
   DestScaleInfoMap dest_scale_info_map = {};

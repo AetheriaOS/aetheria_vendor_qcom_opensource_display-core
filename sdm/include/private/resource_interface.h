@@ -61,7 +61,7 @@ class ResourceInterface {
     kCmdMax,
   };
 
-  virtual DisplayError RegisterDisplay(DisplayId display_id, DisplayType type,
+  virtual DisplayError RegisterDisplay(DisplayId display_id, SDMDisplayType type,
                                        DisplayDeviceContext &device_ctx,
                                        DisplayClientContext &client_ctx,
                                        Handle *display_ctx) = 0;

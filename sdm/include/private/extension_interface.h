@@ -63,13 +63,13 @@ typedef DisplayError (*DestroyExtensionInterface)(ExtensionInterface *interface)
 
 class ExtensionInterface {
  public:
-  virtual DisplayError CreatePartialUpdate(DisplayId display_id, DisplayType type,
+  virtual DisplayError CreatePartialUpdate(DisplayId display_id, SDMDisplayType type,
                                            const std::vector<HWResourceInfo> &hw_resource_info,
                                            const DisplayInfoContext &info_ctx,
                                            PartialUpdateInterface **interface) = 0;
   virtual DisplayError DestroyPartialUpdate(PartialUpdateInterface *interface) = 0;
 
-  virtual DisplayError CreateStrategyExtn(DisplayId display_id, DisplayType type,
+  virtual DisplayError CreateStrategyExtn(DisplayId display_id, SDMDisplayType type,
                                           BufferAllocator *buffer_allocator,
                                           const std::vector<HWResourceInfo> &hw_resource_info,
                                           const DisplayInfoContext &info_ctx,
