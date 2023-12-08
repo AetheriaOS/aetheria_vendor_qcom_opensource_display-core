@@ -121,14 +121,14 @@ static uint64_t timeval_diff(std::chrono::time_point<SteadyClock> &start,
   return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 }
 
-static int32_t GetEOTF(const GammaTransfer &transfer) {
+static int32_t GetEOTF(const QtiGammaTransfer &transfer) {
   int32_t hdr_transfer = -1;
 
   switch (transfer) {
-  case Transfer_SMPTE_ST2084:
+  case QtiTransfer_SMPTE_ST2084:
     hdr_transfer = HDR_EOTF_SMTPE_ST2084;
     break;
-  case Transfer_HLG:
+  case QtiTransfer_HLG:
     hdr_transfer = HDR_EOTF_HLG;
     break;
   default:
@@ -361,14 +361,14 @@ DisplayError HWTVDRM::UpdateHDRMetaData(HWLayersInfo *hw_layers_info) {
   // For HDR use case set both hdr metadata and colorspace.
   if (hw_panel_info_.port == kPortDP && hw_panel_info_.supported_colorspaces) {
     sde_drm::DRMColorspace colorspace = sde_drm::DRMColorspace::DEFAULT;
-    if (blend_space_.primaries == ColorPrimaries_DCIP3 &&
-        blend_space_.transfer == Transfer_sRGB) {
+    if (blend_space_.primaries == QtiColorPrimaries_DCIP3 &&
+        blend_space_.transfer == QtiTransfer_sRGB) {
       colorspace = sde_drm::DRMColorspace::DCI_P3_RGB_D65;
     /* In case of BT2020_YCC, BT2020_RGB is not set based on the layer format. We set it based on
        the final output of display port controller. Here even though the layer as YUV , it will be
        color converted to RGB using SSPP and the format going out of DP will be RGB. Hence we
        should set BT2020_RGB. */
-    } else if (blend_space_.primaries == ColorPrimaries_BT2020) {
+    } else if (blend_space_.primaries == QtiColorPrimaries_BT2020) {
       colorspace = sde_drm::DRMColorspace::BT2020_RGB;
     }
     DLOGV_IF(kTagDriverConfig, "Set colorspace = %d", colorspace);
@@ -396,9 +396,9 @@ DisplayError HWTVDRM::UpdateHDRMetaData(HWLayersInfo *hw_layers_info) {
   }
 
   const LayerBuffer *layer_buffer = &hdr_layer.input_buffer;
-  const MasteringDisplay &mastering_display = layer_buffer->color_metadata.masteringDisplayInfo;
-  const ContentLightLevel &light_level = layer_buffer->color_metadata.contentLightLevel;
-  const Primaries &primaries = mastering_display.primaries;
+  const QtiMasteringDisplay &mastering_display = layer_buffer->masteringDisplayInfo;
+  const QtiContentLightLevel &light_level = layer_buffer->contentLightLevel;
+  //const Primaries &primaries = mastering_display.primaries;
 
   if (hdr_op == HWHDRLayerInfo::kSet && hdr_layer_info.hdr_layers.size() == 1) {
     // Reset reset_hdr_flag_ to handle where there are two consecutive HDR video playbacks with not
@@ -406,22 +406,26 @@ DisplayError HWTVDRM::UpdateHDRMetaData(HWLayersInfo *hw_layers_info) {
     reset_hdr_flag_ = false;
     in_multiset_ = false;
 
-    int32_t eotf = GetEOTF(layer_buffer->color_metadata.transfer);
+    int32_t eotf = GetEOTF(layer_buffer->dataspace.transfer);
     hdr_metadata_.hdr_supported = 1;
     hdr_metadata_.hdr_state = HDR_ENABLE;
     hdr_metadata_.eotf = (eotf < 0) ? 0 : UINT32(eotf);
-    hdr_metadata_.white_point_x = primaries.whitePoint[0];
-    hdr_metadata_.white_point_y = primaries.whitePoint[1];
-    hdr_metadata_.display_primaries_x[0] = primaries.rgbPrimaries[0][0];
-    hdr_metadata_.display_primaries_y[0] = primaries.rgbPrimaries[0][1];
-    hdr_metadata_.display_primaries_x[1] = primaries.rgbPrimaries[1][0];
-    hdr_metadata_.display_primaries_y[1] = primaries.rgbPrimaries[1][1];
-    hdr_metadata_.display_primaries_x[2] = primaries.rgbPrimaries[2][0];
-    hdr_metadata_.display_primaries_y[2] = primaries.rgbPrimaries[2][1];
+    vendor_qti_hardware_display_common_XyColor color = mastering_display.whitePoint;
+    hdr_metadata_.white_point_x = color.x;
+    hdr_metadata_.white_point_y = color.y;
+    color = mastering_display.primaryRed;
+    hdr_metadata_.display_primaries_x[0] = color.x;
+    hdr_metadata_.display_primaries_y[0] = color.y;
+    color = mastering_display.primaryGreen;
+    hdr_metadata_.display_primaries_x[1] = color.x;
+    hdr_metadata_.display_primaries_y[1] = color.y;
+    color = mastering_display.primaryBlue;
+    hdr_metadata_.display_primaries_x[2] = color.x;
+    hdr_metadata_.display_primaries_y[2] = color.y;
     hdr_metadata_.min_luminance = mastering_display.minDisplayLuminance;
     hdr_metadata_.max_luminance = mastering_display.maxDisplayLuminance;
     hdr_metadata_.max_content_light_level = light_level.maxContentLightLevel;
-    hdr_metadata_.max_average_light_level = light_level.minPicAverageLightLevel;
+    hdr_metadata_.max_average_light_level = light_level.maxFrameAverageLightLevel;
     if (hw_panel_info_.hdr_plus_enabled && hdr_layer_info.dyn_hdr_vsif_payload.size()) {
       hdr_metadata_.hdr_plus_payload = reinterpret_cast<uint64_t>
                                         (hdr_layer_info.dyn_hdr_vsif_payload.data());
@@ -495,7 +499,7 @@ void HWTVDRM::InitMaxHDRMetaData() {
   memset(&hdr_metadata_, 0, sizeof(hdr_metadata_));
   hdr_metadata_.hdr_supported = 1;
   hdr_metadata_.hdr_state = HDR_ENABLE;
-  hdr_metadata_.eotf = UINT32(GetEOTF(Transfer_SMPTE_ST2084));
+  hdr_metadata_.eotf = UINT32(GetEOTF(QtiTransfer_SMPTE_ST2084));
   // Rec. 2020 (ITU-R Recommendation BT.2020) RGB color space parameters
   // +---------------+-----------------+-----------------------------------------------+
   // |               |   White point   |                Primary colors                 |
