@@ -27,66 +27,77 @@ bool CpuCanAccess(vendor_qti_hardware_display_common_BufferUsage usage) {
 
 // TODO: read this from formats.json
 
-static std::unordered_map<vendor_qti_hardware_display_common_PixelFormat, FormatTraits>
-    format_traits_map{// {{Format},{rgb,yuv,tile rendered, gpu depth stencil, astc, ubwc_supported}}
-                      {{vendor_qti_hardware_display_common_PixelFormat::RGBA_8888},
-                       {true, false, false, false, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::RGBX_8888},
-                       {true, false, false, false, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::RGBA_FP16},
-                       {true, false, false, false, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::YCBCR_P010},
-                       {false, true, false, false, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::BGRA_8888},
-                       {true, false, false, false, false, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::RGB_888},
-                       {true, false, false, false, false, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::YCbCr_420_SP},
-                       {false, true, false, false, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::NV21_ZSL},
-                       {false, true, false, false, false, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::YCrCb_420_SP},
-                       {false, true, false, false, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::TP10},
-                       {false, true, false, false, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::RGB_565},
-                       {true, false, false, false, false, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::YV12},
-                       {false, true, false, false, false, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::R_8},
-                       {true, false, false, false, false, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::RGBA_1010102},
-                       {true, false, false, false, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::BGR_565},
-                       {true, false, false, false, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::RG_88},
-                       {true, false, false, false, false, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::RAW8},
-                       {false, false, false, false, false, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::RAW10},
-                       {false, false, false, false, false, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::RAW12},
-                       {false, false, false, false, false, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::RAW16},
-                       {false, false, false, false, false, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::DEPTH_16},
-                       {false, false, true, true, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::DEPTH_24},
-                       {false, false, true, true, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::DEPTH_24_STENCIL_8},
-                       {false, false, true, true, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::DEPTH_32F},
-                       {false, false, true, true, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::DEPTH_32F_STENCIL_8},
-                       {false, false, true, true, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::STENCIL_8},
-                       {false, false, true, true, false, true}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::BLOB},
-                       {false, false, false, false, false, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::YCBCR_422_SP},
-                       {false, true, false, false, false, false}},
-                      {{vendor_qti_hardware_display_common_PixelFormat::YCBCR_422_I},
-                       {false, true, false, false, false, false}}};
+static std::unordered_map<vendor_qti_hardware_display_common_PixelFormat,
+                          FormatTraits>
+    format_traits_map{
+        // {{Format},{rgb,yuv,tile rendered, gpu depth stencil, astc,
+        // ubwc_supported, width_even, height_even}}
+        {{vendor_qti_hardware_display_common_PixelFormat::RGBA_8888},
+         {true, false, false, false, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::RGBX_8888},
+         {true, false, false, false, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::RGBA_FP16},
+         {true, false, false, false, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::YCBCR_P010},
+         {false, true, false, false, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::BGRA_8888},
+         {true, false, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::RGB_888},
+         {true, false, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::YCbCr_420_SP},
+         {false, true, false, false, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::NV21_ZSL},
+         {false, true, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::YCrCb_420_SP},
+         {false, true, false, false, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::TP10},
+         {false, true, false, false, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::RGB_565},
+         {true, false, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::YV12},
+         {false, true, false, false, false, false, true, true}},
+        {{vendor_qti_hardware_display_common_PixelFormat::R_8},
+         {true, false, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::RGBA_1010102},
+         {true, false, false, false, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::BGR_565},
+         {true, false, false, false, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::RG_88},
+         {true, false, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::RAW8},
+         {false, false, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::RAW10},
+         {false, false, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::RAW12},
+         {false, false, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::RAW16},
+         {false, false, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::DEPTH_16},
+         {false, false, true, true, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::DEPTH_24},
+         {false, false, true, true, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::DEPTH_24_STENCIL_8},
+         {false, false, true, true, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::DEPTH_32F},
+         {false, false, true, true, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::DEPTH_32F_STENCIL_8},
+         {false, false, true, true, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::STENCIL_8},
+         {false, false, true, true, false, true, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::BLOB},
+         {false, false, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::YCBCR_422_SP},
+         {false, true, false, false, false, false, true, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::YCBCR_422_I},
+         {false, true, false, false, false, false, true, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::CbYCrY_422_I},
+         {false, true, false, false, false, false, true, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::YCrCb_422_SP},
+         {false, true, false, false, false, false, true, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::YCBCR_420_888},
+         {false, true, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::YCrCb_422_I},
+         {false, true, false, false, false, false, true, false}}};
 
 bool IsUbwcSupported(vendor_qti_hardware_display_common_PixelFormat format) {
   auto format_traits = format_traits_map.find(format);
@@ -156,6 +167,48 @@ bool IsGpuDepthStencil(vendor_qti_hardware_display_common_PixelFormat format) {
     }
   } else {
     ALOGW("Format %lu not found in format traits map", static_cast<uint64_t>(format));
+  }
+  return false;
+}
+
+bool CheckWidthConstraints(
+    vendor_qti_hardware_display_common_PixelFormat format, int width) {
+  auto format_traits = format_traits_map.find(format);
+  if (format_traits != format_traits_map.end()) {
+    if (format_traits->second.width_even) {
+      if (width & 1) {
+        ALOGE("Width is odd for format %lu", static_cast<uint64_t>(format));
+        return false;
+      } else {
+        return true;
+      }
+    } else {
+      return true;
+    }
+  } else {
+    ALOGW("Format %lu not found in format traits map",
+          static_cast<uint64_t>(format));
+  }
+  return false;
+}
+
+bool CheckHeightConstraints(
+    vendor_qti_hardware_display_common_PixelFormat format, int height) {
+  auto format_traits = format_traits_map.find(format);
+  if (format_traits != format_traits_map.end()) {
+    if (format_traits->second.width_even) {
+      if (height & 1) {
+        ALOGE("Height is odd for format %lu", static_cast<uint64_t>(format));
+        return false;
+      } else {
+        return true;
+      }
+    } else {
+      return true;
+    }
+  } else {
+    ALOGW("Format %lu not found in format traits map",
+          static_cast<uint64_t>(format));
   }
   return false;
 }

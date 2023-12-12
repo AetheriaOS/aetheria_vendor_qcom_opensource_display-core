@@ -182,6 +182,7 @@ DisplayError DisplayBase::Init() {
   int drop_vsync = 0;
   int hw_recovery_threshold = 1;
   int32_t prop = 0;
+  uint32_t inactive_ms = 0;
   dpu_core_mux_->GetActiveConfig(&active_index);
   dpu_core_mux_->GetDisplayAttributes(active_index, &device_ctx_,
                                       &client_ctx_);
@@ -304,6 +305,8 @@ DisplayError DisplayBase::Init() {
   if (Debug::Get()->GetProperty(ALLOW_TONEMAP_NATIVE, &prop) == kErrorNone) {
     allow_tonemap_native_ = (prop == 1);
   }
+
+  Debug::GetIdleTimeoutMs(&idle_active_ms_, &inactive_ms);
 
   SetupPanelFeatureFactory();
 
@@ -587,6 +590,13 @@ DisplayError DisplayBase::InitRC() {
     input_cfg.display_xres = client_ctx_.display_attributes.x_pixels;
     input_cfg.display_yres = client_ctx_.display_attributes.y_pixels;
     input_cfg.max_mem_size = rc_total_mem_size;
+
+    std::string panel_name = std::string(client_ctx_.hw_panel_info.panel_name);
+    std::string::size_type pos;
+    while ((pos = panel_name.find(' ')) != std::string::npos)
+      panel_name.replace(pos, 1, "_");
+    input_cfg.panel_name = panel_name;
+
     rc_core_ = pf_factory_->CreateRCIntf(input_cfg, prop_intf_);
     GenericPayload dummy;
     int err = 0;
@@ -899,6 +909,10 @@ DisplayError DisplayBase::PrePrepare(LayerStack *layer_stack) {
   error = comp_manager_->PrePrepare(display_comp_ctx_, disp_layer_stack_);
 
   ConfigureCwbParams(layer_stack);
+
+  if (disp_layer_stack_->stack_info.notify_idle) {
+    event_handler_->HandleEvent(kPostIdleTimeout);
+  }
 
   return error;
 }
@@ -1532,7 +1546,13 @@ void DisplayBase::CommitThread() {
             client_ctx_.hw_panel_info.mode == kModeVideo ? "video" : "cmd", wait_duration);
 
       event_handler_->HandleEvent(kIdleTimeout);
-      IdleTimeout();
+      if (client_ctx_.hw_panel_info.mode == kModeCommand || idle_active_ms_ <= 0) {
+        //Notify Display Idle to AIDL clients
+        event_handler_->HandleEvent(kPostIdleTimeout);
+        idle_hint_set_ = true;
+      } else {
+        IdleTimeout();
+      }
       continue;
     }
 
@@ -1726,6 +1746,7 @@ void DisplayBase::CleanupOnError() {
 
 DisplayError DisplayBase::PostCommit() {
   DTRACE_SCOPED();
+  idle_hint_set_ = false;
   // Store retire fence to track commit start.
   CacheRetireFence();
   if (secure_event_ == kSecureDisplayEnd || secure_event_ == kTUITransitionEnd ||
@@ -1837,6 +1858,17 @@ DisplayError DisplayBase::FlushLocked(LayerStack *layer_stack) {
   if (!active_) {
     return kErrorPermission;
   }
+
+#ifdef TRUSTED_VM
+  // Reset RC hardware on TUI session end.
+  if (rc_core_) {
+    GenericPayload in, out;
+    int ret = rc_core_->ProcessOps(kRCFeatureReset, in, &out);
+    if (ret) {
+      DLOGW("RC HW reset failed err:%d", ret);
+    }
+  }
+#endif
 
   for (auto& info : disp_layer_stack_->info) {
     info.second.hw_layers.clear();
@@ -4520,7 +4552,14 @@ void DisplayBase::PrepareForAsyncTransition() {
 }
 
 std::chrono::system_clock::time_point DisplayBase::WaitUntil() {
-  int idle_time_ms = disp_layer_stack_->stack_info.common_info.set_idle_time_ms;
+  int idle_time_ms;
+  if (client_ctx_.hw_panel_info.mode == kModeCommand || idle_active_ms_ <= 0) {
+    // Idle Timer is configured to notify display idle to AIDL clients
+    idle_time_ms = IDLE_TIMEOUT_DEFAULT_MS;
+  } else {
+    idle_time_ms = disp_layer_stack_->stack_info.common_info.set_idle_time_ms;
+  }
+
   std::chrono::milliseconds timeout_duration;
 
   DLOGV_IF(kTagDisplay, "Off: %d, time: %d, timeout:%d, panel: %s",
@@ -4528,8 +4567,8 @@ std::chrono::system_clock::time_point DisplayBase::WaitUntil() {
         client_ctx_.hw_panel_info.mode == kModeVideo ? "video" : "cmd");
 
   // Indefinite wait if state is off or idle timeout has triggered
-  if (state_ == kStateOff || idle_time_ms <= 0 || handle_idle_timeout_ ||
-      client_ctx_.hw_panel_info.mode != kModeVideo || pending_commit_) {
+  if (state_ == kStateOff || idle_time_ms <= 0 || handle_idle_timeout_ || pending_commit_ ||
+      idle_hint_set_) {
     timeout_duration = std::chrono::milliseconds(INT_MAX);
   } else {
     timeout_duration = std::chrono::milliseconds(idle_time_ms);

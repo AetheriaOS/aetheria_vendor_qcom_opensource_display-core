@@ -548,6 +548,9 @@ void DRMPanelFeatureMgr::ResetPanelFeatures(drmModeAtomicReq *req,
   if (prop_id) {
     ApplyDirtyFeature(req, token, info);
   }
+
+  info.prop_id = kDRMPanelFeatureRCInit;
+  ApplyDirtyFeature(req, token, info);
 }
 // LCOV_EXCL_STOP
 

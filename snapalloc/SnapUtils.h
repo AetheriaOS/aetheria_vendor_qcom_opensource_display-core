@@ -204,6 +204,8 @@ struct FormatTraits {
   bool gpu_depth_stencil;
   bool astc;
   bool ubwc_supported;
+  bool width_even;
+  bool height_even;
 };
 
 bool IsUbwcSupported(vendor_qti_hardware_display_common_PixelFormat format);
@@ -212,6 +214,10 @@ bool IsAstc(vendor_qti_hardware_display_common_PixelFormat format);
 bool IsRgb(vendor_qti_hardware_display_common_PixelFormat format);
 bool IsYuv(vendor_qti_hardware_display_common_PixelFormat format);
 bool IsGpuDepthStencil(vendor_qti_hardware_display_common_PixelFormat format);
+bool CheckWidthConstraints(
+    vendor_qti_hardware_display_common_PixelFormat format, int width);
+bool CheckHeightConstraints(
+    vendor_qti_hardware_display_common_PixelFormat format, int height);
 
 #define QTI_VT_TIMESTAMP 10000
 #define IS_VENDOR_METADATA_TYPE(x) (x >= QTI_VT_TIMESTAMP)
