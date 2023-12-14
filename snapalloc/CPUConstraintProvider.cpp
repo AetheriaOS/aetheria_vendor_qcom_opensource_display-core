@@ -40,6 +40,11 @@ int CPUConstraintProvider::GetCapabilities(BufferDescriptor desc, CapabilitySet 
     ALOGD_IF(DEBUG, "CPUConstraintProvider is enabled");
     out->enabled = true;
   }
+
+  if (IsAstc(desc.format)) {
+    out->enabled = false;
+  }
+
   out->ubwc_caps.version = 0;
   return 0;
 }

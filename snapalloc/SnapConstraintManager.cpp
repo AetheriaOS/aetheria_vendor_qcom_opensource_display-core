@@ -238,6 +238,10 @@ Error SnapConstraintManager::SetSnapPrivateFlags(
 Error SnapConstraintManager::ConvertAlignedWidthFromBytesToPixels(
     vendor_qti_hardware_display_common_PixelFormat format, int width_in_bytes,
     int *width_in_pixels) {
+  if (IsAstc(format)) {
+    *width_in_pixels = width_in_bytes;
+    return Error::NONE;
+  }
   if (format_data_map_.find(format) == format_data_map_.end()) {
     ALOGE("Could not find entry for format %lu", static_cast<uint64_t>(format));
     return Error::UNSUPPORTED;

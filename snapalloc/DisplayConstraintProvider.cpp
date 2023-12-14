@@ -52,6 +52,10 @@ int DisplayConstraintProvider::GetCapabilities(BufferDescriptor desc, Capability
     out->enabled = false;
   }
 
+  if (IsAstc(desc.format)) {
+    out->enabled = false;
+  }
+
   return 0;
 }
 

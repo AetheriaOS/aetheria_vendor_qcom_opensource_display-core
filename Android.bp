@@ -1,4 +1,12 @@
 cc_library_headers {
+    name: "display_debug_headers",
+    vendor: true,
+    export_include_dirs: [
+        "libdebug",
+    ],
+}
+
+cc_library_headers {
   name: "display_core_headers",
   vendor: true,
   export_include_dirs: [
