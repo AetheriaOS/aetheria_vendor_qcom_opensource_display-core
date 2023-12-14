@@ -240,6 +240,7 @@
 #define DISABLE_LLCC_DURING_AOD              DISPLAY_PROP("disable_llcc_during_aod")
 #define DISABLE_CWB_IDLE_FALLBACK            DISPLAY_PROP("disable_cwb_idle_fallback")
 #define PRIORITIZE_CLIENT_CWB                DISPLAY_PROP("prioritize_client_cwb")
+#define ENABLE_CWB_CPU_BOOSTING              DISPLAY_PROP("enable_cwb_cpu_boosting")
 #define TRANSIENT_FPS_CYCLE_COUNT            DISPLAY_PROP("transient_fps_cycle_count")
 #define CORE_ID_MASK                         DISPLAY_PROP("core_id_mask")
 #define XR_VARIANT                           DISPLAY_PROP("xr_variant")
