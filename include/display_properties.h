@@ -253,6 +253,9 @@
 #define DISABLE_ROUNDED_CORNER_TUI           DISPLAY_PROP("disable_rounded_corner_tui")
 #define IDLE_FALLBACK_ON_DSPP                DISPLAY_PROP("idle_fallback_on_dspp")
 
+// Enable AI Scaler
+#define ENABLE_AI_SCALER_PROP                DISPLAY_PROP("enable_ai_scaler")
+
 // Add all other.properties above
 // End of property
 // clang-format on

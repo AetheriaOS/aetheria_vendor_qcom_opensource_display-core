@@ -30,7 +30,7 @@
 /*
  * Changes from Qualcomm Innovation Center are provided under the following license:
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted (subject to the limitations in the
@@ -283,7 +283,9 @@ class HWDeviceDRM : public HWInterface {
   DisplayError GetPanelBlMaxLvl(uint32_t *bl_max);
   DisplayError SetPPConfig(void *payload, size_t size);
   DisplayError GetQsyncFps(uint32_t *qsync_fps) { return kErrorNotSupported; }
-  void SetDestScalarData(const DestScaleInfoMap dest_scale_info_map) { return; };
+  void SetDestScalarData(const HWLayersInfo &hw_layer_info) {
+    return;
+  };
   void SetCacType(const HWPipeCacMode &cac_mode, sde_drm::DRMCacMode *target);
 
   class Registry {
@@ -382,6 +384,8 @@ class HWDeviceDRM : public HWInterface {
   // cwb state lock. Set before accesing or updating cwb_config_
   static std::unordered_map<uint32_t, std::mutex> cwb_state_lock_;
   bool force_tonemapping_ = false;
+  uint32_t ai_scaler_blocks_used_ = 0;  // AI scaler blocks in use by this HWDeviceDRM instance.
+  static std::atomic<uint32_t> hw_ai_scaler_blocks_used_;
 
  private:
   void GetCWBCapabilities();

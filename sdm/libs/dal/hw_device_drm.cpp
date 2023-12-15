@@ -30,7 +30,7 @@
 /*
  * Changes from Qualcomm Innovation Center are provided under the following license:
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
@@ -137,6 +137,7 @@ using sde_drm::DRMCacMode;
 namespace sdm {
 
 std::unordered_map<uint32_t, std::atomic<uint32_t>> HWDeviceDRM::hw_dest_scaler_blocks_used_;
+std::atomic<uint32_t> HWDeviceDRM::hw_ai_scaler_blocks_used_(0);
 std::unordered_map<uint32_t, std::mutex> HWDeviceDRM::cwb_state_lock_;
 bool HWDeviceDRM::reset_planes_luts_ = true;
 
@@ -766,6 +767,7 @@ DisplayError HWDeviceDRM::Deinit() {
   drm_atomic_intf_ = {};
   drm_mgr_intf_->UnregisterDisplay(&token_);
   hw_dest_scaler_blocks_used_[core_id_] -= dest_scaler_blocks_used_;
+  hw_ai_scaler_blocks_used_ -= ai_scaler_blocks_used_;
   return err;
 }
 
@@ -2689,7 +2691,7 @@ DisplayError HWDeviceDRM::SetMixerAttributes(const HWMixerAttributes &mixer_attr
     return kErrorNotSupported;
   }
 
-  if (!dest_scaler_blocks_used_) {
+  if (!dest_scaler_blocks_used_ && !ai_scaler_blocks_used_) {
     return kErrorNotSupported;
   }
 
@@ -2755,6 +2757,7 @@ DisplayError HWDeviceDRM::SetMixerAttributes(const HWMixerAttributes &mixer_attr
   mixer_attributes_.split_left = mixer_attributes_.width;
   mixer_attributes_.split_type = kNoSplit;
   mixer_attributes_.dest_scaler_blocks_used = dest_scaler_blocks_used_;  // No change.
+  mixer_attributes_.ai_scaler_blocks_used = ai_scaler_blocks_used_;      // No change.
   if (display_attributes_[index].is_device_split) {
     mixer_attributes_.split_left = UINT32(FLOAT(mixer_attributes.width) * mixer_split_ratio);
     mixer_attributes_.split_type = kDualSplit;

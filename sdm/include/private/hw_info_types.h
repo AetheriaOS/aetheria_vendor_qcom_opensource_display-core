@@ -73,6 +73,7 @@ const int kMaxSDELayers = 16;   // Maximum number of layers that can be handled 
 #define UCSC_CSC_CFG1_PARAM_LEN     FP16_CSC_CFG1_PARAM_LEN
 
 #define MAX_SPLIT_COUNT             2
+#define AI_SCALER_PARAM_LEN         485
 
 enum HWDeviceType {
   kDeviceBuiltIn,
@@ -483,6 +484,7 @@ struct HWResourceInfo {
   CacVersion cac_version = kCacVersionNone;
   DDRVersion ddr_version = kDDRVersion5;
   bool has_cesta = false;
+  uint32_t hw_ai_scaler_count = 0;
 };
 
 struct HWSplitInfo {
@@ -776,6 +778,23 @@ struct HWDestScaleInfo {
 
 typedef std::map<uint32_t, HWDestScaleInfo *> DestScaleInfoMap;
 
+struct HWAIScalerData {
+  uint32_t config = 0;
+  uint32_t src_w;
+  uint32_t src_h;
+  uint32_t dst_w;
+  uint32_t dst_h;
+  uint32_t param[AI_SCALER_PARAM_LEN];
+  bool is_param_valid = false;
+};
+
+struct HWAIScalerInfo {
+  bool ai_scale_update = false;
+  HWAIScalerData ai_scale_data = {};
+};
+
+typedef std::map<uint32_t, HWAIScalerInfo *> AIScalerInfoMap;
+
 struct HWAVRInfo {
   bool update = false;                // Update avr setting.
   HWAVRModes mode = kContinuousMode;  // Specifies the AVR mode
@@ -1061,6 +1080,7 @@ struct HWLayersInfo {
   bool roi_split = false;          // Indicates separated left and right ROI
   bool async_cursor_updates = false;  // Cursor layer allowed to have async updates
   DestScaleInfoMap dest_scale_info_map = {};
+  AIScalerInfoMap ai_scale_info_map = {};
   HWLayerConfig config[kMaxSDELayers] {};
   HWHDRLayerInfo hdr_layer_info = {};
   float output_compression = 1.0f;
@@ -1132,14 +1152,15 @@ struct HWMixerAttributes {
   HWMixerSplit split_type = kNoSplit;                  // Mixer topology
   LayerBufferFormat output_format = kFormatRGB101010;  // Layer mixer output format
   uint32_t dest_scaler_blocks_used = 0;                // Count of dest scaler blocks used
+  uint32_t ai_scaler_blocks_used = 0;                  // Count of ai scaler blocks used
 
   bool operator !=(const HWMixerAttributes &mixer_attributes) {
-    return ((width != mixer_attributes.width) ||
-            (height != mixer_attributes.height) ||
+    return ((width != mixer_attributes.width) || (height != mixer_attributes.height) ||
             (split_type != mixer_attributes.split_type) ||
             (output_format != mixer_attributes.output_format) ||
             (split_left != mixer_attributes.split_left) ||
-            (dest_scaler_blocks_used != mixer_attributes.dest_scaler_blocks_used));
+            (dest_scaler_blocks_used != mixer_attributes.dest_scaler_blocks_used) ||
+            (ai_scaler_blocks_used != mixer_attributes.ai_scaler_blocks_used));
   }
 
   bool operator ==(const HWMixerAttributes &mixer_attributes) {
