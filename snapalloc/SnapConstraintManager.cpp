@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #include "SnapConstraintManager.h"
@@ -207,6 +207,7 @@ Error SnapConstraintManager::GetAllocationData(
       static_cast<vendor_qti_hardware_display_common_PixelFormatModifier>(
           GetPixelFormatModifier(*out_desc));
   auto align = GetDataAlignment(out_desc->format, out_desc->usage, pixel_format_modifier);
+  OVERFLOW_ERR_RETURN(out_ad->size, out_desc->layerCount);
   out_ad->size = ALIGN(out_ad->size, align) * out_desc->layerCount;
 
   return err;
@@ -249,6 +250,7 @@ Error SnapConstraintManager::ConvertAlignedWidthFromBytesToPixels(
   auto format_data = format_data_map_.at(format);
   *width_in_pixels = width_in_bytes / ((format_data.planes[0].sample_increment_bits) / 8);
   if (format == vendor_qti_hardware_display_common_PixelFormat::TP10) {
+    OVERFLOW_ERR_RETURN(*width_in_pixels, 3);
     *width_in_pixels = (*width_in_pixels) * 3;
   }
   return Error::NONE;
@@ -329,6 +331,7 @@ Error SnapConstraintManager::ConstraintsToBufferLayout(
              __FUNCTION__, desc.format, i, layout->planes[i].horizontal_stride_in_bytes,
              layout->planes[i].scanlines);
 
+    OVERFLOW_ERR_RETURN(layout->planes[i].horizontal_stride_in_bytes, layout->planes[i].scanlines);
     layout->planes[i].size_in_bytes =
         ALIGN(layout->planes[i].horizontal_stride_in_bytes * layout->planes[i].scanlines,
               constraints->planes[i].size_align);
@@ -429,6 +432,7 @@ Error SnapConstraintManager::AlignmentToAlignedConstraints(BufferDescriptor desc
       // YV12, move this special handling to default constraint provider
       if ((desc.format == vendor_qti_hardware_display_common_PixelFormat::YV12) &&
           (alignment.planes[i].components[0] != PLANE_LAYOUT_COMPONENT_TYPE_Y)) {
+        OVERFLOW_ERR_RETURN((desc.width / 2), (format_data.planes[0].sample_increment_bits / 8));
         plane.stride.horizontal_stride =
             ALIGN((desc.width / 2) * (format_data.planes[0].sample_increment_bits / 8),
                   alignment.planes[i].stride.horizontal_stride_align);
@@ -442,6 +446,7 @@ Error SnapConstraintManager::AlignmentToAlignedConstraints(BufferDescriptor desc
               ALIGN(desc.width, alignment.planes[i].stride.horizontal_stride_align) *
               (format_data.bits_per_pixel / 8);
         } else {
+          OVERFLOW_ERR_RETURN(desc.width, (format_data.planes[0].sample_increment_bits / 8));
           plane.stride.horizontal_stride =
               ALIGN(desc.width * (format_data.planes[0].sample_increment_bits / 8),
                     alignment.planes[i].stride.horizontal_stride_align);
