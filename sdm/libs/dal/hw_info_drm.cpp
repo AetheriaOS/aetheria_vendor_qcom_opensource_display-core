@@ -113,7 +113,7 @@
 #define DRM_FORMAT_MOD_QCOM_LOSSY_8_5 fourcc_mod_code(QCOM, 0x20)
 #endif
 #ifndef DRM_FORMAT_MOD_QCOM_LOSSY_2_1
-#define DRM_FORMAT_MOD_QCOM_LOSSY_2_1 fourcc_mod_code(QCOM, 0x40)
+#define DRM_FORMAT_MOD_QCOM_LOSSY_2_1 fourcc_mod_code(QCOM, 0x200)
 #endif
 
 #define __CLASS__ "HWInfoDRM"
