@@ -63,6 +63,7 @@ class Strategy {
                            DisplayDeviceContext &device_ctx);
   DisplayError SetCompositionState(LayerComposition composition_type, bool enable);
   DisplayError Purge();
+  void ResetStrategy(uint32_t *max_attempts);
   DisplayError SetIdleTimeoutMs(uint32_t active_ms, uint32_t inactive_ms);
   DisplayError SetColorModesInfo(const std::vector<PrimariesTransfer> &colormodes_cs);
   DisplayError SetBlendSpace(const PrimariesTransfer &blend_space);
