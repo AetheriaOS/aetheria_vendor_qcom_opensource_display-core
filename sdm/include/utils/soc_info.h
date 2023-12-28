@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
   SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -8,6 +8,8 @@
 
 #define kAnorakSocId 549
 #define kAnorakSocName "anorak"
+#define kSunSocId 618
+#define kSunSocName "sun"
 
 #endif  // __SOC_INFO_H__
 
