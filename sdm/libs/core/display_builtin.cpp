@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -158,12 +158,13 @@ DisplayError DisplayBuiltIn::Init() {
     // Get status of RC enablement property. Default RC is disabled.
     int rc_prop_value = 0;
     Debug::GetProperty(ENABLE_ROUNDED_CORNER, &rc_prop_value);
-    if (rc_prop_value && client_ctx_.hw_panel_info.is_primary_panel) {
-      // TODO(user): Get the RC count from driver and decide if RC can be enabled for
-      // sec built-ins.  Currently client sends RC layers only for first builtin.
+    if (rc_prop_value && EnableRC()) {
       rc_enable_prop_ = true;
     }
-    DLOGI("RC feature %s.", rc_enable_prop_ ? "enabled" : "disabled");
+    DLOGI("RC feature %s on %s for display %d-%d",
+          rc_enable_prop_ ? "enabled" : "disabled",
+          client_ctx_.hw_panel_info.is_primary_panel ? "primary" : "secondary",
+          display_id_, display_type_);
 
     if ((error = SetupSPR()) != kErrorNone) {
       DLOGE("SPR Failed to initialize. Error = %d", error);
@@ -257,6 +258,7 @@ DisplayError DisplayBuiltIn::Deinit() {
     demura_dynamic_enabled_ = true;
 
     DeinitCWBBuffer();
+    hw_rc_blocks_in_use_ -= rc_blocks_reserved_;
   }
   dpps_info_.Deinit();
   return DisplayBase::Deinit();

@@ -24,7 +24,7 @@
 
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -52,6 +52,7 @@
 
 namespace sdm {
 
+std::atomic<uint32_t> DisplayBase::hw_rc_blocks_in_use_(0);
 bool DisplayBase::display_power_reset_pending_ = false;
 bool DisplayBase::primary_active_ = false;
 Locker DisplayBase::display_power_reset_lock_;
@@ -1654,6 +1655,28 @@ DisplayError DisplayBase::PerformCommit(std::map<uint32_t, HWLayersInfo> &hw_lay
   }
 
   return error;
+}
+
+bool DisplayBase::EnableRC() {
+  rc_blocks_reserved_ = 1;
+  if (kQuadSplit == client_ctx_.mixer_attributes.split_type) {
+    rc_blocks_reserved_ = 4;
+  } else if (kDualSplit == client_ctx_.mixer_attributes.split_type) {
+    rc_blocks_reserved_ = 2;
+  }
+  for (auto &res_info : hw_resource_info_) {
+    if (res_info.rc_count >= (hw_rc_blocks_in_use_ + rc_blocks_reserved_)) {
+      // Enough HW RC blocks available so update the static counter.
+      hw_rc_blocks_in_use_ += rc_blocks_reserved_;
+    } else {
+      rc_blocks_reserved_ = 0;
+    }
+  }
+  if (rc_blocks_reserved_) {
+    return true;
+  }
+
+  return false;
 }
 
 DisplayError DisplayBase::Commit(LayerStack *layer_stack) {
