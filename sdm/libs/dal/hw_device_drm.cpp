@@ -927,19 +927,21 @@ DisplayError HWDeviceDRM::PopulateDisplayAttributes(uint32_t index) {
                    &display_attributes_[index].topology_num_split);
   display_attributes_[index].is_device_split = (display_attributes_[index].topology_num_split > 1);
   display_attributes_[index].allowed_mode_switch = connector_info_.modes[index].allowed_mode_switch;
+  display_attributes_[index].avr_step = connector_info_.modes[index].avr_step_fps;
 
   DLOGI(
       "Display %d-%d attributes[%d]: WxH: %dx%d, DPI: %fx%f, FPS: %d, LM_SPLIT: %d, V_BACK_PORCH:"
       " %d, V_FRONT_PORCH: %d [RFI Adjusted : %s], V_PULSE_WIDTH: %d, V_TOTAL: %d, H_TOTAL: %d,"
-      " CLK: %dKHZ, TOPOLOGY: %d [SPLIT NUMBER: %d], HW_SPLIT: %d", display_id_, disp_type_,
-      index, display_attributes_[index].x_pixels, display_attributes_[index].y_pixels,
-      display_attributes_[index].x_dpi, display_attributes_[index].y_dpi,
-      display_attributes_[index].fps, display_attributes_[index].is_device_split,
-      display_attributes_[index].v_back_porch, display_attributes_[index].v_front_porch,
-      adjusted ? "True" : "False", display_attributes_[index].v_pulse_width,
-      display_attributes_[index].v_total, display_attributes_[index].h_total,
-      display_attributes_[index].clock_khz, display_attributes_[index].topology,
-      display_attributes_[index].topology_num_split, mixer_attributes_.split_type);
+      " CLK: %dKHZ, TOPOLOGY: %d [SPLIT NUMBER: %d], HW_SPLIT: %d, AVR_STEP: %d",
+      display_id_, disp_type_, index, display_attributes_[index].x_pixels,
+      display_attributes_[index].y_pixels, display_attributes_[index].x_dpi,
+      display_attributes_[index].y_dpi, display_attributes_[index].fps,
+      display_attributes_[index].is_device_split, display_attributes_[index].v_back_porch,
+      display_attributes_[index].v_front_porch, adjusted ? "True" : "False",
+      display_attributes_[index].v_pulse_width, display_attributes_[index].v_total,
+      display_attributes_[index].h_total, display_attributes_[index].clock_khz,
+      display_attributes_[index].topology, display_attributes_[index].topology_num_split,
+      mixer_attributes_.split_type, display_attributes_[index].avr_step);
 
   return kErrorNone;
 }

@@ -259,11 +259,12 @@ struct DisplayConfigGroupInfo {
   bool is_yuv = false;            //!< If the display output is in YUV format.
   bool smart_panel = false;       //!< If the display config has smart panel.
   uint64_t allowed_mode_switch = 0;
+  uint32_t avr_step = 0;  //!< AVR Step fps of the display panel.
 
   bool operator==(const DisplayConfigGroupInfo& info) const {
-    return ((x_pixels == info.x_pixels) && (y_pixels == info.y_pixels) &&
-            (x_dpi == info.x_dpi) && (y_dpi == info.y_dpi) && (is_yuv == info.is_yuv) &&
-            (smart_panel == info.smart_panel));
+    return ((x_pixels == info.x_pixels) && (y_pixels == info.y_pixels) && (x_dpi == info.x_dpi) &&
+            (y_dpi == info.y_dpi) && (is_yuv == info.is_yuv) && (smart_panel == info.smart_panel) &&
+            (avr_step == info.avr_step));
   }
 };
 
