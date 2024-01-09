@@ -3548,6 +3548,7 @@ void DisplayBase::CommitLayerParams(LayerStack *layer_stack) {
 
   disp_layer_stack_->stack_info.common_info.expected_present_time =
       layer_stack->expected_present_time;
+  disp_layer_stack_->stack_info.common_info.frame_interval = layer_stack->frame_interval_ns;
 
   return;
 }
@@ -4876,6 +4877,11 @@ bool DisplayBase::HasSrcTonemap() {
   }
 
   return has_src_tone_map;
+}
+
+DisplayError DisplayBase::NotifyExpectedPresent(uint64_t expected_present_time,
+                                                uint32_t frame_interval_ns) {
+  return hw_intf_->NotifyExpectedPresent(expected_present_time, frame_interval_ns);
 }
 
 }  // namespace sdm

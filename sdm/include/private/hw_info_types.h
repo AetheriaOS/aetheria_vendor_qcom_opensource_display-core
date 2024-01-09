@@ -1028,6 +1028,7 @@ struct CommonStackInfo {
   shared_ptr<Fence> sync_handle = nullptr;
   SprOverfetchLines spr_overfetch_lines = {};
   uint64_t expected_present_time = 0;
+  uint32_t frame_interval = 0;
 };
 
 struct LayerStackInfo {

@@ -662,6 +662,12 @@ enum struct DRMOps {
    *      uint32_t - Enable or disable state
    */
   CONNECTOR_SET_AVR_STEP_STATE,
+  /*
+   * Op: Sets Frame Interval on connector
+   * Arg: uint32_t - Connector ID
+   *      uint32_t - Frame Interval Ns
+   */
+  CONNECTOR_SET_FRAME_INTERVAL,
 };
 
 enum struct DRMRotation {

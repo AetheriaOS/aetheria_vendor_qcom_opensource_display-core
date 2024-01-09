@@ -260,6 +260,7 @@ enum struct DRMProperty {
   SDE_DSPP_AIQE_COPR_V1,
   AIQE_ABC_V1,
   AVR_STEP_STATE,
+  FRAME_INTERVAL,
 
   // Insert above
   MAX

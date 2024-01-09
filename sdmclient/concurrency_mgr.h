@@ -522,6 +522,9 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   Display GetVsyncSource() override { return vsync_source_; }
   bool VsyncCallbackRegistered() override { return client_connected_; }
   DisplayError SetupVRRConfig(uint64_t display_id);
+  DisplayError NotifyExpectedPresent(Display display, uint64_t expected_present_time,
+                                     uint32_t frame_interval_ns);
+  DisplayError SetFrameIntervalNs(Display display, uint32_t frameIntervalNs);
 
   DisplayError SetSsrcMode(uint64_t display_id, const std::string &mode_name);
   DisplayError EnableCopr(uint64_t display_id, bool enable);

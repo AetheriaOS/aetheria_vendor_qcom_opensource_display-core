@@ -3735,4 +3735,21 @@ void HWDeviceDRM::HandleCwbTeardown(bool sync_teardown) {
   }
 }
 
+DisplayError HWDeviceDRM::NotifyExpectedPresent(uint64_t expected_present_time,
+                                                uint32_t frame_interval_ns) {
+#ifdef DRM_IOCTL_MSM_EARLY_EPT
+  int ret = -1;
+  struct drm_msm_display_early_ept early_ept_cfg = {};
+  early_ept_cfg.connector_id = token_.conn_id;
+  early_ept_cfg.flags = DRM_MSM_EARLY_EPT;
+  early_ept_cfg.ept_ns = expected_present_time;
+  early_ept_cfg.frame_interval = frame_interval_ns;
+  ret = drmIoctl(dev_fd_, DRM_IOCTL_MSM_EARLY_EPT, &early_ept_cfg);
+  if (ret < 0) {
+    return kErrorHardware;
+  }
+#endif
+  return kErrorNone;
+}
+
 }  // namespace sdm

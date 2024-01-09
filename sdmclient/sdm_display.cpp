@@ -967,6 +967,7 @@ void SDMDisplay::BuildLayerStack() {
 
   layer_stack_.elapse_timestamp = elapse_timestamp_;
   layer_stack_.expected_present_time = expected_present_time_;
+  layer_stack_.frame_interval_ns = frame_interval_ns_;
 
   layer_stack_.client_incompatible =
       dump_frame_count_ && (dump_output_to_file_ || dump_input_layers_);
@@ -1166,6 +1167,12 @@ DisplayError SDMDisplay::GetDisplayConfigs(std::vector<int32_t> *out_configs) {
     out_configs->at(i++) = info.first;
   }
 
+  return kErrorNone;
+}
+
+DisplayError SDMDisplay::NotifyExpectedPresent(uint64_t expected_present_time,
+                                               uint32_t frame_interval_ns) {
+  display_intf_->NotifyExpectedPresent(expected_present_time, frame_interval_ns);
   return kErrorNone;
 }
 

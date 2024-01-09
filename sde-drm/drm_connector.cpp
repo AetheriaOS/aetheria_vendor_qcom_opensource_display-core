@@ -1503,6 +1503,16 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       DRM_LOGD("Connector %d: Setting ePT = %" PRId64, obj_id, expected_present_time);
     } break;
 
+    case DRMOps::CONNECTOR_SET_FRAME_INTERVAL: {
+      if (!prop_mgr_.IsPropertyAvailable(DRMProperty::FRAME_INTERVAL)) {
+        return;
+      }
+      uint32_t frame_interval = va_arg(args, uint32_t);
+      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::FRAME_INTERVAL),
+                               frame_interval);
+      DRM_LOGD("Connector %d: Setting Frame Interval = %d", obj_id, frame_interval);
+    } break;
+
     default:
       DRM_LOGE("Invalid opcode %d to set on connector %d", code, obj_id);
       break;

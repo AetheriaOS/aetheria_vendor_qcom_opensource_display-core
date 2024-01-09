@@ -201,7 +201,8 @@ int DRMAtomicReq::Perform(DRMOps opcode, uint32_t obj_id, ...) {
     case DRMOps::CONNECTOR_SET_CACHE_STATE:
     case DRMOps::CONNECTOR_SET_EPT:
     case DRMOps::CONNECTOR_SET_BPP_MODE:
-    case DRMOps::CONNECTOR_SET_AVR_STEP_STATE: {
+    case DRMOps::CONNECTOR_SET_AVR_STEP_STATE:
+    case DRMOps::CONNECTOR_SET_FRAME_INTERVAL: {
       drm_mgr_->GetConnectorMgr()->Perform(opcode, obj_id, drm_atomic_req_, args);
     } break;
     case DRMOps::DPPS_CACHE_FEATURE: {

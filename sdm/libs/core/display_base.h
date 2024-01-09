@@ -283,6 +283,8 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   }
   virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
   virtual DisplayError SetVRRState(bool state) { return kErrorNotSupported; }
+  virtual DisplayError NotifyExpectedPresent(uint64_t expected_present_time,
+                                             uint32_t frame_interval_ns);
 
  protected:
   struct DisplayMutex {

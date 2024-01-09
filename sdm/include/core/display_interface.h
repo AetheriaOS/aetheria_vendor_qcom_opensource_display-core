@@ -1368,6 +1368,17 @@ class DisplayInterface {
   */
   virtual DisplayError SetVRRState(bool state) = 0;
 
+  /*! @brief Method to inform driver about frameintervalchange or wakeup from idle.
+
+    @param[in] expected_present_time : ept for incoming frame
+
+    @param[in] frame_interval_ns : frame interval for incoming frame
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError NotifyExpectedPresent(uint64_t expected_present_time,
+                                             uint32_t frame_interval_ns) = 0;
+
  protected:
   virtual ~DisplayInterface() { }
 };

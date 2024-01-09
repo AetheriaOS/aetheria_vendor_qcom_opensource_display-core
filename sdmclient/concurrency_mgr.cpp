@@ -2526,4 +2526,21 @@ DisplayError ConcurrencyMgr::SetupVRRConfig(uint64_t display) {
   return CallDisplayFunction(display, &SDMDisplay::SetupVRRConfig);
 }
 
+DisplayError ConcurrencyMgr::NotifyExpectedPresent(Display display, uint64_t expected_present_time,
+                                                   uint32_t frame_interval_ns) {
+  return CallDisplayFunction(display, &SDMDisplay::NotifyExpectedPresent, expected_present_time,
+                             frame_interval_ns);
+}
+
+DisplayError ConcurrencyMgr::SetFrameIntervalNs(Display display, uint32_t frame_interval_ns) {
+  Locker::ScopeLock lock_d(locker_[display]);
+  if (!sdm_display_[display]) {
+    return kErrorParameters;
+  }
+
+  sdm_display_[display]->SetFrameIntervalNs(frame_interval_ns);
+
+  return kErrorNone;
+}
+
 } // namespace sdm
