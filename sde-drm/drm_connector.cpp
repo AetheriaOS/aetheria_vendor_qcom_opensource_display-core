@@ -1513,6 +1513,16 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       DRM_LOGD("Connector %d: Setting Frame Interval = %d", obj_id, frame_interval);
     } break;
 
+    case DRMOps::CONNECTOR_SET_USECASE_IDX: {
+      if (!prop_mgr_.IsPropertyAvailable(DRMProperty::USECASE_IDX)) {
+        return;
+      }
+      uint32_t usecase_idx = va_arg(args, uint32_t);
+      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::USECASE_IDX),
+                               usecase_idx);
+      DRM_LOGD("Connector %d: Setting usecase idx = %d", obj_id, usecase_idx);
+    } break;
+
     default:
       DRM_LOGE("Invalid opcode %d to set on connector %d", code, obj_id);
       break;

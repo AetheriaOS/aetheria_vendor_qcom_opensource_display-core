@@ -780,8 +780,10 @@ void SDMDisplay::BuildLayerStack() {
   layer_stack_.flags.layer_id_support = true;
   layer_stack_.solid_fill_enabled = solid_fill_enable_;
   layer_stack_.tonemapper_active = false;
+  bool video_layer_updating = false;
+  bool ui_layer_updating = false;
 
-  DTRACE_SCOPED();  
+  DTRACE_SCOPED();
   // Add one layer for fb target
   for (auto sdm_layer : sdm_layer_stack_->layer_set_) {
     // Reset layer data which SDM may change
@@ -816,6 +818,13 @@ void SDMDisplay::BuildLayerStack() {
       if (buffer_type == BUFFER_TYPE_VIDEO) {
         layer_stack_.flags.video_present = true;
         is_video = true;
+        if (IsLayerUpdating(sdm_layer)) {
+          video_layer_updating |= true;
+        }
+      } else {
+        if (IsLayerUpdating(sdm_layer)) {
+          ui_layer_updating |= true;
+        }
       }
 
       // TZ Protected Buffer - L1
@@ -965,6 +974,7 @@ void SDMDisplay::BuildLayerStack() {
   SetClientTargetDataSpace(static_cast<int32_t>(client_target_dataspace));
   layer_stack_.layers.push_back(sdm_client_target);
 
+  layer_stack_.flags.only_video_updating = video_layer_updating && !ui_layer_updating;
   layer_stack_.elapse_timestamp = elapse_timestamp_;
   layer_stack_.expected_present_time = expected_present_time_;
   layer_stack_.frame_interval_ns = frame_interval_ns_;

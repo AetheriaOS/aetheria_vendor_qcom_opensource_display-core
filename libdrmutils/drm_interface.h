@@ -668,6 +668,12 @@ enum struct DRMOps {
    *      uint32_t - Frame Interval Ns
    */
   CONNECTOR_SET_FRAME_INTERVAL,
+  /*
+   * Op: Sets usecase index
+   * Arg: uint32_t - Connector ID
+   *      uint32_t - 0 for default 1 for video
+   */
+  CONNECTOR_SET_USECASE_IDX,
 };
 
 enum struct DRMRotation {
