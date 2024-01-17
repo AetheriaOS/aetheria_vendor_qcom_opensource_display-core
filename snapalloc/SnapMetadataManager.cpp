@@ -691,18 +691,17 @@ Error SnapMetadataManager::CustomDimensionsHeightHelper(SnapMetadata *metadata,
   return Error::BAD_VALUE;
 }
 
-Error SnapMetadataManager::RGBDataAddressHelper(SnapMetadata *metadata, SnapHandleInternal *handle,
+Error SnapMetadataManager::RGBDataAddressHelper(SnapMetadata *metadata,
+                                                SnapHandleInternal *handle,
                                                 void *in_set, void *out_get,
                                                 BufferDescriptor *buf_des) {
-  // TODO - can't be returned as pointer
   if (out_get != nullptr) {
     void *rgb_data = nullptr;
-    if (GetRgbDataAddress(handle, &rgb_data) == 0) {
+    Error err = GetRgbDataAddress(handle, &rgb_data);
+    if (err == Error::NONE) {
       *static_cast<uint64_t *>(out_get) = reinterpret_cast<uint64_t>(rgb_data);
-      return Error::NONE;
-    } else {
-      return Error::BAD_BUFFER;
     }
+    return err;
   } else if (in_set != nullptr) {
     return Error::UNSUPPORTED;
   }
@@ -1117,28 +1116,27 @@ Error SnapMetadataManager::InitializeMetadata(
   return Error::NONE;
 }
 
-int SnapMetadataManager::GetRgbDataAddress(SnapHandleInternal *hnd, void **rgb_data) {
-  int err = 0;
+Error SnapMetadataManager::GetRgbDataAddress(SnapHandleInternal *hnd,
+                                             void **rgb_data) {
   // This api is only for rgb formats
   if (!IsRgb(hnd->format)) {
-    return -EINVAL;
+    return Error::BAD_VALUE;
   }
   // linear buffer, nothing to do further [base addr will have plane address]
   if (!(hnd->flags & PRIV_FLAGS_UBWC_ALIGNED)) {
     *rgb_data = reinterpret_cast<void *>(hnd->base);
-
-    return err;
+    return Error::NONE;
   }
   // Ubwc buffer - which has meta planes
   // Get the buffer layout from metadata
   SnapMetadata *data = reinterpret_cast<SnapMetadata *>(hnd->base_metadata);
   if (data == nullptr) {
     ALOGE("%s: Invalid metadata address", __FUNCTION__);
-    return Error::BAD_BUFFER;
+    return Error::BAD_VALUE;
   }
   unsigned int plane_layout_size = data->buffer_layout.planes[0].size_in_bytes;
   *rgb_data = reinterpret_cast<void *>(hnd->base + plane_layout_size);
-  return err;
+  return Error::NONE;
 }
 
 int GetDataAddress(SnapHandleInternal *hnd, uint64_t *data_addr) {
@@ -1247,7 +1245,6 @@ Error SnapMetadataManager::Get(SnapHandleInternal *hnd,
   if (IsMetadataTypeSettable(type) && !GetMetadataStateInternal(metadata, type)) {
     ALOGD_IF(DEBUG, "%s: Metadata type %d not set", __FUNCTION__, type);
     ret = Error::METADATA_NOT_SET;
-    //return Error::METADATA_NOT_SET;
   }
 
   if (metadata_helper_function_map.find(type) != metadata_helper_function_map.end()) {
@@ -1257,7 +1254,6 @@ Error SnapMetadataManager::Get(SnapHandleInternal *hnd,
       return Error::METADATA_NOT_SET;
     }
     return err;
-    //return((this->*metadata_helper_func)(metadata, hnd, nullptr, out, nullptr));
   } else {
     return Error::UNSUPPORTED;
   }

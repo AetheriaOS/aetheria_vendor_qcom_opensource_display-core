@@ -204,11 +204,14 @@ int GraphicsConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferCo
       ALOGW("Bpp is float: %f", static_cast<float>(format_data.bits_per_pixel) / 8.0f);
 
     if (IsRgb(snap_format) && IsAstc(snap_format)) {
-      // This returns aligned width in pixels
+      plane_layout.stride.horizontal_stride = desc.width;
+      plane_layout.scanline.scanline = desc.height;
+      /* TODO: gralloc does not use the returned values - uncomment when base gralloc issue resolved
+      // This returns aligned width and height in blocks
       AlignCompressedRGB(desc.width, desc.height, format, &aligned_w, &aligned_h);
       plane_layout.stride.horizontal_stride =
           static_cast<uint64_t>(aligned_w) * (format_data.bits_per_pixel / 8.0f);
-      plane_layout.scanline.scanline = static_cast<uint64_t>(aligned_h);
+      plane_layout.scanline.scanline = static_cast<uint64_t>(aligned_h);*/
     } else if (IsRgb(snap_format) && !IsAstc(snap_format)) {
       aligned_h = 0;
       aligned_w = 0;
@@ -353,7 +356,10 @@ void GraphicsConstraintProvider::AlignCompressedRGB(int width, int height, int f
     int padding_threshold = 512;  // Threshold for padding surfaces.
 
     LINK_adreno_compute_compressedfmt_aligned_width_and_height(
-        width, height, format, SURFACE_TILE_MODE_DISABLE, raster_mode, padding_threshold,
+        width, height,
+        GetGpuPixelFormat(static_cast<vendor_qti_hardware_display_common_PixelFormat>(format),
+        vendor_qti_hardware_display_common_PixelFormatModifier::PIXEL_FORMAT_MODIFIER_NONE),
+        SURFACE_TILE_MODE_DISABLE, raster_mode, padding_threshold,
         reinterpret_cast<int *>(aligned_w), reinterpret_cast<int *>(aligned_h), &bytesPerPixel);
   } else {
     *aligned_w = (unsigned int)ALIGN(width, 32);

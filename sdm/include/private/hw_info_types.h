@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -470,6 +470,7 @@ struct HWResourceInfo {
   bool use_baselayer_for_stage = false;
   bool has_micro_idle = false;
   uint32_t ubwc_version = 1;
+  uint32_t rc_count = 0;
   uint32_t rc_total_mem_size = 0;
   std::map<uint32_t, uint32_t> plane_to_connector = {};
   std::vector<uint32_t> initial_demura_planes = {};
@@ -922,6 +923,7 @@ enum UpdateType {
   kSwapBuffers,      // Indicates Strategy & RM execution, which can update buffer handler and crop.
   kUpdateLuts,       // Indicates TM only Strategy execution, which can update SSPP color features.
   kUpdateFBObject,   // Indicates that the FrameBuffer Object has been updated.
+  kChangeCwbConfig,  // Indicates either CWB buffer attached/detached to stack or size changed.
   kUpdateMax,
 };
 
@@ -1024,6 +1026,7 @@ struct LayerStackInfo {
   bool demura_present = false;  // Indicates there is demura layer or not
   bool cwb_present = false;  // Indicates there is cwb layer or not
   bool lower_fps = false;  // This field hints to lower the fps in case of idle fallback
+  bool notify_idle = false;
   bool enable_self_refresh = false;  // This field hints to enable self refresh when idle timeout
   std::shared_ptr<LayerBuffer> output_buffer = nullptr;
                                      //!< Pointer to the buffer where composed buffer would be

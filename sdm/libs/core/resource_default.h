@@ -112,6 +112,10 @@ class ResourceDefault : public ResourceInterface {
     return kErrorResources;
   }
   virtual void HandleSkipValidate(Handle display_ctx);
+  virtual DisplayError ValidateQoS(Handle display_ctx,
+                                   DispLayerStack *disp_layer_stack) {
+    return kErrorNone;
+  }
   virtual std::string Dump(Handle display_ctx);
   virtual uint32_t GetMixerCount(DisplayId display_id);
   virtual DisplayError SetBlendSpace(Handle display_ctx, const PrimariesTransfer &blend_space);

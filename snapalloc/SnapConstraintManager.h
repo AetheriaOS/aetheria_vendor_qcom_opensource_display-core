@@ -119,6 +119,14 @@ class SnapConstraintManager {
 
   std::map<vendor_qti_hardware_display_common_PixelFormat, FormatData> format_data_map_;
   UBWCPolicy *ubwc_policy_;
+  std::vector<vendor_qti_hardware_display_common_PixelFormat>
+      formats_with_w_h_constraints{
+          vendor_qti_hardware_display_common_PixelFormat::YV12,
+          vendor_qti_hardware_display_common_PixelFormat::CbYCrY_422_I,
+          vendor_qti_hardware_display_common_PixelFormat::YCBCR_422_SP,
+          vendor_qti_hardware_display_common_PixelFormat::YCrCb_422_SP,
+          vendor_qti_hardware_display_common_PixelFormat::YCBCR_422_I,
+          vendor_qti_hardware_display_common_PixelFormat::YCrCb_422_I};
 };
 
 }  // namespace snapalloc

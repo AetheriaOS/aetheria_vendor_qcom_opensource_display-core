@@ -982,6 +982,1375 @@
                     }
                 ]
             }
+        },
+        {
+            "format" : "Y8",
+            "data" : {
+                "bits_per_pixel" : 8,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "Y",
+                                "offset_bits" : 0,
+                                "size_bits" : 8
+                            }
+                        ],
+                        "sample_increment_bits" : 8,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "Y16",
+            "data" : {
+                "bits_per_pixel" : 16,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "Y",
+                                "offset_bits" : 0,
+                                "size_bits" : 16
+                            }
+                        ],
+                        "sample_increment_bits" : 16,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "YCrCb_422_SP",
+            "data" : {
+                "bits_per_pixel" : 16,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "Y",
+                                "offset_bits" : 0,
+                                "size_bits" : 8
+                            }
+                        ],
+                        "sample_increment_bits" : 8,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    },
+                    {
+                        "components": [
+                            {
+                                "component_type" : "CR",
+                                "offset_bits" : 0,
+                                "size_bits" : 8
+                            },
+                            {
+                                "component_type" : "CB",
+                                "offset_bits" : 8,
+                                "size_bits" : 8
+                            }
+                        ],
+                        "sample_increment_bits" : 16,
+                        "h_subsampling_factor" : 2,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "BGRX_8888",
+            "data" : {
+                "bits_per_pixel" : 32,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 8
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 8,
+                                "size_bits" : 8
+                            },
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 16,
+                                "size_bits" : 8
+                            }
+                        ],
+                        "sample_increment_bits" : 32,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "ARGB_2101010",
+            "data" : {
+                "bits_per_pixel" : 32,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 2
+                            },
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 2,
+                                "size_bits" : 10
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 12,
+                                "size_bits" : 10
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 22,
+                                "size_bits" : 10
+                            }
+                        ],
+                        "sample_increment_bits" : 32,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "XRGB_2101010",
+            "data" : {
+                "bits_per_pixel" : 32,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 2,
+                                "size_bits" : 10
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 12,
+                                "size_bits" : 10
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 22,
+                                "size_bits" : 10
+                            }
+                        ],
+                        "sample_increment_bits" : 32,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "ABGR_2101010",
+            "data" : {
+                "bits_per_pixel" : 32,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 2
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 2,
+                                "size_bits" : 10
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 12,
+                                "size_bits" : 10
+                            },
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 22,
+                                "size_bits" : 10
+                            }
+                        ],
+                        "sample_increment_bits" : 32,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "XBGR_2101010",
+            "data" : {
+                "bits_per_pixel" : 32,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 2,
+                                "size_bits" : 10
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 12,
+                                "size_bits" : 10
+                            },
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 22,
+                                "size_bits" : 10
+                            }
+                        ],
+                        "sample_increment_bits" : 32,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "BGRA_1010102",
+            "data" : {
+                "bits_per_pixel" : 32,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 10
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 10,
+                                "size_bits" : 10
+                            },
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 20,
+                                "size_bits" : 10
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 30,
+                                "size_bits" : 2
+                            }
+                        ],
+                        "sample_increment_bits" : 32,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "BGRX_1010102",
+            "data" : {
+                "bits_per_pixel" : 32,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 10
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 10,
+                                "size_bits" : 10
+                            },
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 20,
+                                "size_bits" : 10
+                            }
+                        ],
+                        "sample_increment_bits" : 32,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "BGR_888",
+            "data" : {
+                "bits_per_pixel" : 24,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 8
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 8,
+                                "size_bits" : 8
+                            },
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 16,
+                                "size_bits" : 8
+                            }
+                        ],
+                        "sample_increment_bits" : 24,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_4x4_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_5x4_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_5x5_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_6x5_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_6x6_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_8x5_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_8x6_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_8x8_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_10x5_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_10x6_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_10x8_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_10x10_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_12x10_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_RGBA_ASTC_12x12_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_5x4_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_5x5_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_6x5_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_6x6_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_8x5_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_8x6_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_8x8_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_10x5_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_10x6_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_10x8_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_10x10_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR",
+            "data" : {
+                "bits_per_pixel" : 0,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "R",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "G",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "B",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            },
+                            {
+                                "component_type" : "A",
+                                "offset_bits" : 0,
+                                "size_bits" : 0
+                            }
+                        ],
+                        "sample_increment_bits" : 0,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "YCrCb_422_I",
+            "data" : {
+                "bits_per_pixel" : 16,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "Y",
+                                "offset_bits" : 0,
+                                "size_bits" : 8
+                            }
+                        ],
+                        "sample_increment_bits" : 8,
+                        "h_subsampling_factor" : 1,
+                        "v_subsampling_factor" : 1
+                    },
+                    {
+                        "components": [
+                            {
+                                "component_type" : "CR",
+                                "offset_bits" : 0,
+                                "size_bits" : 8
+                            },
+                            {
+                                "component_type" : "CB",
+                                "offset_bits" : 8,
+                                "size_bits" : 8
+                            }
+                        ],
+                        "sample_increment_bits" : 16,
+                        "h_subsampling_factor" : 2,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
+        },
+        {
+            "format" : "CbYCrY_422_I",
+            "data" : {
+                "bits_per_pixel" : 16,
+                "planes" : [
+                    {
+                        "components": [
+                            {
+                                "component_type" : "Y",
+                                "offset_bits" : 0,
+                                "size_bits" : 8
+                            }
+                        ],
+                        "sample_increment_bits" : 16,
+                        "h_subsampling_factor" : 2,
+                        "v_subsampling_factor" : 1
+                    }
+                ]
+            }
         }
     ]
 }

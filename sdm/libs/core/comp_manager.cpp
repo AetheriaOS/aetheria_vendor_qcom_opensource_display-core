@@ -354,6 +354,44 @@ void CompManager::GenerateROI(Handle display_ctx, DispLayerStack *disp_layer_sta
   return disp_comp_ctx->strategy->GenerateROI(disp_layer_stack, disp_comp_ctx->pu_constraints);
 }
 
+DisplayError CompManager::HandleQosValidation(Handle display_ctx,
+                                              DispLayerStack *disp_layer_stack,
+                                              DisplayError error) {
+  DisplayCompositionContext *display_comp_ctx =
+                             reinterpret_cast<DisplayCompositionContext *>(display_ctx);
+  // CWB info must be updated to HWLayersInfo of display layer stack before QoS validation.
+  for (auto &info : disp_layer_stack->info) {
+    // TODO (user): Need to split CWB buffer and config for each core, when CWB supports
+    // for dual DPU.
+    info.second.output_buffer = disp_layer_stack->stack->output_buffer;
+    info.second.hw_cwb_config = disp_layer_stack->stack_info.hw_cwb_config;
+  }
+
+  // Revalidate/recalculate QoS, if it needs as per returned error code.
+  if (error == kErrorNeedsQosRecalc ||
+      error == kErrorNeedsQosRecalcAndLutRegen) {
+    auto err = resource_intf_->ValidateQoS(
+        display_comp_ctx->display_resource_ctx, disp_layer_stack);
+    if (err == kErrorNone) {
+      if (error == kErrorNeedsQosRecalcAndLutRegen) {
+        // Here, QoS is validated, but still tone-map LUT regeneration is pending.
+        // So, update return error for LUT regeneration during further process.
+        error = kErrorNeedsLutRegen;
+      } else {
+        error = kErrorNone;
+      }
+    } else {
+      // Reset strategy internal parameters for full validation and get max
+      // strategies available.
+      display_comp_ctx->strategy->ResetStrategy(&display_comp_ctx->max_strategies);
+      display_comp_ctx->remaining_strategies = display_comp_ctx->max_strategies;
+      error = kErrorNeedsValidate;
+    }
+  }
+
+  return error;
+}
+
 DisplayError CompManager::PrePrepare(Handle display_ctx, DispLayerStack *disp_layer_stack) {
   std::lock_guard<std::recursive_mutex> obj(comp_mgr_mutex_);
   DisplayCompositionContext *display_comp_ctx =
@@ -370,6 +408,8 @@ DisplayError CompManager::PrePrepare(Handle display_ctx, DispLayerStack *disp_la
                                                          &display_comp_ctx->max_strategies,
                                                          &display_comp_ctx->constraints);
   display_comp_ctx->remaining_strategies = display_comp_ctx->max_strategies;
+
+  error = HandleQosValidation(display_comp_ctx, disp_layer_stack, error);
 
   resource_intf_->Perform(ResourceInterface::kCmdSetCacMode, display_comp_ctx->display_resource_ctx,
                           &disp_layer_stack->stack_info.enable_cac);

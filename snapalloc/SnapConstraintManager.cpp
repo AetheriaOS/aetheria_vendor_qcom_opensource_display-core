@@ -146,6 +146,15 @@ Error SnapConstraintManager::GetAllocationData(
     vendor_qti_hardware_display_common_BufferLayout *out_layout, BufferDescriptor *out_desc,
     int *out_priv_flags) {
   *out_desc = in_desc;
+  // Check for width/height constraints for specific formats
+  if (std::find(formats_with_w_h_constraints.begin(),
+                formats_with_w_h_constraints.end(),
+                out_desc->format) != formats_with_w_h_constraints.end()) {
+    if ((!CheckWidthConstraints(out_desc->format, out_desc->width)) ||
+        (!(CheckHeightConstraints(out_desc->format, out_desc->height)))) {
+      return Error::BAD_VALUE;
+    }
+  }
   if (in_desc.format == vendor_qti_hardware_display_common_PixelFormat::IMPLEMENTATION_DEFINED ||
       in_desc.format == vendor_qti_hardware_display_common_PixelFormat::YCBCR_420_888) {
     vendor_qti_hardware_display_common_PixelFormatModifier modifier = PIXEL_FORMAT_MODIFIER_NONE;
@@ -229,6 +238,10 @@ Error SnapConstraintManager::SetSnapPrivateFlags(
 Error SnapConstraintManager::ConvertAlignedWidthFromBytesToPixels(
     vendor_qti_hardware_display_common_PixelFormat format, int width_in_bytes,
     int *width_in_pixels) {
+  if (IsAstc(format)) {
+    *width_in_pixels = width_in_bytes;
+    return Error::NONE;
+  }
   if (format_data_map_.find(format) == format_data_map_.end()) {
     ALOGE("Could not find entry for format %lu", static_cast<uint64_t>(format));
     return Error::UNSUPPORTED;
@@ -412,6 +425,8 @@ Error SnapConstraintManager::AlignmentToAlignedConstraints(BufferDescriptor desc
                alignment.planes[i].scanline.scanline_align);
       ALOGD_IF(DEBUG, "alignment.planes[i].size_align %d", alignment.planes[i].size_align);
 
+      // TODO: If default constraint provider returns an aligned output for
+      // YV12, move this special handling to default constraint provider
       if ((desc.format == vendor_qti_hardware_display_common_PixelFormat::YV12) &&
           (alignment.planes[i].components[0] != PLANE_LAYOUT_COMPONENT_TYPE_Y)) {
         plane.stride.horizontal_stride =

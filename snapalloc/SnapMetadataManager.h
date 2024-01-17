@@ -67,7 +67,7 @@ class SnapMetadataManager {
   int GetDRMFormat(vendor_qti_hardware_display_common_PixelFormat format,
                    vendor_qti_hardware_display_common_BufferUsage usage, int flags,
                    uint32_t *drm_format, uint64_t *drm_format_modifier);
-  int GetRgbDataAddress(SnapHandleInternal *hnd, void **rgb_data);
+  Error GetRgbDataAddress(SnapHandleInternal *hnd, void **rgb_data);
   Error BufferIDHelper(SnapMetadata *metadata, SnapHandleInternal *handle, void *in_set = nullptr,
                        void *out_get = nullptr, BufferDescriptor *buf_des = nullptr);
   Error NameHelper(SnapMetadata *metadata, SnapHandleInternal *handle, void *in_set = nullptr,

@@ -466,6 +466,10 @@ int CameraConstraintProvider::GetCapabilities(BufferDescriptor desc, CapabilityS
     out->enabled = false;
   }
 
+  if (IsAstc(desc.format)) {
+    out->enabled = false;
+  }
+
   return 0;
 }
 

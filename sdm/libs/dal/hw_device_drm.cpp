@@ -96,7 +96,7 @@
 #define DRM_FORMAT_MOD_QCOM_LOSSY_8_5 fourcc_mod_code(QCOM, 0x20)
 #endif
 #ifndef DRM_FORMAT_MOD_QCOM_LOSSY_2_1
-#define DRM_FORMAT_MOD_QCOM_LOSSY_2_1 fourcc_mod_code(QCOM, 0x40)
+#define DRM_FORMAT_MOD_QCOM_LOSSY_2_1 fourcc_mod_code(QCOM, 0x200)
 #endif
 
 #define DEST_SCALAR_OVERFETCH_SIZE 5
@@ -1875,6 +1875,8 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
     ApplyNoiseLayerConfig();
     SetQOSData(qos_data);
     drm_atomic_intf_->Perform(DRMOps::CRTC_SET_SECURITY_LEVEL, token_.crtc_id, crtc_security_level);
+  } else if (hw_layers_info->common_info->updates_mask.test(kChangeCwbConfig)) {
+    SetQOSData(qos_data);
   }
 
   if (hw_layers_info->common_info->hw_avr_info.update) {
