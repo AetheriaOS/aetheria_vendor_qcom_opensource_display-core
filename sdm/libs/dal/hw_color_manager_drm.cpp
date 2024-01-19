@@ -1,3 +1,4 @@
+// clang-format off
 /*
 * Copyright (c) 2017-2018, 2020-2021, The Linux Foundation. All rights reserved.
 *
@@ -28,40 +29,11 @@
 */
 
 /*
- *  Changes from Qualcomm Innovation Center are provided under the following license:
- *
- *  Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted (subject to the limitations in the
- *  disclaimer below) provided that the following conditions are met:
- *
- *      * Redistributions of source code must retain the above copyright
- *        notice, this list of conditions and the following disclaimer.
- *
- *      * Redistributions in binary form must reproduce the above
- *        copyright notice, this list of conditions and the following
- *        disclaimer in the documentation and/or other materials provided
- *        with the distribution.
- *
- *      * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
- *        contributors may be used to endorse or promote products derived
- *        from this software without specific prior written permission.
- *
- *  NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
- *  GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
- *  HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
- *   WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- *  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
- *  IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
- *  IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
+ * Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
+// clang-format on
 
 #define __CLASS__ "HWColorManagerDRM"
 
@@ -201,8 +173,11 @@ uint32_t HWColorManagerDrm::GetFeatureVersion(const DRMPPFeatureInfo &feature) {
       }
       break;
     case kFeaturePgc:
-      if (feature.version == 1)
+      if (feature.version == 1) {
         version = PPFeatureVersion::kSDEPgcV17;
+      } else if (feature.version == 2) {
+        version = PPFeatureVersion::kSDEPgcV2;
+      }
       break;
     case kFeatureMixerGc:
         version = PPFeatureVersion::kSDEPgcV17;
@@ -565,8 +540,13 @@ DisplayError HWColorManagerDrm::GetDrmPGC(const PPFeatureInfo &in_data,
   }
 
   mdp_pgc->flags = 0;
+#ifdef PGC_HIGHPREC_EN
+  if (sde_pgc->flags & SDM_PGC_HIGHPREC_MODE)
+    mdp_pgc->flags |= PGC_HIGHPREC_EN;
+#endif
 
-  for (int i = 0, j = 0; i < PGC_TBL_LEN; i++, j += 2) {
+  int i = 0, j = 0;
+  for (; i < PGC_TBL_LEN; i++, j += 2) {
     mdp_pgc->c0[i] = (sde_pgc->c0_data[j] & kPgcDataMask) |
         (sde_pgc->c0_data[j + 1] & kPgcDataMask) << kPgcShift;
     mdp_pgc->c1[i] = (sde_pgc->c1_data[j] & kPgcDataMask) |
@@ -574,6 +554,24 @@ DisplayError HWColorManagerDrm::GetDrmPGC(const PPFeatureInfo &in_data,
     mdp_pgc->c2[i] = (sde_pgc->c2_data[j] & kPgcDataMask) |
         (sde_pgc->c2_data[j + 1] & kPgcDataMask) << kPgcShift;
   }
+
+#ifdef PGC_HIGHPREC_EN
+  int len_ext = 0;
+  if (mdp_pgc->flags & PGC_HIGHPREC_EN)
+    len_ext = PGC_TBL_LEN_EXTENDED;
+  for (i = 0; i < len_ext; i++, j += 2) {
+    mdp_pgc->c0_extended[i] = (sde_pgc->c0_data[j] & kPgcDataMask) |
+                              (sde_pgc->c0_data[j + 1] & kPgcDataMask)
+                                  << kPgcShift;
+    mdp_pgc->c1_extended[i] = (sde_pgc->c1_data[j] & kPgcDataMask) |
+                              (sde_pgc->c1_data[j + 1] & kPgcDataMask)
+                                  << kPgcShift;
+    mdp_pgc->c2_extended[i] = (sde_pgc->c2_data[j] & kPgcDataMask) |
+                              (sde_pgc->c2_data[j + 1] & kPgcDataMask)
+                                  << kPgcShift;
+  }
+#endif
+
   out_data->payload = mdp_pgc;
 #endif
   return ret;
