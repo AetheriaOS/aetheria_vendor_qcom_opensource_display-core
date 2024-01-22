@@ -168,13 +168,22 @@ int GraphicsConstraintProvider::GetCapabilities(BufferDescriptor desc, Capabilit
       desc.usage & vendor_qti_hardware_display_common_BufferUsage::GPU_MIPMAP_COMPLETE ||
       desc.usage & vendor_qti_hardware_display_common_BufferUsage::GPU_DATA_BUFFER ||
       desc.usage & vendor_qti_hardware_display_common_BufferUsage::RENDERSCRIPT) {
-    ALOGD_IF(DEBUG, "GraphicsConstraintProvider is enabled");
     out->enabled = true;
   } else {
-    ALOGD_IF(DEBUG, "GraphicsConstraintProvider is not enabled");
     out->enabled = false;
   }
 
+  uint64_t pixel_format_modifier = GetPixelFormatModifier(desc);
+  if (GetGpuPixelFormat(
+          desc.format,
+          static_cast<vendor_qti_hardware_display_common_PixelFormatModifier>(
+              pixel_format_modifier)) == ADRENO_PIXELFORMAT_UNKNOWN) {
+    out->enabled = false;
+  }
+
+  ALOGD_IF(DEBUG, (out->enabled == true
+                       ? "GraphicsConstraintProvider is enabled"
+                       : "GraphicsConstraintProvider is not enabled"));
   return 0;
 }
 
