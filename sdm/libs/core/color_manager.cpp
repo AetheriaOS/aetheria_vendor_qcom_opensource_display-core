@@ -714,7 +714,10 @@ DisplayError ColorManagerProxy::ConvertToPPFeatures(const HwConfigOutputParams &
   for (auto it = params.payload.begin(); it != params.payload.end(); it++) {
     error = color_intf_->ColorIntfConvertFeature(UINT32(display_id_), *it, out_data);
     if (error != kErrorNone) {
-      DLOGE("Failed to convert %s feature to PPFeature : err %d", it->hw_asset.c_str(), error);
+      if (error == kErrorNotSupported)
+        DLOGW("Failed to convert %s feature to PPFeature : err %d", it->hw_asset.c_str(), error);
+      else
+        DLOGE("Failed to convert %s feature to PPFeature : err %d", it->hw_asset.c_str(), error);
       return error;
     }
   }
@@ -753,8 +756,11 @@ DisplayError ColorManagerProxy::UpdateModeHwassets(int32_t mode_id,
 
   error = ConvertToPPFeatures(hw_params, &pp_features_);
   if (error != kErrorNone) {
-    DLOGE("Failed to convert hw assets to PP features, error = %d", error);
-    return kErrorUndefined;
+    if (error == kErrorNotSupported)
+      DLOGW("Failed to convert hw assets to PP features, error = %d", error);
+    else
+      DLOGE("Failed to convert hw assets to PP features, error = %d", error);
+    return error;
   }
   pp_features_.MarkAsDirty();
   return error;
