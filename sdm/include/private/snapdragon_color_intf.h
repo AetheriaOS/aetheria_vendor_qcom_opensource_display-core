@@ -27,6 +27,14 @@
 * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/*
+ * Changes from Qualcomm Innovation Center are provided under the following
+ * license:
+ *
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
+
 #ifndef __SNAPDRAGON_COLOR_INTF_H__
 #define __SNAPDRAGON_COLOR_INTF_H__
 
@@ -57,7 +65,8 @@ enum ScProperty {
   //<! GetProperty - For client to Get list of supported ColorModes.
   //<! Payload -struct ColorModeList
   kModeList,
-  //<! GetProperty - For client to check if Mode needs to be updated due to listener updates.
+  //<! GetProperty - For client to check if Mode needs to be updated due to
+  // listener updates.
   //<! Payload - bool
   kNeedsUpdate,
   //<! ScOps - Prop for passing ModeRenderInputParams payload
@@ -99,6 +108,9 @@ enum ScProperty {
   //<! SetProperty - Property to pass the display interface to STC manager.
   //<! Payload - struct DisplayInterface*
   kDisplayIntf,
+  //<! SetProperty - Property to pass PPFeatureVersion to STC manager.
+  //<! Payload - struct PPFeatureVersion
+  kSetPPFeatureVersion,
   //<! Max value of public properties
   kPropertyMax = 511,
   //<! Custom Properties
