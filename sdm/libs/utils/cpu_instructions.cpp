@@ -40,7 +40,7 @@ CPUInstructions * CPUInstructions::CreateInstance(bool track_all_thread,  int32_
 
 void CPUInstructions::DestroyInstance(CPUInstructions *intf, uint64_t *cpu_instructions) {
   if (!intf) {
-    DLOGE("Invalid cpuinstruction pointer");
+    DLOGW("Invalid cpuinstruction pointer");
     return;
   }
 
@@ -64,8 +64,8 @@ int32_t CPUInstructions::Init(bool track_all_thread, int32_t cpu_cores) {
   }
 
   event_fd_ = PerfEventOpen(&pe, 0, cpu_cores, -1, 0);
-  if (event_fd_ == -1) {
-    DLOGE("Error opening perf event %llx error %s", pe.config, strerror(errno));
+  if (event_fd_ < 0) {
+    DLOGW("Error opening perf event %llx error %s", pe.config, strerror(errno));
     return -1;
   }
 
@@ -80,7 +80,7 @@ int32_t CPUInstructions::Init(bool track_all_thread, int32_t cpu_cores) {
 
 int32_t CPUInstructions::DeInit(uint64_t *cpu_instructions) {
   std::unique_lock<std::mutex> lock(cpu_instr_mutex_);
-  if (event_fd_ == -1) {
+  if (event_fd_ < 0) {
     DLOGW("Perf event is not opened");
     return -1;
   }
@@ -98,7 +98,7 @@ int32_t CPUInstructions::DeInit(uint64_t *cpu_instructions) {
 int32_t CPUInstructions::StartTracking() {
   std::lock_guard<std::mutex> lock(cpu_instr_mutex_);
   if (event_fd_ < 0) {
-    DLOGE("perf event open is not done");
+    DLOGW("perf event open is not done");
     return -1;
   }
 
@@ -114,7 +114,7 @@ int32_t CPUInstructions::StartTracking() {
 int32_t CPUInstructions::StopTracking(uint64_t *cpu_instructions) {
   std::lock_guard<std::mutex> lock(cpu_instr_mutex_);
   if (event_fd_ < 0) {
-    DLOGE("perf event open is not done");
+    DLOGW("perf event open is not done");
     return -1;
   }
 
