@@ -271,6 +271,11 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   virtual DisplayError PerformCacConfig(CacConfig config, bool enable) {
     return kErrorNotSupported;
   }
+  virtual DisplayError
+  PanelOprInfo(const std::string &client_name, bool enable,
+               SdmDisplayCbInterface<PanelOprPayload> *cb_intf) {
+    return kErrorNotSupported;
+  }
 
  protected:
   struct DisplayMutex {
@@ -468,6 +473,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   DisplayDeviceContext device_ctx_;
   static std::atomic<uint32_t> hw_rc_blocks_in_use_;
   uint32_t rc_blocks_reserved_ = 0;
+  DynLib extension_lib_;
 
 private:
   // Max tolerable power-state-change wait-times in milliseconds.

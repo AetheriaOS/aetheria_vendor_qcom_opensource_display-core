@@ -23,11 +23,12 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
-*
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
-* SPDX-License-Identifier: BSD-3-Clause-Clear
-*/
+ * Changes from Qualcomm Innovation Center are provided under the following
+ * license:
+ *
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 /*! @file display_interface.h
   @brief Interface file for display device which represents a physical panel or an output buffer
@@ -40,11 +41,13 @@
 #ifndef __DISPLAY_INTERFACE_H__
 #define __DISPLAY_INTERFACE_H__
 
+#include <private/cb_intf.h>
+#include <private/display_event_proxy_intf.h>
 #include <private/snapdragon_color_intf.h>
 #include <stdint.h>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "layer_stack.h"
 #include "sdm_types.h"
@@ -1369,7 +1372,19 @@ class DisplayInterface {
   */
   virtual DisplayError PerformCacConfig(CacConfig config, bool enable) = 0;
 
- protected:
+  /*! @brief Method to enable/disable panel OPR info.
+
+   @param[in] client_name : client name
+   @param[in] enable: enable or disable
+   @param[in] cb_intf: callback interface
+
+   @return \link DisplayError \endlink
+  */
+  virtual DisplayError
+  PanelOprInfo(const std::string &client_name, bool enable,
+               SdmDisplayCbInterface<PanelOprPayload> *cb_intf) = 0;
+
+protected:
   virtual ~DisplayInterface() { }
 };
 

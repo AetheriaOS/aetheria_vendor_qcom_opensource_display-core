@@ -23,11 +23,12 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
-*
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
-* SPDX-License-Identifier: BSD-3-Clause-Clear
-*/
+ * Changes from Qualcomm Innovation Center are provided under the following
+ * license:
+ *
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #ifndef __DISPLAY_BUILTIN_H__
 #define __DISPLAY_BUILTIN_H__
@@ -37,13 +38,14 @@
 
 #include <core/dpps_interface.h>
 #include <core/ipc_interface.h>
-#include <private/extension_interface.h>
-#include <private/spr_intf.h>
 #include <private/demuratn_core_uvm_fact_intf.h>
+#include <private/display_event_proxy_intf.h>
+#include <private/extension_interface.h>
 #include <private/feature_license_intf.h>
-#include <private/panel_feature_property_intf.h>
-#include <private/panel_feature_factory_intf.h>
 #include <private/hw_events_interface.h>
+#include <private/panel_feature_factory_intf.h>
+#include <private/panel_feature_property_intf.h>
+#include <private/spr_intf.h>
 #include <string>
 #include <vector>
 
@@ -108,6 +110,19 @@ class DppsInfo {
   DppsInterface *(*GetDppsInterface)() = NULL;
 
   void Deinit_nolock();
+};
+
+class EventProxyInfo {
+public:
+  DisplayError Init(const std::string &panel_name, DisplayInterface *intf,
+                    DynLib &extension_lib);
+  DisplayError Deinit();
+  DisplayError PanelOprInfo(const std::string &client_name, bool enable,
+                            SdmDisplayCbInterface<PanelOprPayload> *cb_intf);
+
+private:
+  std::mutex lock_;
+  std::shared_ptr<DisplayEventProxyIntf> event_proxy_intf_ = nullptr;
 };
 
 class DisplayIPCVmCallbackImpl : public IPCVmCallbackIntf {
@@ -203,6 +218,9 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError SetDemuraState(int state) override;
   DisplayError SetDemuraConfig(int demura_idx) override;
   DisplayError PerformCacConfig(CacConfig config, bool enable) override;
+  DisplayError
+  PanelOprInfo(const std::string &client_name, bool enable,
+               SdmDisplayCbInterface<PanelOprPayload> *cb_intf) override;
 
   // Implement the HWEventHandlers
   DisplayError VSync(int64_t timestamp) override;
@@ -329,6 +347,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   bool enable_cac_ = false;
   CacConfig cac_config_ = {};
   BufferInfo output_buffer_info_ = {};
+  EventProxyInfo event_proxy_info_ = {};
 };
 
 }  // namespace sdm
