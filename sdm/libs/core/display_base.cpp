@@ -280,6 +280,14 @@ DisplayError DisplayBase::Init() {
   }
   DisplayBase::SetMaxMixerStages(max_mixer_stages);
 
+  // Open extension lib
+  if (!extension_lib_) {
+    if (!extension_lib_.Open(EXTENSION_LIBRARY_NAME)) {
+      DLOGW("Unable to open lib %s, error = %s", EXTENSION_LIBRARY_NAME,
+            extension_lib_.Error());
+    }
+  }
+
   // TODO(user): Temporary changes, to be removed when DRM driver supports
   // Partial update with Destination scaler enabled.
   SetPUonDestScaler();
@@ -488,18 +496,12 @@ DisplayError DisplayBase::SetupPanelFeatureFactory() {
     return kErrorNone;
   }
 
-  DynLib feature_impl_lib;
   GetPanelFeatureFactory get_factory_f_ptr = nullptr;
-  if (feature_impl_lib.Open(EXTENSION_LIBRARY_NAME)) {
-    if (!feature_impl_lib.Sym(GET_PANEL_FEATURE_FACTORY,
-                              reinterpret_cast<void **>(&get_factory_f_ptr))) {
-      DLOGE("Unable to load symbols, error = %s", feature_impl_lib.Error());
-      return kErrorUndefined;
-    }
-  } else {
-    DLOGW("Unable to load = %s, error = %s", EXTENSION_LIBRARY_NAME, feature_impl_lib.Error());
-    DLOGW("SDM Extension is not supported");
-    return kErrorNone;
+  if (!extension_lib_.Sym(GET_PANEL_FEATURE_FACTORY,
+                          reinterpret_cast<void **>(&get_factory_f_ptr))) {
+    DLOGE("Unable to load symbols %s, error = %s", GET_PANEL_FEATURE_FACTORY,
+          extension_lib_.Error());
+    return kErrorUndefined;
   }
 
   pf_factory_ = get_factory_f_ptr();
@@ -519,9 +521,11 @@ DisplayError DisplayBase::SetupPanelFeatureFactory() {
   GetDemuraTnFactory get_demuratn_factory_ptr = nullptr;
   Debug::Get()->GetProperty(ENABLE_ANTI_AGING, &demuratn_enable);
   if (demuratn_enable) {
-    if (!feature_impl_lib.Sym(GET_DEMURATN_FACTORY,
-                              reinterpret_cast<void **>(&get_demuratn_factory_ptr))) {
-      DLOGW("Unable to load symbols, error = %s", feature_impl_lib.Error());
+    if (!extension_lib_.Sym(
+            GET_DEMURATN_FACTORY,
+            reinterpret_cast<void **>(&get_demuratn_factory_ptr))) {
+      DLOGW("Unable to load symbols %s, error = %s", GET_DEMURATN_FACTORY,
+            extension_lib_.Error());
       return kErrorUndefined;
     }
 
@@ -534,9 +538,11 @@ DisplayError DisplayBase::SetupPanelFeatureFactory() {
 
 #ifndef TRUSTED_VM
   GetFeatureLicenseFactory get_feature_license_factory_ptr = nullptr;
-  if (!feature_impl_lib.Sym(GET_FEATURE_LICENSE_FACTORY,
-                            reinterpret_cast<void **>(&get_feature_license_factory_ptr))) {
-    DLOGW("Unable to load symbols, error = %s", feature_impl_lib.Error());
+  if (!extension_lib_.Sym(
+          GET_FEATURE_LICENSE_FACTORY,
+          reinterpret_cast<void **>(&get_feature_license_factory_ptr))) {
+    DLOGW("Unable to load symbols %s, error = %s", GET_FEATURE_LICENSE_FACTORY,
+          extension_lib_.Error());
     return kErrorUndefined;
   }
 

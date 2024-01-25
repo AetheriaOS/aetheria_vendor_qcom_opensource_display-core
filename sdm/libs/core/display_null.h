@@ -28,9 +28,10 @@
  */
 
 /*
- * Changes from Qualcomm Innovation Center are provided under the following license:
+ * Changes from Qualcomm Innovation Center are provided under the following
+ * license:
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
@@ -167,8 +168,10 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(SetJitterConfig(uint32_t, float, uint32_t))
   MAKE_NO_OP(CaptureCwb(const LayerBuffer &, const CwbConfig &));
   MAKE_NO_OP(GetPanelFeatureInfo(PanelFeatureInfo *info));
+  MAKE_NO_OP(PanelOprInfo(const std::string &client_name, bool enable,
+                          SdmDisplayCbInterface<PanelOprPayload> *cb_intf));
 
- protected:
+protected:
   DisplayConfigVariableInfo default_variable_config_ = {};
   DisplayConfigFixedInfo default_fixed_config_ = {};
   // 1920x1080 60fps panel of name Null Display with PnPID QCM
