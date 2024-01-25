@@ -149,6 +149,7 @@ public:
  virtual DisplayError SetDemuraConfig(int demura_idx);
  virtual DisplayError PerformCacConfig(CacConfig config, bool enable);
  virtual DisplayError SetSsrcMode(const std::string &mode);
+ virtual DisplayError SetupVRRConfig();
 
 private:
  SDMDisplayBuiltIn(CoreInterface *core_intf, BufferAllocator *buffer_allocator,

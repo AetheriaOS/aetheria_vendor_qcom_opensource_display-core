@@ -513,6 +513,7 @@ public:
     // Work around to block main thread execution until async commit finishes.
     display_intf_->DestroyLayer();
   }
+  virtual DisplayError SetupVRRConfig() { return kErrorNotSupported; }
 
   virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
 

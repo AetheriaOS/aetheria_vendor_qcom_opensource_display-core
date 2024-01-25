@@ -2522,4 +2522,8 @@ DisplayError ConcurrencyMgr::GetCoprStatus(uint64_t display_id, std::vector<int3
   return kErrorNone;
 }
 
+DisplayError ConcurrencyMgr::SetupVRRConfig(uint64_t display) {
+  return CallDisplayFunction(display, &SDMDisplay::SetupVRRConfig);
+}
+
 } // namespace sdm
