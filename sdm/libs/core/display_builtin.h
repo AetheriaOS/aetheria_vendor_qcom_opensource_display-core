@@ -121,8 +121,11 @@ public:
   DisplayError Deinit();
   DisplayError PanelOprInfo(const std::string &client_name, bool enable,
                             SdmDisplayCbInterface<PanelOprPayload> *cb_intf);
+  DisplayError SetPaHistCollection(const std::string &client_name, bool enable,
+                                   SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf);
+  DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf);
 
-private:
+ private:
   std::mutex lock_;
   std::shared_ptr<DisplayEventProxyIntf> event_proxy_intf_ = nullptr;
 };
@@ -223,6 +226,10 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError
   PanelOprInfo(const std::string &client_name, bool enable,
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) override;
+  DisplayError SetPaHistCollection(
+      const std::string &client_name, bool enable,
+      SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf) override;
+  DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf) override;
   DisplayError SetSsrcMode(const std::string &mode) override;
 
   // Implement the HWEventHandlers

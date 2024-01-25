@@ -281,6 +281,14 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) {
     return kErrorNotSupported;
   }
+  virtual DisplayError SetPaHistCollection(
+      const std::string &client_name, bool enable,
+      SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf) {
+    return kErrorNotSupported;
+  }
+  virtual DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf) {
+    return kErrorNotSupported;
+  }
   virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
 
  protected:
