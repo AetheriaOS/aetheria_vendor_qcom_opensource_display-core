@@ -24,7 +24,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -44,6 +44,8 @@
 #include <map>
 #include <string>
 #include <mutex>
+
+#define COLOR_TRANSFORM_IDENTITY {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}
 
 #include "dpu_core_mux.h"
 
@@ -140,6 +142,7 @@ class ColorManagerIntf {
   virtual DisplayError NotifyDisplayCalibrationMode(bool in_calibration) = 0;
   virtual DisplayError ColorMgrSetLtmPccConfig(void* pcc_input, size_t size) = 0;
   virtual DisplayError ColorMgrSetSprIntf(std::shared_ptr<SPRIntf> spr_intf) = 0;
+  virtual DisplayError ColorMgrIdleFallback(bool idle_fallback_hint) = 0;
 
   // TBD: Should remove these legacy API's?
   virtual DisplayError ApplyDefaultDisplayMode() = 0;
@@ -208,6 +211,7 @@ class ColorManagerProxy : public ColorManagerIntf {
   DisplayError NotifyDisplayCalibrationMode(bool in_calibration);
   DisplayError ColorMgrSetLtmPccConfig(void* pcc_input, size_t size);
   DisplayError ColorMgrSetSprIntf(std::shared_ptr<SPRIntf> spr_intf);
+  DisplayError ColorMgrIdleFallback(bool idle_fallback_hint);
 
  protected:
   ColorManagerProxy() {}
@@ -251,6 +255,9 @@ class ColorManagerProxy : public ColorManagerIntf {
   snapdragoncolor::ColorMode curr_mode_;
   bool needs_update_ = false;
   uint32_t core_id_;
+  bool prev_idle_fallback_hint_ = false;
+  ColorMode prev_idle_fallback_mode_ = {};
+  struct snapdragoncolor::ColorTransform curr_color_xform_ = {};
 };
 
 class ColorFeatureCheckingImpl : public FeatureInterface {
@@ -360,6 +367,7 @@ class DPUColorManager : public ColorManagerIntf {
   DisplayError NotifyDisplayCalibrationMode(bool in_calibration);
   DisplayError ColorMgrSetLtmPccConfig(void* pcc_input, size_t size);
   DisplayError ColorMgrSetSprIntf(std::shared_ptr<SPRIntf> spr_intf);
+  DisplayError ColorMgrIdleFallback(bool idle_fallback_hint);
 
   // TBD: Should remove these legacy API's?
   DisplayError ApplyDefaultDisplayMode();
