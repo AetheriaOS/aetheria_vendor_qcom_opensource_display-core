@@ -44,8 +44,14 @@
 #include <bitset>
 
 #include "layer_buffer.h"
+#include <SnapHandle.h>
+#include <MetadataType.h>
 
 namespace sdm {
+
+using SnapHandle = vendor::qti::hardware::display::snapalloc::SnapHandle;
+using QtiDataspace = vendor_qti_hardware_display_common_Dataspace;
+
 /*! @brief Input configuration set by the client for buffer allocation.
 
   @sa BufferInfo::BufferConfig
@@ -177,7 +183,7 @@ class BufferAllocator {
 
     @param[out] allocated_buffer_info \link AllocatedBufferInfo \endlink
 
-    @return \link int \endlink
+    @return \link int \endlink) = 0;
   */
   virtual int GetAllocatedBufferInfo(const BufferConfig &buffer_config,
                                               AllocatedBufferInfo *allocated_buffer_info) = 0;
@@ -200,6 +206,16 @@ class BufferAllocator {
     (void) offset;
     (void) num_planes;
     return -ENOTSUP; }
+
+  // callbacks from sdmclient
+  virtual int SetBufferInfo(LayerBufferFormat format, int *target, uint64_t *flags) = 0;
+  virtual int GetAlignedWidthAndHeight(int width, int height, int format, uint32_t alloc_type,
+                                        int *aligned_width, int *aligned_height) = 0;
+  virtual bool GetSDMColorSpace(const int int_dataspace, QtiDataspace *dataspace) = 0;
+  virtual LayerBufferFormat GetSDMFormat(const int32_t &source, const int32_t flags,
+                                         const int64_t compression_type) = 0;
+  virtual DisplayError ColorMetadataToDataspace(Dataspace ds, uint32_t *int_dataspace) = 0;
+  virtual int32_t TranslateFromLegacyDataspace(const int32_t &legacy_ds) = 0;
 
  protected:
   virtual ~BufferAllocator() { }

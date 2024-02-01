@@ -308,8 +308,8 @@ DisplayError DisplayPluggable::InitializeColorModes() {
     color_mode_attr_map_.insert(std::make_pair(kSrgb, var));
 
     // native mode
-    pt.primaries = ColorPrimaries_Max;
-    pt.transfer = Transfer_Max;
+    pt.primaries = QtiColorPrimaries_Max;
+    pt.transfer = QtiTransfer_Max;
     var.clear();
     var.push_back(std::make_pair(kColorGamutAttribute, kNative));
     var.push_back(std::make_pair(kGammaTransferAttribute, kNative));
@@ -323,13 +323,13 @@ DisplayError DisplayPluggable::InitializeColorModes() {
   var.push_back(std::make_pair(kPictureQualityAttribute, kStandard));
   var.push_back(std::make_pair(kRenderIntentAttribute, "0"));
   if (client_ctx_.hw_panel_info.hdr_eotf & kHdrEOTFHDR10) {
-    pt.transfer = Transfer_SMPTE_ST2084;
+    pt.transfer = QtiTransfer_SMPTE_ST2084;
     var.push_back(std::make_pair(kGammaTransferAttribute, kSt2084));
     color_modes_cs_.push_back(pt);
     color_mode_attr_map_.insert(std::make_pair(kBt2020Pq, var));
   }
   if (client_ctx_.hw_panel_info.hdr_eotf & kHdrEOTFHLG) {
-    pt.transfer = Transfer_HLG;
+    pt.transfer = QtiTransfer_HLG;
     var.pop_back();
     var.push_back(std::make_pair(kGammaTransferAttribute, kHlg));
     color_modes_cs_.push_back(pt);
@@ -345,8 +345,8 @@ void DisplayPluggable::InitializeColorModesFromColorspace() {
   PrimariesTransfer pt = {};
   AttrVal var = {};
   if (client_ctx_.hw_panel_info.supported_colorspaces & kColorspaceDcip3) {
-    pt.primaries = ColorPrimaries_DCIP3;
-    pt.transfer = Transfer_sRGB;
+    pt.primaries = QtiColorPrimaries_DCIP3;
+    pt.transfer = QtiTransfer_sRGB;
     var.clear();
     var.push_back(std::make_pair(kColorGamutAttribute, kDcip3));
     var.push_back(std::make_pair(kGammaTransferAttribute, kSrgb));
@@ -356,8 +356,8 @@ void DisplayPluggable::InitializeColorModesFromColorspace() {
     color_mode_attr_map_.insert(std::make_pair(kDisplayP3, var));
   }
   if (client_ctx_.hw_panel_info.supported_colorspaces & kColorspaceBt2020rgb) {
-    pt.primaries = ColorPrimaries_BT2020;
-    pt.transfer = Transfer_sRGB;
+    pt.primaries = QtiColorPrimaries_BT2020;
+    pt.transfer = QtiTransfer_sRGB;
     var.clear();
     var.push_back(std::make_pair(kColorGamutAttribute, kBt2020));
     var.push_back(std::make_pair(kGammaTransferAttribute, kSrgb));
@@ -372,23 +372,23 @@ static PrimariesTransfer GetBlendSpaceFromAttributes(const std::string &color_ga
                                                      const std::string &transfer) {
   PrimariesTransfer blend_space_ = {};
   if (color_gamut == kNative) {  // Native mode is identified by Max
-    blend_space_.primaries = ColorPrimaries_Max;
-    blend_space_.transfer = Transfer_Max;
+    blend_space_.primaries = QtiColorPrimaries_Max;
+    blend_space_.transfer = QtiTransfer_Max;
   } else if (color_gamut == kBt2020) {
-    blend_space_.primaries = ColorPrimaries_BT2020;
+    blend_space_.primaries = QtiColorPrimaries_BT2020;
     if (transfer == kHlg) {
-      blend_space_.transfer = Transfer_HLG;
+      blend_space_.transfer = QtiTransfer_HLG;
     } else if (transfer == kSt2084) {
-      blend_space_.transfer = Transfer_SMPTE_ST2084;
+      blend_space_.transfer = QtiTransfer_SMPTE_ST2084;
     } else if (transfer == kGamma2_2) {
-      blend_space_.transfer = Transfer_Gamma2_2;
+      blend_space_.transfer = QtiTransfer_Gamma2_2;
     }
   } else if (color_gamut == kDcip3) {
-    blend_space_.primaries = ColorPrimaries_DCIP3;
-    blend_space_.transfer = Transfer_sRGB;
+    blend_space_.primaries = QtiColorPrimaries_DCIP3;
+    blend_space_.transfer = QtiTransfer_sRGB;
   } else if (color_gamut == kSrgb) {
-    blend_space_.primaries = ColorPrimaries_BT709_5;
-    blend_space_.transfer = Transfer_sRGB;
+    blend_space_.primaries = QtiColorPrimaries_BT709_5;
+    blend_space_.transfer = QtiTransfer_sRGB;
   } else {
     DLOGW("Failed to Get blend space color_gamut = %s transfer = %s",
           color_gamut.c_str(), transfer.c_str());

@@ -36,7 +36,7 @@ class DPUCoreMux {
  public:
   DisplayError Destroy();
 
-  DPUCoreMux(DisplayId display_id, DisplayType type,
+  DPUCoreMux(DisplayId display_id, SDMDisplayType type,
              sdm::MultiCoreInstance<uint32_t, HWInfoInterface *> hw_info_intf,
              BufferAllocator *buffer_allocator);
   DisplayError Init();

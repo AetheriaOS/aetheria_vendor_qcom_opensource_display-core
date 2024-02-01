@@ -41,7 +41,7 @@
 
 namespace sdm {
 
-DisplayError HWInterface::Create(int32_t display_id, DisplayType type,
+DisplayError HWInterface::Create(int32_t display_id, SDMDisplayType type,
                                  HWInfoInterface *hw_info_intf,
                                  BufferAllocator *buffer_allocator, HWInterface **intf) {
   DisplayError error = kErrorNone;

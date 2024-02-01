@@ -48,7 +48,7 @@ class ResourceDefault : public ResourceInterface {
   static DisplayError CreateResourceDefault(const std::vector<HWResourceInfo> &hw_resource_info,
                                             ResourceInterface **resource_intf);
   static DisplayError DestroyResourceDefault(ResourceInterface *resource_intf);
-  virtual DisplayError RegisterDisplay(DisplayId display_id, DisplayType type,
+  virtual DisplayError RegisterDisplay(DisplayId display_id, SDMDisplayType type,
                                        DisplayDeviceContext &device_ctx,
                                        DisplayClientContext &client_ctx,
                                        Handle *display_ctx);

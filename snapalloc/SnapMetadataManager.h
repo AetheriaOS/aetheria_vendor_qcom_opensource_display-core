@@ -420,6 +420,7 @@ class SnapMetadataManager {
           {VIDEO_HISTOGRAM_STATS, &SnapMetadataManager::VideoHistogramStatsHelper},
           {FD, &SnapMetadataManager::FDHelper},
           {ALIGNED_WIDTH_IN_PIXELS, &SnapMetadataManager::AlignedWidthInPixelsHelper},
+          {STRIDE, &SnapMetadataManager::AlignedWidthInPixelsHelper},
           {ALIGNED_HEIGHT_IN_PIXELS, &SnapMetadataManager::AlignedHeightInPixelsHelper},
           {STANDARD_METADATA_STATUS, &SnapMetadataManager::StandardMetadataStatusHelper},
           {VENDOR_METADATA_STATUS, &SnapMetadataManager::VendorMetadataStatusHelper},

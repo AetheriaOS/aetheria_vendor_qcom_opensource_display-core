@@ -101,7 +101,7 @@ enum HWBwModes {
   (internal display or HDMI etc) and whether it is currently connected.
 */
 struct HWDisplayInterfaceInfo {
-  DisplayType type = kDisplayTypeMax;
+  SDMDisplayType type = kDisplayTypeMax;
   bool is_connected = false;
 };
 
@@ -113,7 +113,7 @@ struct HWDisplayInterfaceInfo {
 */
 struct HWDisplayInfo {
   int32_t display_id = -1;                     //!< ID of this display (Display ID).
-  DisplayType display_type = kDisplayTypeMax;  //!< Type of display: BuiltIn/Pluggable/Virtual
+  SDMDisplayType display_type = kDisplayTypeMax;  //!< Type of display: BuiltIn/Pluggable/Virtual
   bool is_connected = false;                   //!< Connection status of the display.
   bool is_primary = false;                     //!< True only if this is the main display of the
                                                //!< device.
@@ -188,7 +188,7 @@ class CoreInterface {
     interface associated with this object is returned via output parameter which can be used to
     interact further with the display device.
 
-    @param[in] type \link DisplayType \endlink
+    @param[in] type \link SDMDisplayType \endlink
     @param[in] event_handler \link DisplayEventHandler \endlink
     @param[out] interface \link DisplayInterface \endlink
 
@@ -196,7 +196,7 @@ class CoreInterface {
 
     @sa DestroyDisplay
   */
-  virtual DisplayError CreateDisplay(DisplayType type, DisplayEventHandler *event_handler,
+  virtual DisplayError CreateDisplay(SDMDisplayType type, DisplayEventHandler *event_handler,
                                      DisplayInterface **interface) = 0;
 
   /*! @brief Method to create a display device for a given display ID.
@@ -298,7 +298,7 @@ class CoreInterface {
   /*! @brief Method to get the maximum supported number of concurrent displays of a particular type.
 
     @details Client shall use this method to get the maximum number of DisplayInterface instances
-    that can be created for a particular \link DisplayType \endlink display. For the maximum
+    that can be created for a particular \link SDMDisplayType \endlink display. For the maximum
     number of concurrent DisplayInterfaces supported of all types, call with type kDisplayTypeMax.
 
     @param[in] type Type of display: BuiltIn/Pluggable/Virtual/kDisplayTypeMax
@@ -308,7 +308,7 @@ class CoreInterface {
 
     @return \link DisplayError \endlink
   */
-  virtual DisplayError GetMaxDisplaysSupported(DisplayType type, int32_t *max_displays) = 0;
+  virtual DisplayError GetMaxDisplaysSupported(SDMDisplayType type, int32_t *max_displays) = 0;
 
   /*! @brief Method which returns true if the given format is supported by rotator otherwise false
 

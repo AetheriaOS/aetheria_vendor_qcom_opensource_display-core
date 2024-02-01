@@ -77,11 +77,11 @@ typedef FeatureLicenseFactoryIntf* (*GetFeatureLicenseFactory)();
 
 class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
  public:
-  DisplayBase(DisplayType display_type, DisplayEventHandler *event_handler,
+  DisplayBase(SDMDisplayType display_type, DisplayEventHandler *event_handler,
               HWDeviceType hw_device_type, BufferAllocator *buffer_allocator,
               CompManager *comp_manager,
               sdm::MultiCoreInstance<uint32_t, HWInfoInterface *> hw_info_intf);
-  DisplayBase(DisplayId display_id, DisplayType display_type, DisplayEventHandler *event_handler,
+  DisplayBase(DisplayId display_id, SDMDisplayType display_type, DisplayEventHandler *event_handler,
               HWDeviceType hw_device_type, BufferAllocator *buffer_allocator,
               CompManager *comp_manager,
               sdm::MultiCoreInstance<uint32_t, HWInfoInterface *> hw_info_intf);
@@ -177,12 +177,12 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   virtual DisplayError GetDisplayPort(DisplayPort *port);
   virtual DisplayError GetDisplayId(int32_t *display_id);
   virtual DisplayError GetConnectorId(int32_t *conn_id);
-  virtual DisplayError GetDisplayType(DisplayType *display_type);
+  virtual DisplayError GetDisplayType(SDMDisplayType *display_type);
   virtual bool IsPrimaryDisplay();
   virtual DisplayError SetCompositionState(LayerComposition composition_type, bool enable);
   virtual DisplayError GetClientTargetSupport(uint32_t width, uint32_t height,
                                               LayerBufferFormat format,
-                                              const ColorMetaData &color_metadata);
+                                              const Dataspace &color_metadata);
   virtual DisplayError HandleSecureEvent(SecureEvent secure_event, bool *needs_refresh);
   virtual DisplayError ValidateCwbRoiWithOutputBuffer(const LayerBuffer &output_buffer,
                                                       CwbConfig &cwb_config);
@@ -319,7 +319,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   void CommitLayerParams(LayerStack *layer_stack);
   void PostCommitLayerParams();
   DisplayError ValidateScaling(uint32_t width, uint32_t height);
-  DisplayError ValidateDataspace(const ColorMetaData &color_metadata);
+  DisplayError ValidateDataspace(const Dataspace &color_metadata);
   void HwRecovery(const HWRecoveryEvent sdm_event_code);
 
   const char *GetName(const LayerComposition &composition);
@@ -375,7 +375,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   std::thread commit_thread_;
   DisplayId display_id_info_ = {};
   int32_t display_id_ = -1;
-  DisplayType display_type_;
+  SDMDisplayType display_type_;
   DisplayEventHandler *event_handler_ = NULL;
   HWDeviceType hw_device_type_;
   DPUCoreMux *dpu_core_mux_ = NULL;

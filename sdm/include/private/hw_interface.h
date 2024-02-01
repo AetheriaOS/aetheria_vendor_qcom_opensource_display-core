@@ -102,7 +102,7 @@ class HWEventHandler {
 
 class HWInterface {
  public:
-  static DisplayError Create(int32_t display_id, DisplayType type, HWInfoInterface *hw_info_intf,
+  static DisplayError Create(int32_t display_id, SDMDisplayType type, HWInfoInterface *hw_info_intf,
                              BufferAllocator *buffer_allocator, HWInterface **intf);
   static DisplayError Destroy(HWInterface *intf);
 

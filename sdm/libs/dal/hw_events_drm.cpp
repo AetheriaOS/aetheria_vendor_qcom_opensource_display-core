@@ -279,7 +279,7 @@ void HWEventsDRM::PopulateHWEventData(const vector<HWEvent> &event_list) {
   InitializePollFd();
 }
 
-DisplayError HWEventsDRM::Init(DisplayId display_id, DisplayType display_type,
+DisplayError HWEventsDRM::Init(DisplayId display_id, SDMDisplayType display_type,
                                HWEventHandler *event_handler, const vector<HWEvent> &event_list) {
   if (!event_handler)
     return kErrorParameters;

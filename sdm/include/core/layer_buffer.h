@@ -37,13 +37,30 @@
 
 #include <utils/fence.h>
 #include <stdint.h>
-#include <color_metadata.h>
 #include <utility>
 #include <vector>
 #include "sdm_types.h"
 #include "color_extensions.h"
+#include <QtiMasteringDisplay.h>
+#include <QtiColorRange.h>
+#include <QtiColorRemappingInfo.h>
+#include <QtiMatrixCoEfficients.h>
+#include <QtiContentLightLevel.h>
+#include <QtiDynamicMetadata.h>
+#include <Dataspace.h>
 
 namespace sdm {
+
+// color metadata values
+using Dataspace = vendor_qti_hardware_display_common_Dataspace;
+using QtiMasteringDisplay = vendor_qti_hardware_display_common_QtiMasteringDisplay;
+using QtiMatrixCoEfficients = vendor_qti_hardware_display_common_QtiMatrixCoEfficients;
+using QtiContentLightLevel = vendor_qti_hardware_display_common_QtiContentLightLevel;
+using QtiColorRemappingInfo = vendor_qti_hardware_display_common_QtiColorRemappingInfo;
+using QtiDynamicMetadata = vendor_qti_hardware_display_common_QtiDynamicMetadata;
+using QtiColorPrimaries = vendor_qti_hardware_display_common_QtiColorPrimaries;
+using QtiColorRange = vendor_qti_hardware_display_common_QtiColorRange;
+using QtiGammaTransfer = vendor_qti_hardware_display_common_QtiGammaTransfer;
 
 #define NUM_UBWC_CR_STATS_LAYERS 2
 typedef std::vector<std::pair<int, int>> UbwcCrStatsVector;
@@ -270,7 +287,6 @@ struct LayerBuffer {
                                 //!< Unaligned height of the Layer that this buffer is for.
   uint32_t size = 0;            //!< Size of a single buffer (even if multiple clubbed together)
   LayerBufferFormat format = kFormatRGBA8888;     //!< Format of the buffer content.
-  ColorMetaData color_metadata = {};              //!< CSC + Range + Transfer + Matrix + HDR Info
   LayerIGC igc = kIGCNotSpecified;                //!< IGC that will be applied on this layer.
   LayerBufferPlane planes[4] = {};
                                 //!< Array of planes that this buffer contains. RGB buffer formats
@@ -320,12 +336,21 @@ struct LayerBuffer {
 
 
   LayerBuffer() {
-    color_metadata.colorPrimaries = ColorPrimaries_BT709_5;
-    color_metadata.transfer = Transfer_sRGB;
+    dataspace.colorPrimaries = QtiColorPrimaries_BT709_5;
+    dataspace.transfer = QtiTransfer_sRGB;
   }
 
   uint64_t handle_id = 0;       //!< This is the BufferInfo's ID.
   uint64_t usage = 0;           //!< Opaque Usage flags associated with this layer buffer.
+
+  // Color metadata info. When integrated with snapalloc, ColorMetaData struct got deprecated
+  // so we now keep track of all relevant values individually
+  Dataspace dataspace;
+  QtiMatrixCoEfficients matrixCoefficients;
+  QtiMasteringDisplay masteringDisplayInfo;
+  QtiContentLightLevel contentLightLevel;
+  QtiColorRemappingInfo cRI;
+  QtiDynamicMetadata dynamicMetadata;
 };
 
 // This enum represents buffer layout types.

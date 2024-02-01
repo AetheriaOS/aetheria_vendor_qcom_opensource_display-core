@@ -46,7 +46,7 @@
 
 namespace sdm {
 
-DisplayError HWEventsInterface::Create(DisplayId display_id, DisplayType display_type,
+DisplayError HWEventsInterface::Create(DisplayId display_id, SDMDisplayType display_type,
                                        HWEventHandler *event_handler,
                                        const std::vector<HWEvent> &event_list,
                                        HWEventsInterface **intf) {

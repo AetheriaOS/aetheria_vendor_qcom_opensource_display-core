@@ -102,7 +102,7 @@ bool Debug::IsDecimationDisabled() {
   return (value == 1);
 }
 
-int Debug::GetMaxPipesPerMixer(DisplayType display_type) {
+int Debug::GetMaxPipesPerMixer(SDMDisplayType display_type) {
   int value = -1;
   switch (display_type) {
     case kBuiltIn:
