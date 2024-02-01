@@ -29,25 +29,28 @@
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
+#include "display_builtin.h"
+
+#include <core/buffer_allocator.h>
+#include <display_properties.h>
+#include <private/aiqe_ssrc_feature_factory.h>
+#include <private/hw_info_interface.h>
+#include <private/hw_interface.h>
+#include <sys/mman.h>
 #include <utils/constants.h>
 #include <utils/debug.h>
+#include <utils/formats.h>
 #include <utils/rect.h>
 #include <utils/utils.h>
-#include <utils/formats.h>
-#include <core/buffer_allocator.h>
-#include <sys/mman.h>
-#include <private/hw_interface.h>
-#include <private/hw_info_interface.h>
-#include <display_properties.h>
-#include <iomanip>
+
 #include <algorithm>
 #include <functional>
+#include <iomanip>
 #include <map>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
-#include "display_builtin.h"
 #include "drm_interface.h"
 #include "drm_master.h"
 
@@ -76,6 +79,118 @@ DisplayBuiltIn::~DisplayBuiltIn() {
 
 static uint64_t GetTimeInMs(struct timespec ts) {
   return (ts.tv_sec * 1000 + (ts.tv_nsec + 500000) / 1000000);
+}
+
+DisplayError DisplayBuiltIn::SetupAiqe() {
+  int value = 0;
+  char value_str[200] = {0};
+  aiqe::GetSsrcFeatureFactoryFp get_ssrc_feature_factory = nullptr;
+
+  if (!prop_intf_) {
+    DLOGI("Skipping AIQE setup. No panel feature property interface");
+    return kErrorNone;
+  }
+
+  DebugHandler::Get()->GetProperty(AIQE_SSRC_ENABLE, &value);
+  if (value == 1) {
+    aiqe::SsrcFeatureFactory *ssrc_feature_factory;
+    aiqe::SsrcFeatureDisplayDetails *display_details;
+    std::string *default_mode;
+    bool *force_commit;
+    GenericPayload payload;
+
+    if (!ssrc_lib_.Open(SSRC_LIBRARY_NAME)) {
+      DLOGE("Unable to open library %s", SSRC_LIBRARY_NAME);
+      return kErrorNotSupported;
+    } else if (!ssrc_lib_.Sym(GET_SSRC_FF_INTF_NAME,
+                              reinterpret_cast<void **>(&get_ssrc_feature_factory))) {
+      DLOGE("Unable to get function pointer to retrieve AIQE feature factory");
+      return kErrorNotSupported;
+    }
+
+    ssrc_feature_factory = get_ssrc_feature_factory();
+    if (!ssrc_feature_factory) {
+      DLOGE("Unable to retrieve SSRC feature factory");
+      return kErrorNotSupported;
+    }
+
+    ssrc_feature_interface_ = ssrc_feature_factory->GetSsrcFeatureInterface(prop_intf_);
+    if (!ssrc_feature_interface_) {
+      DLOGE("Unable to retrieve SSRC feature interface");
+      return kErrorNotSupported;
+    }
+
+    if (ssrc_feature_interface_->Init() != 0) {
+      DLOGE("Unable to initalize SSRC feature interface");
+      return kErrorNotSupported;
+    }
+
+    if (payload.CreatePayload(display_details) != 0) {
+      DLOGE("Unable to create display details payload");
+      return kErrorMemory;
+    }
+
+    display_details->panel_name = client_ctx_.hw_panel_info.panel_name;
+    display_details->primary_panel = client_ctx_.hw_panel_info.is_primary_panel;
+    switch (client_ctx_.mixer_attributes.split_type) {
+      case kQuadSplit:
+        display_details->ppc = 4;
+        break;
+      case kDualSplit:
+        display_details->ppc = 2;
+        break;
+      case kNoSplit:
+        display_details->ppc = 1;
+        break;
+      default:
+        DLOGW("Unsupported mixer split - %d. Skipping AIQE Feature enablement",
+              client_ctx_.mixer_attributes.split_type);
+        return kErrorNotSupported;
+    }
+
+    if (ssrc_feature_interface_->SetParameter(aiqe::kSsrcFeatureDisplayDetails, payload) != 0) {
+      DLOGE("Unable to set display details on SSRC feature interface");
+      return kErrorNotSupported;
+    }
+
+    payload.DeletePayload();
+    if (payload.CreatePayload(default_mode) != 0) {
+      DLOGE("Unable to create mode payload");
+      return kErrorMemory;
+    }
+
+    DebugHandler::Get()->GetProperty(AIQE_SSRC_DEFAULT_MODE, value_str);
+    if (strcmp(value_str, "") == 0) {
+      DLOGI("Using default SSRC mode");
+      *default_mode = "NORMAL/ON";
+    } else {
+      DLOGI("Using SSRC mode from vendor property - %s", value_str);
+      *default_mode = value_str;
+    }
+
+    if (ssrc_feature_interface_->SetParameter(aiqe::kSsrcFeatureModeId, payload) != 0) {
+      DLOGE("Unable to set mode on AIQE SSRC feature interface");
+      return kErrorNotSupported;
+    }
+
+    payload.DeletePayload();
+    if (payload.CreatePayload(force_commit) != 0) {
+      DLOGE("Unable to create commit payload");
+      return kErrorMemory;
+    }
+
+    *force_commit = true;
+    if (ssrc_feature_interface_->SetParameter(aiqe::kSsrcFeatureCommitFeature, payload) != 0) {
+      DLOGE("Unable to set commit on AIQE SSRC feature interface");
+      return kErrorNotSupported;
+    }
+
+    ssrc_feature_enabled_ = true;
+  } else {
+    DLOGI("AIQE SSRC Enable property not set. Skipping SSRC enablement");
+  }
+
+  return kErrorNone;
 }
 
 DisplayError DisplayBuiltIn::Init() {
@@ -232,6 +347,7 @@ DisplayError DisplayBuiltIn::Init() {
 
   NoiseInit();
   InitCWBBuffer();
+  SetupAiqe();
 
   left_frame_roi_.resize(core_count_);
   right_frame_roi_.resize(core_count_);
@@ -283,6 +399,8 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
   uint32_t new_mixer_height = 0;
   uint32_t display_width = client_ctx_.display_attributes.x_pixels;
   uint32_t display_height = client_ctx_.display_attributes.y_pixels;
+  GenericPayload bool_payload;
+  bool *force_update;
 
   DisplayError error = HandleDemuraLayer(layer_stack);
   if (error != kErrorNone) {
@@ -323,6 +441,19 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
   if (color_mgr_ && client_ctx_.hw_panel_info.mode == kModeVideo && idle_fallback_on_dspp_) {
     color_mgr_->ColorMgrIdleFallback(lower_fps_);
     needs_validate_ |= color_mgr_->IsValidateNeeded();
+  }
+
+  if (ssrc_feature_enabled_) {
+    if (bool_payload.CreatePayload(force_update) != 0) {
+      DLOGE("Unable to create force update payload");
+      return kErrorMemory;
+    }
+
+    *force_update = false;
+    if (ssrc_feature_interface_->SetParameter(aiqe::kSsrcFeatureCommitFeature, bool_payload) != 0) {
+      DLOGE("Unable to set commit on SSRC feature interface");
+      return kErrorNotSupported;
+    }
   }
 
   return kErrorNotValidated;

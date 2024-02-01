@@ -33,11 +33,9 @@
 #ifndef __DISPLAY_BUILTIN_H__
 #define __DISPLAY_BUILTIN_H__
 
-#include <sys/time.h>
-#include <sys/stat.h>
-
 #include <core/dpps_interface.h>
 #include <core/ipc_interface.h>
+#include <private/aiqe_ssrc_feature_interface.h>
 #include <private/demuratn_core_uvm_fact_intf.h>
 #include <private/display_event_proxy_intf.h>
 #include <private/extension_interface.h>
@@ -46,6 +44,9 @@
 #include <private/panel_feature_factory_intf.h>
 #include <private/panel_feature_property_intf.h>
 #include <private/spr_intf.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+
 #include <string>
 #include <vector>
 
@@ -284,6 +285,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   void NotifyDppsHdrPresent(LayerStack *layer_stack);
   bool IdleFallbackLowerFps(bool idle_screen);
   void HandleUpdateTransferTime(QSyncMode mode);
+  DisplayError SetupAiqe();
 
   const uint32_t kPuTimeOutMs = 1000;
   std::vector<HWEvent> event_list_;
@@ -348,6 +350,9 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   CacConfig cac_config_ = {};
   BufferInfo output_buffer_info_ = {};
   EventProxyInfo event_proxy_info_ = {};
+
+  DynLib ssrc_lib_;
+  std::shared_ptr<aiqe::SsrcFeatureInterface> ssrc_feature_interface_;
 };
 
 }  // namespace sdm
