@@ -276,6 +276,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) {
     return kErrorNotSupported;
   }
+  virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
 
  protected:
   struct DisplayMutex {

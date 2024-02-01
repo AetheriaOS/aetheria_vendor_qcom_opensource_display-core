@@ -222,6 +222,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError
   PanelOprInfo(const std::string &client_name, bool enable,
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) override;
+  DisplayError SetSsrcMode(const std::string &mode) override;
 
   // Implement the HWEventHandlers
   DisplayError VSync(int64_t timestamp) override;

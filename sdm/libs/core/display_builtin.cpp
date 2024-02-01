@@ -3638,4 +3638,27 @@ EventProxyInfo::PanelOprInfo(const std::string &client_name, bool enable,
   return kErrorNone;
 }
 
+DisplayError DisplayBuiltIn::SetSsrcMode(const std::string &mode) {
+  DisplayError ret = kErrorNotSupported;
+
+  if (ssrc_feature_enabled_ && ssrc_feature_interface_) {
+    std::string *mode_str;
+    GenericPayload payload;
+    int rc = payload.CreatePayload(mode_str);
+    if (rc) {
+      DLOGE("Unable to create mode string payload! RC - %d", rc);
+    } else {
+      *mode_str = mode;
+      rc = ssrc_feature_interface_->SetParameter(aiqe::kSsrcFeatureModeId, payload);
+      if (rc) {
+        DLOGE("Mode rejected by SSRC feature interface. RC - %d", rc);
+      } else {
+        ret = kErrorNone;
+      }
+    }
+  }
+
+  return ret;
+}
+
 }  // namespace sdm
