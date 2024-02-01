@@ -63,17 +63,19 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "drm_panel_feature_mgr.h"
+
+#include <drm_logger.h>
+#include <errno.h>
+#include <inttypes.h>
+
+#include <cstring>
+#include <regex>
 #include <sstream>
 #include <string>
 #include <tuple>
-#include <errno.h>
-#include <string>
-#include <drm_logger.h>
-#include <cstring>
-#include <regex>
-#include <inttypes.h>
 
-#include "drm_panel_feature_mgr.h"
+#include "display/drm/msm_drm_aiqe.h"
 
 #define __CLASS__ "DRMPanelFeatureMgr"
 
@@ -140,6 +142,8 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
   drm_property_map_[kDRMPanelFeatureDsppRCInfo] = DRMProperty::DSPP_CAPABILITIES;
   drm_property_map_[kDRMPanelFeatureRCInit] = DRMProperty::DSPP_RC_MASK_V1;
   drm_property_map_[kDRMPanelFeatureDemuraCfg0Param2] = DRMProperty::DEMURA_CFG0_PARAM2;
+  drm_property_map_[kDRMPanelFeatureAiqeSSRCConfig] = DRMProperty::SDE_DSPP_AIQE_SSRC_CONFIG_V1;
+  drm_property_map_[kDRMPanelFeatureAiqeSSRCData] = DRMProperty::SDE_DSPP_AIQE_SSRC_DATA_V1;
 
   drm_prop_type_map_[kDRMPanelFeatureDemuraResources] = DRMPropType::kPropBitmask;
   drm_prop_type_map_[kDRMPanelFeatureDemuraInit] = DRMPropType::kPropBlob;
@@ -153,6 +157,8 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
   drm_prop_type_map_[kDRMPanelFeatureDsppDemuraInfo] = DRMPropType::kPropRange;
   drm_prop_type_map_[kDRMPanelFeatureDsppRCInfo] = DRMPropType::kPropRange;
   drm_prop_type_map_[kDRMPanelFeatureDemuraCfg0Param2] = DRMPropType::kPropBlob;
+  drm_prop_type_map_[kDRMPanelFeatureAiqeSSRCConfig] = DRMPropType::kPropBlob;
+  drm_prop_type_map_[kDRMPanelFeatureAiqeSSRCData] = DRMPropType::kPropBlob;
 
   feature_info_tbl_[kDRMPanelFeatureDemuraResources] = DRMPanelFeatureInfo {
     kDRMPanelFeatureDemuraResources, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, 0, 0};
@@ -180,6 +186,20 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
                           UINT32_MAX,
                           1,
                           sizeof(drm_msm_dem_cfg0_param2),
+                          0};
+  feature_info_tbl_[kDRMPanelFeatureAiqeSSRCConfig] =
+      DRMPanelFeatureInfo{kDRMPanelFeatureAiqeSSRCConfig,
+                          DRM_MODE_OBJECT_CRTC,
+                          UINT32_MAX,
+                          1,
+                          sizeof(drm_msm_ssrc_config),
+                          0};
+  feature_info_tbl_[kDRMPanelFeatureAiqeSSRCData] =
+      DRMPanelFeatureInfo{kDRMPanelFeatureAiqeSSRCData,
+                          DRM_MODE_OBJECT_CRTC,
+                          UINT32_MAX,
+                          1,
+                          sizeof(drm_msm_ssrc_data),
                           0};
 }
 
