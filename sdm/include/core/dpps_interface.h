@@ -39,11 +39,14 @@
 
 #include <core/sdm_types.h>
 #include <core/display_interface.h>
-#include <color_metadata.h>
+#include <Dataspace.h>
 
 #include <string>
 
 namespace sdm {
+
+using QtiColorPrimaries = vendor_qti_hardware_display_common_QtiColorPrimaries;
+using QtiGammaTransfer = vendor_qti_hardware_display_common_QtiGammaTransfer;
 
 enum DppsOps {
   kDppsSetFeature,
@@ -71,8 +74,8 @@ struct DppsNotifyPayload {
 };
 
 struct DppsBlendSpaceInfo {
-  ColorPrimaries primaries = ColorPrimaries_BT709_5;
-  GammaTransfer transfer = Transfer_sRGB;
+  QtiColorPrimaries primaries = QtiColorPrimaries_BT709_5;
+  QtiGammaTransfer transfer = QtiTransfer_sRGB;
   bool is_primary;
 };
 
@@ -83,7 +86,7 @@ struct DppsDisplayInfo {
   int32_t display_id;
   std::string brightness_base_path;
 #if !defined(LINUX_COMPILE) && !defined(WIN32) && !defined(_WIN64) && !defined(__APPLE__)
-  DisplayType display_type;
+  SDMDisplayType display_type;
 #else
   uint32_t display_type;
 #endif

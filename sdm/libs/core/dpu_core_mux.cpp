@@ -16,7 +16,7 @@
 
 namespace sdm {
 
-DPUCoreMux::DPUCoreMux(DisplayId display_id, DisplayType type,
+DPUCoreMux::DPUCoreMux(DisplayId display_id, SDMDisplayType type,
                        sdm::MultiCoreInstance<uint32_t, HWInfoInterface *> hw_info_intf,
                        BufferAllocator *buffer_allocator)
     : display_id_(display_id) {

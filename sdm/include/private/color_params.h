@@ -622,7 +622,7 @@ class TPPFeatureInfo : public PPFeatureInfo {
 };
 
 // This singleton class serves as data exchanging central between data producer
-// <libsdm-color.so> and data consumer<SDM and HWC.>
+// <libsdm-color.so> and data consumer<SDM>
 // This class defines PP pending features to be programmed, which generated from
 // ColorManager. Dirty flag indicates some features are available to be programmed.
 // () Lock is needed since the object wil be accessed from 2 tasks.

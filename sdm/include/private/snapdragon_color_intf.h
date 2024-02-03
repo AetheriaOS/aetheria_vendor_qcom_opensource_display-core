@@ -46,9 +46,14 @@
 #include <memory>
 #include <string>
 #include "display_color_processing.h"
-#include "color_metadata.h"
+#include <Dataspace.h>
+#include <color_metadata.h>
 
 namespace snapdragoncolor {
+
+using QtiColorPrimaries = vendor_qti_hardware_display_common_QtiColorPrimaries;
+using QtiGammaTransfer = vendor_qti_hardware_display_common_QtiGammaTransfer;
+using Dataspace = vendor_qti_hardware_display_common_Dataspace;
 
 //<! Hardware assets strings
 const std::string kPbGamut = "PostBlendGamut";

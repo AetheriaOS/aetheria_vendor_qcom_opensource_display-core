@@ -47,7 +47,7 @@ namespace sdm {
 class Strategy {
  public:
   Strategy(ExtensionInterface *extension_intf, BufferAllocator *buffer_allocator,
-           DisplayId display_id, DisplayType type,
+           DisplayId display_id, SDMDisplayType type,
            const std::vector<HWResourceInfo> &hw_resource_info,
            DisplayInfoContext &info_ctx, DisplayDeviceContext &device_ctx);
 
@@ -83,7 +83,7 @@ class Strategy {
   PartialUpdateInterface *partial_update_intf_ = NULL;
   DisplayId display_id_info_ = {};
   int32_t display_id_;
-  DisplayType display_type_;
+  SDMDisplayType display_type_;
   std::vector<HWResourceInfo> hw_resource_info_;
   DispLayerStack *disp_layer_stack_ = NULL;
   DisplayInfoContext info_ctx_;

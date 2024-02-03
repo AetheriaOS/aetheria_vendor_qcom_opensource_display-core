@@ -56,44 +56,11 @@ namespace sdm {
 
 typedef std::vector<std::pair<std::string, std::string>> AttrVal;
 
-/*! @brief This enum represents display device types where contents can be rendered.
-
-  @sa CoreInterface::CreateDisplay
-  @sa CoreInterface::IsDisplaySupported
-*/
-enum DisplayType {
-  kPrimary,             //!< Main physical display which is attached to the handheld device.
-  kBuiltIn = kPrimary,  //!< Type name for all non-detachable physical displays. Use kBuiltIn
-                        //!< instead of kPrimary.
-  kHDMI,                //!< HDMI physical display which is generally detachable.
-  kPluggable = kHDMI,   //!< Type name for all pluggable physical displays. Use kPluggable
-                        //!< instead of kHDMI.
-  kVirtual,             //!< Contents would be rendered into the output buffer provided by the
-                        //!< client e.g. wireless display.
-  kDisplayMax,
-  kDisplayTypeMax = kDisplayMax
-};
-
 /*! @brief This enum represents states of a display device.
 
   @sa DisplayInterface::GetDisplayState
   @sa DisplayInterface::SetDisplayState
 */
-enum DisplayState {
-  kStateOff,        //!< Display is OFF. Contents are not rendered in this state. Client will not
-                    //!< receive VSync events in this state. This is default state as well.
-
-  kStateOn,         //!< Display is ON. Contents are rendered in this state.
-
-  kStateDoze,       //!< Display is ON and it is configured in a low power state.
-
-  kStateDozeSuspend,
-                    //!< Display is ON in a low power state and continue showing its current
-                    //!< contents indefinitely until the mode changes.
-
-  kStateStandby,    //!< Display is OFF. Client will continue to receive VSync events in this state
-                    //!< if VSync is enabled. Contents are not rendered in this state.
-};
 
 /*! @brief This enum represents flags to override detail enhancer parameters.
 
@@ -304,7 +271,8 @@ struct DisplayConfigVariableInfo : public DisplayConfigGroupInfo {
   uint32_t fps = 0;               //!< Frame rate per second.
   uint32_t vsync_period_ns = 0;   //!< VSync period in nanoseconds.
   bool is_virtual_config = false;
-  int32_t parent_config_index = -1;     // if virtual config, then corresponding panel config
+  uint32_t group_id = 0;
+  int32_t parent_config_index = -1;   //!< if virtual config, then corresponding panel config
 
   bool operator==(const DisplayConfigVariableInfo& info) const {
     return ((x_pixels == info.x_pixels) && (y_pixels == info.y_pixels) &&
@@ -965,7 +933,7 @@ class DisplayInterface {
 
     @return \link DisplayError \endlink
   */
-  virtual DisplayError GetDisplayType(DisplayType *display_type) = 0;
+  virtual DisplayError GetDisplayType(SDMDisplayType *display_type) = 0;
 
   /*! @brief Method to query whether it is Primrary device.
 
@@ -1005,7 +973,7 @@ class DisplayInterface {
   */
   virtual DisplayError GetClientTargetSupport(uint32_t width, uint32_t height,
                                               LayerBufferFormat format,
-                                              const ColorMetaData &color_metadata) = 0;
+                                              const Dataspace &color_metadata) = 0;
 
   /*! @brief Method to handle secure events.
 

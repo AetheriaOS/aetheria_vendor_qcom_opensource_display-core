@@ -61,6 +61,63 @@ bool NeedsToneMap(const std::vector<Layer> &layers) {
   return false;
 }
 
+// TODO(user): eventually we should upgrade the legacy ColorMetadata struct in
+// snapdragon_color_intf.h so we don't have to do all this
+ColorMetaData convertToLegacyColorMetadata(LayerBuffer *buffer) {
+  ColorMetaData data;
+  data.colorPrimaries = primaries_map[buffer->dataspace.colorPrimaries];
+  data.range = range_map[buffer->dataspace.range];
+  data.transfer = transfer_map[buffer->dataspace.transfer];
+  data.matrixCoefficients = matrix_map[buffer->matrixCoefficients];
+  
+  // mastering display
+  data.masteringDisplayInfo.colorVolumeSEIEnabled = buffer->masteringDisplayInfo.colorVolumeSEIEnabled;
+  data.masteringDisplayInfo.primaries.rgbPrimaries[0][0] = buffer->masteringDisplayInfo.primaryRed.x;
+  data.masteringDisplayInfo.primaries.rgbPrimaries[0][1] = buffer->masteringDisplayInfo.primaryRed.y;
+  data.masteringDisplayInfo.primaries.rgbPrimaries[1][0] = buffer->masteringDisplayInfo.primaryGreen.x;
+  data.masteringDisplayInfo.primaries.rgbPrimaries[1][1] = buffer->masteringDisplayInfo.primaryGreen.y;
+  data.masteringDisplayInfo.primaries.rgbPrimaries[2][0] = buffer->masteringDisplayInfo.primaryBlue.x;
+  data.masteringDisplayInfo.primaries.rgbPrimaries[2][1] = buffer->masteringDisplayInfo.primaryBlue.y;
+  data.masteringDisplayInfo.primaries.whitePoint[0] = buffer->masteringDisplayInfo.whitePoint.x;
+  data.masteringDisplayInfo.primaries.whitePoint[1] = buffer->masteringDisplayInfo.whitePoint.x;
+  data.masteringDisplayInfo.maxDisplayLuminance = buffer->masteringDisplayInfo.maxDisplayLuminance;
+  data.masteringDisplayInfo.minDisplayLuminance = buffer->masteringDisplayInfo.minDisplayLuminance;
+
+  // content light level
+  data.contentLightLevel.lightLevelSEIEnabled = buffer->contentLightLevel.lightLevelSEIEnabled;
+  data.contentLightLevel.maxContentLightLevel = buffer->contentLightLevel.maxContentLightLevel;
+  data.contentLightLevel.maxPicAverageLightLevel = buffer->contentLightLevel.maxFrameAverageLightLevel;
+
+  // color remapping info
+  data.cRI.criEnabled = buffer->cRI.criEnabled;
+  data.cRI.crId = buffer->cRI.crId;
+  data.cRI.crCancelFlag = buffer->cRI.crCancelFlag;
+  data.cRI.crPersistenceFlag = buffer->cRI.crPersistenceFlag;
+  data.cRI.crVideoSignalInfoPresentFlag = buffer->cRI.crVideoSignalInfoPresentFlag;
+  data.cRI.crRange = buffer->cRI.crRange;
+  data.cRI.crPrimaries = primaries_map[buffer->cRI.crPrimaries];
+  data.cRI.crTransferFunction = transfer_map[buffer->cRI.crTransferFunction];
+  data.cRI.crMatrixCoefficients = matrix_map[buffer->cRI.crMatrixCoefficients];
+  data.cRI.crInputBitDepth = buffer->cRI.crInputBitDepth;
+  data.cRI.crOutputBitDepth = buffer->cRI.crOutputBitDepth;
+  memcpy(&data.cRI.crPreLutNumValMinusOne, &buffer->cRI.crPreLutNumValMinusOne, (sizeof(uint32_t)*3));
+  memcpy(&data.cRI.crPreLutCodedValue, &buffer->cRI.crPreLutCodedValue, (sizeof(uint32_t)*99));
+  memcpy(&data.cRI.crPreLutTargetValue, &buffer->cRI.crPreLutTargetValue, (sizeof(uint32_t)*99));
+  data.cRI.crMatrixPresentFlag = buffer->cRI.crMatrixPresentFlag;
+  data.cRI.crLog2MatrixDenom = buffer->cRI.crLog2MatrixDenom;
+  memcpy(&data.cRI.crCoefficients, &buffer->cRI.crCoefficients, (sizeof(uint32_t)*9));
+  memcpy(&data.cRI.crPostLutNumValMinusOne, &buffer->cRI.crPostLutNumValMinusOne, (sizeof(uint32_t)*3));
+  memcpy(&data.cRI.crPostLutCodedValue, &buffer->cRI.crPostLutCodedValue, (sizeof(uint32_t)*99));
+  memcpy(&data.cRI.crPostLutTargetValue, &buffer->cRI.crPostLutTargetValue, (sizeof(uint32_t)*99));
+
+  // dynamic metadata
+  data.dynamicMetaDataValid = buffer->dynamicMetadata.dynamicMetaDataValid;
+  data.dynamicMetaDataLen = buffer->dynamicMetadata.dynamicMetaDataLen;
+  memcpy(&data.dynamicMetaDataPayload, &buffer->dynamicMetadata.dynamicMetaDataPayload, HDR_DYNAMIC_META_DATA_SZ);
+
+  return data;
+}
+
 // Below two functions are part of concrete implementation for SDM core private
 // color_params.h
 void PPFeaturesConfig::Reset() {
@@ -146,13 +203,17 @@ void ColorManagerProxy::Deinit() {
   }
 }
 
-ColorManagerProxy::ColorManagerProxy(int32_t id, DisplayType type, DPUCoreMux *dpu_core_mux,
+ColorManagerProxy::ColorManagerProxy(int32_t id, SDMDisplayType type, DPUCoreMux *dpu_core_mux,
                                      const HWDisplayAttributes &attr,
                                      const HWPanelInfo &info, const uint32_t &core_id)
     : display_id_(id), device_type_(type), pp_hw_attributes_(), dpu_core_mux_(dpu_core_mux),
       color_intf_(NULL), pp_features_(), feature_intf_(NULL), core_id_(core_id) {
   int32_t enable_posted_start_dyn = 0;
   bool dyn_switch = false;
+
+  // Initialize PCC with identity
+  curr_color_xform_.coeff_array = COLOR_TRANSFORM_IDENTITY;
+
   Debug::Get()->GetProperty(ENABLE_POSTED_START_DYN_PROP, &enable_posted_start_dyn);
   if (info.mode == kModeCommand) {
     switch (enable_posted_start_dyn) {
@@ -179,7 +240,7 @@ ColorManagerProxy::ColorManagerProxy(int32_t id, DisplayType type, DPUCoreMux *d
   }
 }
 
-ColorManagerProxy *ColorManagerProxy::CreateColorManagerProxy(DisplayType type,
+ColorManagerProxy *ColorManagerProxy::CreateColorManagerProxy(SDMDisplayType type,
                                                               DPUCoreMux *dpu_core_mux,
                                                               const HWDisplayAttributes &attribute,
                                                               const HWPanelInfo &panel_info,
@@ -509,6 +570,18 @@ DisplayError ColorManagerProxy::ColorMgrGetModeInfo(int32_t mode_id, AttrVal *qu
   return color_intf_->ColorIntfGetModeInfo(&pp_features_, 0, mode_id, query);
 }
 
+static bool TransformIsIdentity(std::array<float, snapdragoncolor::kMatrixSize> &coeff) {
+  if (coeff.at(0) == 1.0 && coeff.at(5) == 1.0 && coeff.at(10) == 1.0 && coeff.at(15) == 1.0) {
+    if (coeff.at(1) == 0.0 && coeff.at(2) == 0.0 && coeff.at(3) == 0.0 && coeff.at(4) == 0.0 &&
+        coeff.at(6) == 0.0 && coeff.at(7) == 0.0 && coeff.at(8) == 0.0 && coeff.at(9) == 0.0 &&
+        coeff.at(11) == 0.0 && coeff.at(12) == 0.0 && coeff.at(13) == 0.0 && coeff.at(14) == 0.0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 DisplayError ColorManagerProxy::ColorMgrSetColorTransform(uint32_t length,
                                                           const double *trans_data) {
   if (!trans_data) {
@@ -532,6 +605,7 @@ DisplayError ColorManagerProxy::ColorMgrSetColorTransform(uint32_t length,
     color_transform.coeff_array[i] = static_cast<float>(*(trans_data + i));
   }
 
+  curr_color_xform_.coeff_array = color_transform.coeff_array;
   ScPayload in_data = {};
   in_data.prop = snapdragoncolor::kSetColorTransform;
   in_data.len = sizeof(color_transform);
@@ -587,10 +661,10 @@ DisplayError ColorManagerProxy::Validate(DispLayerStack *disp_layer_stack) {
       hdr_present = true;
     }
 
-    if (hdr_present && hdr_layer.input_buffer.color_metadata.dynamicMetaDataValid &&
-        hdr_layer.input_buffer.color_metadata.dynamicMetaDataLen) {
+    if (hdr_present && hdr_layer.input_buffer.dynamicMetadata.dynamicMetaDataValid &&
+        hdr_layer.input_buffer.dynamicMetadata.dynamicMetaDataLen) {
       update_meta_data = true;
-      meta_data_ = hdr_layer.input_buffer.color_metadata;
+      meta_data_ = convertToLegacyColorMetadata(&hdr_layer.input_buffer);
     }
   }
 
@@ -905,6 +979,68 @@ DisplayError ColorManagerProxy::ConfigureCWBDither(CwbConfig *cwb_cfg, bool free
   if (dither_payload && (dither_payload->enable_flags_ & kOpsEnable))
     cwb_cfg->dither_info = dither_payload;
   DLOGV_IF(kTagQDCM, "config cwb dither data done");
+  return error;
+}
+
+DisplayError ColorManagerProxy::ColorMgrIdleFallback(bool idle_fallback_hint) {
+  DisplayError error = kErrorNone;
+
+  if(prev_idle_fallback_hint_ == idle_fallback_hint) {
+    return kErrorNone;
+  }
+
+  prev_idle_fallback_hint_ = idle_fallback_hint;
+  bool curr_xform_is_identity = TransformIsIdentity(curr_color_xform_.coeff_array);
+
+  if (idle_fallback_hint) {
+    ColorMode idle_fallback_mode;
+    struct snapdragoncolor::ColorTransform color_transform = {};
+    color_transform.coeff_array = COLOR_TRANSFORM_IDENTITY;
+
+    // Storing current ColorMode which will be used while exiting IdleFallBack
+    prev_idle_fallback_mode_ = curr_mode_;
+
+    //Set Native mode on idle fallback
+    idle_fallback_mode.gamut = ColorPrimaries_BT709_5;
+    idle_fallback_mode.gamma = Transfer_sRGB;
+    idle_fallback_mode.intent = snapdragoncolor::RenderIntent::kNative;
+    idle_fallback_mode.intent_name = "Standard";
+
+    DLOGV_IF(kTagQDCM, "idle fallback entry mode: gamut: %d, gamma: %d, intent: %d",
+      idle_fallback_mode.gamut, idle_fallback_mode.gamma, idle_fallback_mode.intent);
+    error = ColorMgrSetStcMode(idle_fallback_mode);
+
+    if (stc_intf_ && !curr_xform_is_identity) {
+      ScPayload in_data = {};
+      in_data.prop = snapdragoncolor::kSetColorTransform;
+      in_data.len = sizeof(color_transform);
+      in_data.payload = reinterpret_cast<uint64_t>(&color_transform);
+      if (stc_intf_->SetProperty(in_data)) {
+        DLOGE("Failed to set identity transform on idle fallback entry!");
+        error = kErrorUndefined;
+      }
+    }
+
+    return error;
+  }
+
+  DLOGV_IF(kTagQDCM, "idle fallback exit mode: gamut: %d, gamma: %d, intent: %d",
+      prev_idle_fallback_mode_.gamut, prev_idle_fallback_mode_.gamma,
+      prev_idle_fallback_mode_.intent);
+  error = ColorMgrSetStcMode(prev_idle_fallback_mode_);
+  prev_idle_fallback_mode_ = {};
+
+  if (stc_intf_ && !curr_xform_is_identity) {
+    ScPayload in_data = {};
+    in_data.prop = snapdragoncolor::kSetColorTransform;
+    in_data.len = sizeof(curr_color_xform_);
+    in_data.payload = reinterpret_cast<uint64_t>(&curr_color_xform_);
+    if (stc_intf_->SetProperty(in_data)) {
+      DLOGE("Failed to set color transform on idle fallback exit!");
+      error = kErrorUndefined;
+    }
+  }
+
   return error;
 }
 
@@ -1330,7 +1466,7 @@ int DPUColorManager::CreatePhysicalDisplayIds(DisplayId display_id_info) {
 }
 
 // Create physical display ID and create color manager proxy per physical display
-DPUColorManager *DPUColorManager::CreateDpuColorManager(DisplayType type,
+DPUColorManager *DPUColorManager::CreateDpuColorManager(SDMDisplayType type,
                                                         DPUCoreMux *dpu_core_mux,
                                                         DisplayDeviceContext &display_device_ctx,
                                                         DisplayClientContext &display_client_ctx,
@@ -1832,6 +1968,10 @@ DisplayError DPUColorManager::ColorMgrSetSprIntf(std::shared_ptr<SPRIntf> spr_in
   return kErrorNotSupported;
 }
 
+DisplayError DPUColorManager::ColorMgrIdleFallback(bool idle_fallback_hint) {
+  return kErrorNotSupported;
+}
+
 // TBD: Should remove this legacy API?
 DisplayError DPUColorManager::ApplyDefaultDisplayMode() {
   return kErrorNotSupported;
@@ -1852,7 +1992,7 @@ DisplayError DPUColorManager::ColorMgrCombineColorModes() {
 
 static ColorMgrFactoryIntfImpl color_mgr_impl;
 
-ColorManagerIntf* ColorMgrFactoryIntfImpl::CreateColorManagerIntf(DisplayType type,
+ColorManagerIntf* ColorMgrFactoryIntfImpl::CreateColorManagerIntf(SDMDisplayType type,
                                                     DPUCoreMux *dpu_core_mux,
                                                     DisplayDeviceContext &display_device_ctx,
                                                     DisplayClientContext &display_client_ctx,

@@ -1078,7 +1078,7 @@ DisplayError HWInfoDRM::GetDisplaysStatus(HWDisplaysInfo *hw_displays_info) {
   return kErrorNone;
 }
 
-DisplayError HWInfoDRM::GetMaxDisplaysSupported(const DisplayType type, int32_t *max_displays) {
+DisplayError HWInfoDRM::GetMaxDisplaysSupported(const SDMDisplayType type, int32_t *max_displays) {
   static DebugTag log_once = kTagNone;
 
   if (!max_displays) {

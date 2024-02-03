@@ -354,10 +354,10 @@ bool HasAlphaChannel(LayerBufferFormat format) {
   }
 }
 
-bool IsWideColor(const ColorPrimaries &primary) {
+bool IsWideColor(const QtiColorPrimaries &primary) {
   switch (primary) {
-    case ColorPrimaries_DCIP3:
-    case ColorPrimaries_BT2020:
+    case QtiColorPrimaries_DCIP3:
+    case QtiColorPrimaries_BT2020:
       return true;
     default:
       return false;
@@ -365,7 +365,7 @@ bool IsWideColor(const ColorPrimaries &primary) {
 }
 
 bool IsExtendedRange(LayerBuffer buffer) {
-  return (Is16BitFormat(buffer.format) && buffer.color_metadata.range == Range_Extended);
+  return (Is16BitFormat(buffer.format) && buffer.dataspace.range == QtiRange_Extended);
 }
 
 }  // namespace sdm

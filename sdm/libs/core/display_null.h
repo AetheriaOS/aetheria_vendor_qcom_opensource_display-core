@@ -84,7 +84,7 @@ class DisplayNull : public DisplayInterface {
   virtual void Abort() {}
   virtual uint32_t GetAvailableMixerCount() { return 0; }
   virtual DisplayError GetDisplayId(int32_t *display_id);
-  virtual DisplayError GetDisplayType(DisplayType *display_type);
+  virtual DisplayError GetDisplayType(SDMDisplayType *display_type);
   virtual DisplayError PerformCacConfig(CacConfig config, bool enable) {
     return kErrorNotSupported;
   }
@@ -131,7 +131,7 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(GetDisplayPort(DisplayPort *))
   MAKE_NO_OP(GetConnectorId(int32_t *))
   MAKE_NO_OP(SetCompositionState(LayerComposition, bool))
-  MAKE_NO_OP(GetClientTargetSupport(uint32_t, uint32_t, LayerBufferFormat, const ColorMetaData &))
+  MAKE_NO_OP(GetClientTargetSupport(uint32_t, uint32_t, LayerBufferFormat, const Dataspace &))
   MAKE_NO_OP(HandleSecureEvent(SecureEvent, bool *))
   MAKE_NO_OP(PostHandleSecureEvent(SecureEvent))
   MAKE_NO_OP(SetQSyncMode(QSyncMode))

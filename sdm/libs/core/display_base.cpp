@@ -63,27 +63,27 @@ static bool ValidNoisePluginDebugOverride(uint32_t override_param) {
           (override_param < kNoisePlugInDebugPropertyEnd));
 }
 
-static ColorPrimaries GetColorPrimariesFromAttribute(const std::string &gamut,
+static QtiColorPrimaries GetColorPrimariesFromAttribute(const std::string &gamut,
                                                      bool allow_tonemap_native) {
   if (gamut.find(kDisplayP3) != std::string::npos || gamut.find(kDcip3) != std::string::npos) {
-    return ColorPrimaries_DCIP3;
+    return QtiColorPrimaries_DCIP3;
   } else if (gamut.find(kHdr) != std::string::npos || gamut.find("bt2020") != std::string::npos ||
              gamut.find("BT2020") != std::string::npos) {
     // BT2020 is hdr, but the dynamicrange of kHdr means its BT2020
-    return ColorPrimaries_BT2020;
+    return QtiColorPrimaries_BT2020;
   } else if (gamut.find(kSrgb) != std::string::npos) {
-    return ColorPrimaries_BT709_5;
+    return QtiColorPrimaries_BT709_5;
   } else if (gamut.find(kNative) != std::string::npos) {
     DLOGW("Native Gamut found");
-    // Native gamut will have unknown primary, setting ColorPrimaries_Max
-    return (allow_tonemap_native ? ColorPrimaries_BT709_5 : ColorPrimaries_Max);
+    // Native gamut will have unknown primary, setting QtiColorPrimaries_Max
+    return (allow_tonemap_native ? QtiColorPrimaries_BT709_5 : QtiColorPrimaries_Max);
   }
 
-  return ColorPrimaries_BT709_5;
+  return QtiColorPrimaries_BT709_5;
 }
 
 // TODO(user): Have a single structure handle carries all the interface pointers and variables.
-DisplayBase::DisplayBase(DisplayType display_type, DisplayEventHandler *event_handler,
+DisplayBase::DisplayBase(SDMDisplayType display_type, DisplayEventHandler *event_handler,
                          HWDeviceType hw_device_type, BufferAllocator *buffer_allocator,
                          CompManager *comp_manager,
                          sdm::MultiCoreInstance<uint32_t, HWInfoInterface *> hw_info_intf)
@@ -115,7 +115,7 @@ void DisplayBase::StartCommitThread() {
   DLOGI("Commit thread started for display: %d", display_type_);
 }
 
-DisplayBase::DisplayBase(DisplayId display_id, DisplayType display_type,
+DisplayBase::DisplayBase(DisplayId display_id, SDMDisplayType display_type,
                          DisplayEventHandler *event_handler, HWDeviceType hw_device_type,
                          BufferAllocator *buffer_allocator, CompManager *comp_manager,
                          sdm::MultiCoreInstance<uint32_t, HWInfoInterface *> hw_info_intf)
@@ -797,9 +797,9 @@ DisplayError DisplayBase::BuildLayerStackStats(LayerStack *layer_stack) {
     } else {
       stack_info.app_layer_count++;
     }
-    if (IsWideColor(layer->input_buffer.color_metadata.colorPrimaries)) {
+    if (IsWideColor(layer->input_buffer.dataspace.colorPrimaries)) {
       stack_info.wide_color_primaries.push_back(
-          layer->input_buffer.color_metadata.colorPrimaries);
+          layer->input_buffer.dataspace.colorPrimaries);
     }
     if (layer->flags.is_game) {
       stack_info.game_present = true;
@@ -950,7 +950,12 @@ DisplayError DisplayBase::ForceToneMapUpdate (LayerStack *layer_stack) {
       HWLayerConfig &hw_config = info.second.config[hw_index];
 
       cached_layer.input_buffer.hist_data = stack_layer->input_buffer.hist_data;
-      cached_layer.input_buffer.color_metadata = stack_layer->input_buffer.color_metadata;
+      cached_layer.input_buffer.dataspace = stack_layer->input_buffer.dataspace;
+      cached_layer.input_buffer.matrixCoefficients = stack_layer->input_buffer.matrixCoefficients;
+      cached_layer.input_buffer.masteringDisplayInfo = stack_layer->input_buffer.masteringDisplayInfo;
+      cached_layer.input_buffer.contentLightLevel = stack_layer->input_buffer.contentLightLevel;
+      cached_layer.input_buffer.cRI = stack_layer->input_buffer.cRI;
+      cached_layer.input_buffer.dynamicMetadata = stack_layer->input_buffer.dynamicMetadata;
       cached_layer.input_buffer.extended_content_metadata =
           stack_layer->input_buffer.extended_content_metadata;
       cached_layer.input_buffer.timestamp_data = stack_layer->input_buffer.timestamp_data;
@@ -2495,7 +2500,7 @@ std::string DisplayBase::Dump() {
         snprintf(flags, sizeof(flags), "0x%08x", pipe.flags);
         snprintf(decimation, sizeof(decimation), "%3d x %3d", pipe.horizontal_decimation,
                  pipe.vertical_decimation);
-        ColorMetaData &color_metadata = hw_layer.input_buffer.color_metadata;
+        Dataspace &color_metadata = hw_layer.input_buffer.dataspace;
         snprintf(color_primary, sizeof(color_primary), "%d", color_metadata.colorPrimaries);
         snprintf(range, sizeof(range), "%d", color_metadata.range);
         snprintf(transfer, sizeof(transfer), "%d", color_metadata.transfer);
@@ -3438,7 +3443,7 @@ DisplayError DisplayBase::GetConnectorId(int32_t *conn_id) {
   return kErrorNone;
 }
 
-DisplayError DisplayBase::GetDisplayType(DisplayType *display_type) {
+DisplayError DisplayBase::GetDisplayType(SDMDisplayType *display_type) {
   ClientLock lock(disp_mutex_);
 
   if (!display_type) {
@@ -3650,7 +3655,7 @@ DisplayError DisplayBase::GetDisplayIdentificationData(uint8_t *out_port, uint32
 
 DisplayError DisplayBase::GetClientTargetSupport(uint32_t width, uint32_t height,
                                                  LayerBufferFormat format,
-                                                 const ColorMetaData &color_metadata) {
+                                                 const Dataspace &color_metadata) {
   if (format != kFormatRGBA8888 && format != kFormatRGBA1010102) {
     DLOGW("Unsupported format = %d", format);
     return kErrorNotSupported;
@@ -3666,7 +3671,7 @@ DisplayError DisplayBase::GetClientTargetSupport(uint32_t width, uint32_t height
     }
 
     // Check for BT2020 support
-    if (color_metadata.colorPrimaries == ColorPrimaries_BT2020) {
+    if (color_metadata.colorPrimaries == QtiColorPrimaries_BT2020) {
       DLOGW("Unsupported Color Primary = %d", color_metadata.colorPrimaries);
       return kErrorNotSupported;
     }
@@ -3717,15 +3722,15 @@ DisplayError DisplayBase::ValidateScaling(uint32_t width, uint32_t height) {
   return kErrorNone;
 }
 
-DisplayError DisplayBase::ValidateDataspace(const ColorMetaData &color_metadata) {
+DisplayError DisplayBase::ValidateDataspace(const Dataspace &color_metadata) {
   // Handle transfer
   switch (color_metadata.transfer) {
-    case Transfer_sRGB:
-    case Transfer_SMPTE_170M:
-    case Transfer_SMPTE_ST2084:
-    case Transfer_HLG:
-    case Transfer_Linear:
-    case Transfer_Gamma2_2:
+    case QtiTransfer_sRGB:
+    case QtiTransfer_SMPTE_170M:
+    case QtiTransfer_SMPTE_ST2084:
+    case QtiTransfer_HLG:
+    case QtiTransfer_Linear:
+    case QtiTransfer_Gamma2_2:
       break;
     default:
       DLOGW("Unsupported Transfer Request = %d", color_metadata.transfer);
@@ -3734,11 +3739,11 @@ DisplayError DisplayBase::ValidateDataspace(const ColorMetaData &color_metadata)
 
   // Handle colorPrimaries
   switch (color_metadata.colorPrimaries) {
-    case ColorPrimaries_BT709_5:
-    case ColorPrimaries_BT601_6_525:
-    case ColorPrimaries_BT601_6_625:
-    case ColorPrimaries_DCIP3:
-    case ColorPrimaries_BT2020:
+    case QtiColorPrimaries_BT709_5:
+    case QtiColorPrimaries_BT601_6_525:
+    case QtiColorPrimaries_BT601_6_625:
+    case QtiColorPrimaries_DCIP3:
+    case QtiColorPrimaries_BT2020:
       break;
     default:
       DLOGW("Unsupported Color Primary = %d", color_metadata.colorPrimaries);
@@ -3792,19 +3797,19 @@ void DisplayBase::GetColorPrimaryTransferFromAttributes(
       attribute_field = it.second;
       PrimariesTransfer pt = {};
       pt.primaries = GetColorPrimariesFromAttribute(attribute_field, allow_tonemap_native_);
-      if (pt.primaries == ColorPrimaries_BT709_5) {
-        pt.transfer = Transfer_sRGB;
+      if (pt.primaries == QtiColorPrimaries_BT709_5) {
+        pt.transfer = QtiTransfer_sRGB;
         supported_pt->push_back(pt);
-      } else if (pt.primaries == ColorPrimaries_DCIP3) {
-        pt.transfer = Transfer_sRGB;
+      } else if (pt.primaries == QtiColorPrimaries_DCIP3) {
+        pt.transfer = QtiTransfer_sRGB;
         supported_pt->push_back(pt);
-      } else if (pt.primaries == ColorPrimaries_BT2020) {
-        pt.transfer = Transfer_SMPTE_ST2084;
+      } else if (pt.primaries == QtiColorPrimaries_BT2020) {
+        pt.transfer = QtiTransfer_SMPTE_ST2084;
         supported_pt->push_back(pt);
-        pt.transfer = Transfer_HLG;
+        pt.transfer = QtiTransfer_HLG;
         supported_pt->push_back(pt);
-      } else if (pt.primaries == ColorPrimaries_Max) {
-        pt.transfer = Transfer_Max;
+      } else if (pt.primaries == QtiColorPrimaries_Max) {
+        pt.transfer = QtiTransfer_Max;
         supported_pt->push_back(pt);
       }
     }
@@ -3942,17 +3947,17 @@ PrimariesTransfer DisplayBase::GetBlendSpaceFromColorMode() {
       (pic_quality == kStandard && color_gamut == kBt2020)) {
     pt.primaries = GetColorPrimariesFromAttribute(color_gamut, allow_tonemap_native_);
     if (transfer == kHlg) {
-      pt.transfer = Transfer_HLG;
+      pt.transfer = QtiTransfer_HLG;
     } else {
-      pt.transfer = Transfer_SMPTE_ST2084;
+      pt.transfer = QtiTransfer_SMPTE_ST2084;
     }
   } else if (color_gamut == kDcip3) {
     pt.primaries = GetColorPrimariesFromAttribute(color_gamut, allow_tonemap_native_);
-    pt.transfer = Transfer_sRGB;
+    pt.transfer = QtiTransfer_sRGB;
   } else if (color_gamut == kNative && !allow_tonemap_native_) {
     // if allow_tonemap_native_ is set, blend space is defaulted to BT709 + sRGB
     pt.primaries = GetColorPrimariesFromAttribute(color_gamut, allow_tonemap_native_);
-    pt.transfer = Transfer_Max;
+    pt.transfer = QtiTransfer_Max;
   }
 
   return pt;

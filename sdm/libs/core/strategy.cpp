@@ -42,7 +42,7 @@ namespace sdm {
 
 Strategy::Strategy(ExtensionInterface *extension_intf,
                    BufferAllocator *buffer_allocator,
-                   DisplayId display_id, DisplayType type,
+                   DisplayId display_id, SDMDisplayType type,
                    const std::vector<HWResourceInfo> &hw_resource_info,
                    DisplayInfoContext &info_ctx,
                    DisplayDeviceContext &device_ctx)

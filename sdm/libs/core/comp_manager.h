@@ -70,7 +70,7 @@ class CompManager : public CwbCallback {
                     ExtensionInterface *extension_intf,
                     BufferAllocator *buffer_allocator, SocketHandler *socket_handler);
   DisplayError Deinit();
-  DisplayError RegisterDisplay(DisplayId display_id, DisplayType type,
+  DisplayError RegisterDisplay(DisplayId display_id, SDMDisplayType type,
                                DisplayDeviceContext &device_ctx,
                                DisplayClientContext &client_ctx, Handle *display_ctx,
                                std::map<uint32_t, HWQosData> *default_qos_data,
@@ -165,7 +165,7 @@ class CompManager : public CwbCallback {
     StrategyConstraints constraints;
     Handle display_resource_ctx = NULL;
     DisplayId display_id = {};
-    DisplayType display_type = kBuiltIn;
+    SDMDisplayType display_type = kBuiltIn;
     uint32_t max_strategies = 0;
     uint32_t remaining_strategies = 0;
     bool idle_fallback = false;

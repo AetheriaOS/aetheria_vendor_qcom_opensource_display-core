@@ -224,6 +224,12 @@ DisplayError DisplayBuiltIn::Init() {
   disable_cwb_idle_fallback_ = 1;
 #endif
 
+  if (!disable_cwb_idle_fallback_) {
+    value = 0;
+    Debug::Get()->GetProperty(IDLE_FALLBACK_ON_DSPP, &value);
+    idle_fallback_on_dspp_ = (value == 1);
+  }
+
   NoiseInit();
   InitCWBBuffer();
 
@@ -313,6 +319,11 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
   }
   error = ChangeFps();
   lower_fps_ = disp_layer_stack_->stack_info.lower_fps;
+
+  if (color_mgr_ && client_ctx_.hw_panel_info.mode == kModeVideo && idle_fallback_on_dspp_) {
+    color_mgr_->ColorMgrIdleFallback(lower_fps_);
+    needs_validate_ |= color_mgr_->IsValidateNeeded();
+  }
 
   return kErrorNotValidated;
 }
@@ -2023,7 +2034,7 @@ std::string DisplayBuiltIn::Dump() {
         snprintf(flags, sizeof(flags), "0x%08x", pipe.flags);
         snprintf(decimation, sizeof(decimation), "%3d x %3d", pipe.horizontal_decimation,
                  pipe.vertical_decimation);
-        ColorMetaData &color_metadata = hw_layer.input_buffer.color_metadata;
+        Dataspace &color_metadata = hw_layer.input_buffer.dataspace;
         snprintf(color_primary, sizeof(color_primary), "%d", color_metadata.colorPrimaries);
         snprintf(range, sizeof(range), "%d", color_metadata.range);
         snprintf(transfer, sizeof(transfer), "%d", color_metadata.transfer);
@@ -2491,9 +2502,9 @@ DisplayError DisplayBuiltIn::BuildLayerStackStats(LayerStack *layer_stack) {
     } else {
       stack_info.app_layer_count++;
     }
-    if (IsWideColor(layer->input_buffer.color_metadata.colorPrimaries)) {
+    if (IsWideColor(layer->input_buffer.dataspace.colorPrimaries)) {
       stack_info.wide_color_primaries.push_back(
-          layer->input_buffer.color_metadata.colorPrimaries);
+          layer->input_buffer.dataspace.colorPrimaries);
     }
     if (layer->flags.is_game) {
       stack_info.game_present = true;
@@ -2682,8 +2693,8 @@ PrimariesTransfer DisplayBuiltIn::GetBlendSpaceFromStcColorMode(
     return blend_space;
   }
 
-  blend_space.primaries = color_mode.gamut;
-  blend_space.transfer = color_mode.gamma;
+  blend_space.primaries = qti_primaries_map[color_mode.gamut];
+  blend_space.transfer = qti_transfer_map[color_mode.gamma];
 
   return blend_space;
 }
@@ -2712,7 +2723,7 @@ DisplayError DisplayBuiltIn::GetConfig(DisplayConfigFixedInfo *fixed_info) {
   fixed_info->hdr_supported = hdr_supported;
   // Built-in displays always support HDR10+ when the target supports HDR
   fixed_info->hdr_plus_supported = fixed_info->hdr_supported && hdr_plus_supported;
-  fixed_info->dolby_vision_supported = fixed_info->hdr_supported && dolby_vision_supported;  
+  fixed_info->dolby_vision_supported = fixed_info->hdr_supported && dolby_vision_supported;
   // Populate luminance values only if hdr will be supported on that display
   fixed_info->max_luminance = fixed_info->hdr_supported ?
                               client_ctx_.hw_panel_info.peak_luminance: 0;
