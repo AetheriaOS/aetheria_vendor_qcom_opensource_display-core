@@ -338,6 +338,7 @@ struct LayerBuffer {
   LayerBuffer() {
     dataspace.colorPrimaries = QtiColorPrimaries_BT709_5;
     dataspace.transfer = QtiTransfer_sRGB;
+    dataspace.range = QtiRange_Limited;
   }
 
   uint64_t handle_id = 0;       //!< This is the BufferInfo's ID.
