@@ -351,7 +351,7 @@ struct LayerBuffer {
   QtiMasteringDisplay masteringDisplayInfo;
   QtiContentLightLevel contentLightLevel;
   QtiColorRemappingInfo cRI;
-  QtiDynamicMetadata dynamicMetadata;
+  QtiDynamicMetadata dynamicMetadata = { .dynamicMetaDataValid = false, .dynamicMetaDataLen = 0 };
 };
 
 // This enum represents buffer layout types.
