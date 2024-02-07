@@ -4493,14 +4493,13 @@ DisplayError DisplayBase::GetPanelBlMaxLvl(uint32_t *max_level) {
 }
 
 DisplayError DisplayBase::SetPPConfig(void *payload, size_t size) {
-  ClientLock lock(disp_mutex_);
-
-  DisplayError err = dpu_core_mux_->SetPPConfig(payload, size);
-  if (err) {
-    DLOGE("Failed to set PP Event %d", err);
-  } else {
-    DLOGI_IF(kTagDisplay, "PP Event is set successfully");
-    event_handler_->Refresh();
+  {
+    ClientLock lock(disp_mutex_);
+    DisplayError err = dpu_core_mux_->SetPPConfig(payload, size);
+    if (err) {
+      DLOGE("Failed to set PP Event %d", err);
+      return err;
+    }
   }
 
   DLOGI_IF(kTagDisplay, "PP Event is set successfully");
