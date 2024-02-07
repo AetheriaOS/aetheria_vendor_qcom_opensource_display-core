@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #ifndef __SNAP_UTILS_H__
@@ -31,7 +31,13 @@ inline int roundUpToPageSize(int x) {
   return (x + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1);
 }
 
-#define OVERFLOW(x, y) (((y) != 0) && ((x) > (UINT_MAX / (y))))
+#define OVERFLOW(x, y)                                                         \
+  (sizeof(x) == 4) ? (((y) != 0) && ((x) > ((~0U) / (y))))                     \
+                   : (((y) != 0) && ((x) > ((~0ULL) / (y))))
+
+#define OVERFLOW_ERR_RETURN(x, y)                                              \
+  if (OVERFLOW(x, y))                                                          \
+  return Error::BAD_VALUE
 
 #define UINT(exp) static_cast<unsigned int>(exp)
 
