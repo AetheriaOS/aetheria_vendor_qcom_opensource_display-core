@@ -999,6 +999,7 @@ struct CommonStackInfo {
   shared_ptr<Fence> retire_fence = nullptr;
   shared_ptr<Fence> sync_handle = nullptr;
   SprOverfetchLines spr_overfetch_lines = {};
+  uint64_t expected_present_time = 0;
 };
 
 struct LayerStackInfo {
@@ -1083,7 +1084,6 @@ struct HWLayersInfo {
   bool iwe_enabled = false;
   HWDNSCInfo dnsc_cfg = {};
   SelfRefreshState self_refresh_state = kSelfRefreshNone;
-  uint64_t expected_present_time = 0;
 };
 
 struct DispLayerStack {
