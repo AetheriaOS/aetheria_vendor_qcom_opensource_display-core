@@ -1,3 +1,4 @@
+// clang-format off
 /* Copyright (c) 2015-2021, The Linux Foundataion. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
@@ -28,40 +29,11 @@
 */
 
 /*
- *  Changes from Qualcomm Innovation Center are provided under the following license:
- *
- *  Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted (subject to the limitations in the
- *  disclaimer below) provided that the following conditions are met:
- *
- *      * Redistributions of source code must retain the above copyright
- *        notice, this list of conditions and the following disclaimer.
- *
- *      * Redistributions in binary form must reproduce the above
- *        copyright notice, this list of conditions and the following
- *        disclaimer in the documentation and/or other materials provided
- *        with the distribution.
- *
- *      * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
- *        contributors may be used to endorse or promote products derived
- *        from this software without specific prior written permission.
- *
- *  NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
- *  GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
- *  HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
- *   WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- *  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
- *  IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
- *  IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
+ * Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
+// clang-format on
 
 #ifndef __COLOR_PARAMS_H__
 #define __COLOR_PARAMS_H__
@@ -157,6 +129,9 @@ static const std::string kEnhanced = "enhanced";
 // Color feature flags
 #define SDM_DITHER_LUMA_MODE 0x1
 #define SDM_PCC_BEFORE_POS 0x1
+#define SDM_PGC_HIGHPREC_MODE 0x1
+#define IGC_DITHER_EN (1 << 0)
+#define SDM_IGC_HIGH_PREC_EN (1 << 1)
 
 // Enum to identify type of dynamic range of color mode.
 enum DynamicRangeType {
@@ -218,6 +193,7 @@ struct PPFeatureVersion {
   static const uint32_t kSDEPpVersionInvalid = 0;
   static const uint32_t kSDEIgcV17 = 1;
   static const uint32_t kSDEPgcV17 = 5;
+  static const uint32_t kSDEPgcV2 = 6;
   static const uint32_t kSDEDitherV17 = 7;
   static const uint32_t kSDEGamutV17 = 9;
   static const uint32_t kSDEPaV17 = 11;
@@ -230,6 +206,8 @@ struct PPFeatureVersion {
   static const uint32_t kSDEIgcV40 = 20;
   static const uint32_t kSDECWBDitherV2 = 21;
   static const uint32_t kSDEPaV2 = 22;
+  static const uint32_t kSDEPccV6 = 23;
+  static const uint32_t kSDEIgcV50 = 24;
 
   uint32_t version[kMaxNumPPFeatures];
   PPFeatureVersion() { memset(version, 0, sizeof(version)); }
@@ -469,7 +447,6 @@ struct SDEIgcLUTData {
   uint32_t *c2_data = NULL;
 };
 
-#define IGC_DITHER_EN (1 << 0)
 struct SDEIgcV30LUTData {
   static const int kMaxIgcLUTEntries = 257;
   uint32_t table_fmt = 0;
@@ -480,12 +457,24 @@ struct SDEIgcV30LUTData {
   uint64_t flags = 0;
 };
 
+struct SDEIgcV50LUTData {
+  static const int kMaxIgcLUTEntries = 385;
+  uint32_t table_fmt = 0;
+  uint32_t len = 0;
+  uint64_t c0_c1_data = 0;
+  uint64_t c2_data = 0;
+  uint32_t strength = 0;
+  uint64_t flags = 0;
+};
+
 struct SDEPgcLUTData {
   static const int kPgcLUTEntries = 1024;
+  static const int kPgcV2LUTEntries = 1280;
   uint32_t len = 0;
   uint32_t *c0_data = NULL;
   uint32_t *c1_data = NULL;
   uint32_t *c2_data = NULL;
+  uint64_t flags = 0;
 };
 
 struct SDEDisplayMode {
@@ -568,13 +557,31 @@ class SDEIgcV30LUTWrapper : private SDEIgcV30LUTData {
   uint32_t *buffer_ = NULL;
 };
 
-class SDEPgcLUTWrapper : private SDEPgcLUTData {
- public:
-  static SDEPgcLUTWrapper *Init(uint32_t arg __attribute__((__unused__)));
-  ~SDEPgcLUTWrapper() {
+class SDEIgcV50LUTWrapper : private SDEIgcV50LUTData {
+public:
+  static SDEIgcV50LUTWrapper *Init(uint32_t arg __attribute__((__unused__)));
+  ~SDEIgcV50LUTWrapper() {
     if (buffer_)
       delete[] buffer_;
   }
+  inline SDEIgcV50LUTData *GetConfig(void) { return this; }
+
+private:
+  SDEIgcV50LUTWrapper(const SDEIgcV50LUTWrapper &src
+                      __attribute__((__unused__))) {
+    /* do not create copies */ }
+  SDEIgcV50LUTWrapper &operator=(const SDEIgcV50LUTWrapper &) { return *this; }
+  SDEIgcV50LUTWrapper() {}
+  uint32_t *buffer_ = NULL;
+};
+
+class SDEPgcLUTWrapper : private SDEPgcLUTData {
+ public:
+   static SDEPgcLUTWrapper *Init(uint32_t size);
+   ~SDEPgcLUTWrapper() {
+    if (buffer_)
+      delete[] buffer_;
+   }
   inline SDEPgcLUTData *GetConfig(void) { return this; }
 
  private:

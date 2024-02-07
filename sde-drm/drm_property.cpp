@@ -28,7 +28,8 @@
 */
 
 /*
- * Changes from Qualcomm Innovation Center are provided under the following license:
+ * Changes from Qualcomm Innovation Center are provided under the following
+ * license:
  *
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
@@ -44,9 +45,9 @@
  *      disclaimer in the documentation and/or other materials provided
  *      with the distribution.
  *
- *    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
- *      contributors may be used to endorse or promote products derived
- *      from this software without specific prior written permission.
+ *    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of
+ * its contributors may be used to endorse or promote products derived from this
+ * software without specific prior written permission.
  *
  * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
  * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
@@ -138,9 +139,13 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "SDE_DSPP_IGC_V2") { return DRMProperty::SDE_DSPP_IGC_V2; }
   if (name == "SDE_DSPP_IGC_V3") { return DRMProperty::SDE_DSPP_IGC_V3; }
   if (name == "SDE_DSPP_IGC_V4") { return DRMProperty::SDE_DSPP_IGC_V4; }
+  if (name == "SDE_DSPP_IGC_V5") { return DRMProperty::SDE_DSPP_IGC_V5; }
   if (name == "SDE_DSPP_PCC_V3") { return DRMProperty::SDE_DSPP_PCC_V3; }
   if (name == "SDE_DSPP_PCC_V4") { return DRMProperty::SDE_DSPP_PCC_V4; }
   if (name == "SDE_DSPP_PCC_V5") { return DRMProperty::SDE_DSPP_PCC_V5; }
+  if (name == "SDE_DSPP_PCC_V6") {
+    return DRMProperty::SDE_DSPP_PCC_V6;
+  }
   if (name == "SDE_DSPP_PA_HSIC_V1") { return DRMProperty::SDE_DSPP_PA_HSIC_V1; }
   if (name == "SDE_DSPP_PA_HSIC_V2") { return DRMProperty::SDE_DSPP_PA_HSIC_V2; }
   if (name == "SDE_DSPP_PA_SIXZONE_V1") { return DRMProperty::SDE_DSPP_PA_SIXZONE_V1; }

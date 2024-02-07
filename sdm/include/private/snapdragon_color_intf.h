@@ -1,3 +1,4 @@
+// clang-format off
 /*
 * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
 *
@@ -28,12 +29,11 @@
 */
 
 /*
- * Changes from Qualcomm Innovation Center are provided under the following
- * license:
- *
+ * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
  * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
+// clang-format on
 
 #ifndef __SNAPDRAGON_COLOR_INTF_H__
 #define __SNAPDRAGON_COLOR_INTF_H__
@@ -142,6 +142,22 @@ enum ScOps {
 //<! Tuple second entry: bool flag to indicate if capability takes range value.
 //<! Tuple third entry: range of values for the capability, valid if bool is set to true.
 using ScHwCapsType = std::tuple<std::string, bool, std::pair<int64_t, int64_t>>;
+const ScHwCapsType kInvalidCaps =
+    std::make_tuple("InvalidCaps", false, std::make_pair(0, 0));
+
+//<! GC modes: std::string: "ModeName", bool: ValidPair,
+//<! pair: <entries, bitdepth>
+const ScHwCapsType kGcLegacyMode =
+    std::make_tuple("LegacyMode", true, std::make_pair(1024, 10));
+const ScHwCapsType kGcHighPrecMode =
+    std::make_tuple("HighPrecMode", true, std::make_pair(1280, 10));
+
+// IGC modes: std::string: "ModeName", bool: ValidPair, pair: <entries,
+// bitdepth>
+const ScHwCapsType kIgcLegacyMode0 =
+    std::make_tuple("LegacyMode0", true, std::make_pair(257, 16));
+const ScHwCapsType kIgcHighPrecMode0 =
+    std::make_tuple("HighPrecMode0", true, std::make_pair(385, 16));
 
 static const uint32_t kMatrixSize = 4 * 4;
 struct ColorTransform {
@@ -242,6 +258,7 @@ struct GammaPostBlendConfig {
   bool dither_en = false;
   //<! supported for IGC only
   uint32_t dither_strength = 0;
+  ScHwCapsType config_type = kInvalidCaps;
 };
 
 struct PostBlendGamutHwConfig {
@@ -262,8 +279,12 @@ const std::string kIgcDitherCap = "HwCapIgcDither";
 struct PostBlendInverseGammaHwConfig {
   uint32_t inverse_gamma_version = sizeof(struct GammaPostBlendConfig);
   uint32_t num_of_entries = 257;
-  uint32_t entries_width = 12;
+  uint32_t entries_width = 16;
   std::vector<ScHwCapsType> hw_caps;
+  PostBlendInverseGammaHwConfig(){};
+  PostBlendInverseGammaHwConfig(const std::vector<ScHwCapsType> &caps) {
+    hw_caps = caps;
+  };
 };
 
 struct HwConfigPayload {
