@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #include "UBWCPolicy.h"
@@ -114,7 +114,11 @@ uint64_t UBWCPolicy::GetMetaPlaneSize(uint64_t width, uint64_t height, uint32_t 
   int meta_height = 0;
   meta_height = ALIGN(((height + block_height - 1) / block_height), scanline_align);
   meta_width = ALIGN(((width + block_width - 1) / block_width), stride_align);
-  size = static_cast<uint64_t>(ALIGN((meta_width * meta_height), size_align));
+  if (OVERFLOW((uint64_t)meta_width, (uint64_t)meta_height)) {
+    ALOGW("%s: Size overflow! %d x %d", meta_width, meta_height);
+    return 0;
+  }
+  size = static_cast<uint64_t>(ALIGN(((uint64_t)meta_width * (uint64_t)meta_height), size_align));
   return size;
 }
 
@@ -183,6 +187,11 @@ int UBWCPolicy::OffTargetAlloc(BufferDescriptor desc, AllocData *out_ad,
           plane_constraints.stride.horizontal_stride_align,
           plane_constraints.scanline.scanline_align, ubwc_constraints.size_align_bytes);
     } else {
+      OVERFLOW_ERR_RETURN(desc.width, bpp);
+      OVERFLOW_ERR_RETURN(
+          (ALIGN(desc.width * bpp,
+                 plane_constraints.stride.horizontal_stride_align)),
+          (ALIGN(desc.height, plane_constraints.scanline.scanline_align)));
       plane_size =
           ALIGN(((ALIGN(desc.width * bpp, plane_constraints.stride.horizontal_stride_align)) *
                  (ALIGN(desc.height, plane_constraints.scanline.scanline_align))),
@@ -215,9 +224,11 @@ int UBWCPolicy::OffTargetAlloc(BufferDescriptor desc, AllocData *out_ad,
         format_data.planes[plane_index].vertical_subsampling;
     PlaneConstraints plane_layout_constraint = ubwc_constraints.planes.at(plane_index);
     // TODO: factor in subsampling here - off-target tests
+    OVERFLOW_ERR_RETURN(desc.width, bpp);
     out_layout->planes[plane_index].horizontal_stride_in_bytes =
         ALIGN(desc.width * bpp, plane_layout_constraint.stride.horizontal_stride);
     // TODO: factor in subsampling here - off-target tests
+    OVERFLOW_ERR_RETURN(desc.height, bpp);
     out_layout->planes[plane_index].scanlines =
         ALIGN(desc.height * bpp, plane_layout_constraint.scanline.scanline);
     out_layout->planes[plane_index].size_in_bytes =

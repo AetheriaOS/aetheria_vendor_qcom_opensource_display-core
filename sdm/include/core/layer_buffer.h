@@ -338,6 +338,7 @@ struct LayerBuffer {
   LayerBuffer() {
     dataspace.colorPrimaries = QtiColorPrimaries_BT709_5;
     dataspace.transfer = QtiTransfer_sRGB;
+    dataspace.range = QtiRange_Limited;
   }
 
   uint64_t handle_id = 0;       //!< This is the BufferInfo's ID.
@@ -350,7 +351,7 @@ struct LayerBuffer {
   QtiMasteringDisplay masteringDisplayInfo;
   QtiContentLightLevel contentLightLevel;
   QtiColorRemappingInfo cRI;
-  QtiDynamicMetadata dynamicMetadata;
+  QtiDynamicMetadata dynamicMetadata = { .dynamicMetaDataValid = false, .dynamicMetaDataLen = 0 };
 };
 
 // This enum represents buffer layout types.

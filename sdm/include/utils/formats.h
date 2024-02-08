@@ -62,6 +62,7 @@ bool HasAlphaChannel(LayerBufferFormat format);
 bool IsWideColor(const QtiColorPrimaries &color_primary);
 bool IsRgbFormat(const LayerBufferFormat &format);
 bool IsExtendedRange(LayerBuffer buffer);
+ColorMetaData convertToLegacyColorMetadata(const LayerBuffer *buffer);
 
 static std::unordered_map<QtiColorPrimaries, ColorPrimaries> primaries_map = {
   {QtiColorPrimaries_BT709_5, ColorPrimaries_BT709_5},

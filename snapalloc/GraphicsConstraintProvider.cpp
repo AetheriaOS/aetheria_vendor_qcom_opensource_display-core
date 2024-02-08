@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #include "GraphicsConstraintProvider.h"
@@ -218,6 +218,7 @@ int GraphicsConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferCo
       // This returns aligned width in pixels
       AlignUnCompressedRGB(desc.width, desc.height, format, tile_enabled, pixel_format_modifier,
                            &aligned_w, &aligned_h);
+      OVERFLOW_ERR_RETURN(static_cast<uint64_t>(aligned_w), (format_data.bits_per_pixel / 8.0f));
       plane_layout.stride.horizontal_stride =
           static_cast<uint64_t>(aligned_w) * (format_data.bits_per_pixel / 8.0f);
       plane_layout.scanline.scanline = static_cast<uint64_t>(aligned_h);
