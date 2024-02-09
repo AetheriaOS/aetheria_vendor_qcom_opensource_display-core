@@ -2190,11 +2190,13 @@ DisplayError HWDeviceDRM::AtomicCommit(HWLayersInfo *hw_layers_info) {
       (hw_layers_info->common_info->hw_avr_info.mode != kQsyncNone) &&
       (connector_info_.qsync_fps > 0)) {
     uint64_t qsync_fps_period = (1000.0f / FLOAT(connector_info_.qsync_fps)) * 1000000;
-    if (hw_layers_info->expected_present_time > current_time) {
-      if ((hw_layers_info->expected_present_time - current_time) > qsync_fps_period) {
+    if (hw_layers_info->common_info->expected_present_time > current_time) {
+      if ((hw_layers_info->common_info->expected_present_time - current_time) >
+          qsync_fps_period) {
         uint64_t vsync_period = display_attributes_[current_mode_index_].vsync_period_ns;
-        if (hw_layers_info->expected_present_time > vsync_period) {
-          elapse_timestamp = hw_layers_info->expected_present_time - vsync_period;
+        if (hw_layers_info->common_info->expected_present_time > vsync_period) {
+          elapse_timestamp =
+              hw_layers_info->common_info->expected_present_time - vsync_period;
         }
       }
     }

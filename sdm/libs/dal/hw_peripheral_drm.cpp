@@ -292,7 +292,7 @@ DisplayError HWPeripheralDRM::Commit(HWLayersInfo *hw_layers_info) {
   SetVMReqState();
 
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_EPT, token_.conn_id,
-                            hw_layers_info->expected_present_time);
+                            hw_layers_info->common_info->expected_present_time);
 
   DisplayError error = HWDeviceDRM::Commit(hw_layers_info);
   shared_ptr<Fence> cwb_fence = Fence::Create(INT(cwb_fence_fd), "cwb_fence");
