@@ -332,8 +332,10 @@ Error SnapMetadataManager::PlaneLayoutsHelper(SnapMetadata *metadata, SnapHandle
       ALOGE("Invalid allocation - unable to create plane layout");
       return err;
     }
-    ALOGD_IF(DEBUG, "get plane layout from buffer descriptor - out_desc.format %d",
-             out_desc.format);
+    ALOGD_IF(DEBUG,
+             "get plane layout from buffer descriptor - out_desc.format %d - "
+             "size %d",
+             out_desc.format, layout.size_in_bytes);
     *static_cast<vendor_qti_hardware_display_common_BufferLayout *>(out_get) = layout;
     return Error::NONE;
   } else if (out_get != nullptr) {
