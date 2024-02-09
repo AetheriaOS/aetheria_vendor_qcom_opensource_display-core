@@ -21,6 +21,7 @@
 #include <Fence.h>
 #include <GraphicsMetadata.h>
 #include <Interlaced.h>
+#include <KeyValuePair.h>
 #include <MetadataStatus.h>
 #include <MetadataType.h>
 #include <PixelFormat.h>
