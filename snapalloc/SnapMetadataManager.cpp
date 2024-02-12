@@ -337,8 +337,37 @@ Error SnapMetadataManager::PlaneLayoutsHelper(SnapMetadata *metadata, SnapHandle
     *static_cast<vendor_qti_hardware_display_common_BufferLayout *>(out_get) = layout;
     return Error::NONE;
   } else if (out_get != nullptr) {
-    *static_cast<vendor_qti_hardware_display_common_BufferLayout *>(out_get) =
-        metadata->buffer_layout;
+    if (metadata->interlaced) {
+      // Recalculate plane layouts for interlaced
+      AllocData ad;
+      vendor_qti_hardware_display_common_BufferLayout layout;
+      BufferDescriptor desc = {.format = handle->format,
+                               .usage = handle->usage,
+                               .width = handle->unaligned_width,
+                               .height = handle->unaligned_height,
+                               .layerCount =
+                                   static_cast<int32_t>(handle->layer_count),
+                               .reservedSize = handle->reserved_size};
+      static vendor_qti_hardware_display_common_KeyValuePair modifier = {
+          .key = "interlaced", .value = static_cast<uint64_t>(1)};
+      desc.additionalOptions.emplace_back(modifier);
+      BufferDescriptor out_desc;
+      int out_priv_flags = 0;
+      auto err = constraint_mgr_->GetAllocationData(desc, &ad, &layout,
+                                                    &out_desc, &out_priv_flags);
+
+      if (err != Error::NONE) {
+        ALOGE("Invalid allocation - unable to create plane layout");
+        return err;
+      }
+
+      *static_cast<vendor_qti_hardware_display_common_BufferLayout *>(out_get) =
+          layout;
+    } else {
+      *static_cast<vendor_qti_hardware_display_common_BufferLayout *>(out_get) =
+          metadata->buffer_layout;
+    }
+
     return Error::NONE;
   } else if (in_set != nullptr) {
     return Error::UNSUPPORTED;

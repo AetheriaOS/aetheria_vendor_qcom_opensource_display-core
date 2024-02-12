@@ -277,6 +277,16 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
   }
   // TODO: Remove hard-coding
   int alignment = 4096;
+  int height = desc.height;
+  // Divide input height by 2 for interlaced case
+  for (auto &type : desc.additionalOptions) {
+    if (std::strcmp(type.key, "interlaced") == 0) {
+      if (type.value == 1) {
+        height = (height + 1) >> 1;
+        ;
+      }
+    }
+  }
 
   MmmColorFormatMapper mapper = MmmColorFormatMapper();
   unsigned int mmm_color_format = 0;
@@ -288,7 +298,7 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
   if (mmm_color_format != -1) {
     // Double the number of planes to account for meta planes
     out_layout->plane_count = format_data.planes.size() * 2;
-    out_ad->size = mapper.GetBufferSize(mmm_color_format, desc.width, desc.height);
+    out_ad->size = mapper.GetBufferSize(mmm_color_format, desc.width, height);
     if ((pixel_format_modifier == PIXEL_FORMAT_MODIFIER_UBWC_FLEX) ||
         (pixel_format_modifier == PIXEL_FORMAT_MODIFIER_UBWC_FLEX_2_BATCH) ||
         (pixel_format_modifier == PIXEL_FORMAT_MODIFIER_UBWC_FLEX_4_BATCH) ||
@@ -333,11 +343,11 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
           out_layout->planes[data_plane_index].horizontal_stride_in_bytes =
               mapper.GetYStride(mmm_color_format, desc.width);
           out_layout->planes[data_plane_index].scanlines =
-              mapper.GetYScanlines(mmm_color_format, desc.height);
+              mapper.GetYScanlines(mmm_color_format, height);
           out_layout->planes[meta_plane_index].horizontal_stride_in_bytes =
               mapper.GetYMetaStride(mmm_color_format, desc.width);
           out_layout->planes[meta_plane_index].scanlines =
-              mapper.GetYMetaScanlines(mmm_color_format, desc.height);
+              mapper.GetYMetaScanlines(mmm_color_format, height);
           break;
         case PLANE_LAYOUT_COMPONENT_TYPE_R:
         case PLANE_LAYOUT_COMPONENT_TYPE_G:
@@ -346,22 +356,22 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
           out_layout->planes[data_plane_index].horizontal_stride_in_bytes =
               mapper.GetRgbStride(mmm_color_format, desc.width);
           out_layout->planes[data_plane_index].scanlines =
-              mapper.GetRgbScanlines(mmm_color_format, desc.height);
+              mapper.GetRgbScanlines(mmm_color_format, height);
           out_layout->planes[meta_plane_index].horizontal_stride_in_bytes =
               mapper.GetRgbMetaStride(mmm_color_format, desc.width);
           out_layout->planes[meta_plane_index].scanlines =
-              mapper.GetRgbMetaScanlines(mmm_color_format, desc.height);
+              mapper.GetRgbMetaScanlines(mmm_color_format, height);
           break;
         case PLANE_LAYOUT_COMPONENT_TYPE_CB:
         case PLANE_LAYOUT_COMPONENT_TYPE_CR:
           out_layout->planes[data_plane_index].horizontal_stride_in_bytes =
               mapper.GetUVStride(mmm_color_format, desc.width);
           out_layout->planes[data_plane_index].scanlines =
-              mapper.GetUVScanlines(mmm_color_format, desc.height);
+              mapper.GetUVScanlines(mmm_color_format, height);
           out_layout->planes[meta_plane_index].horizontal_stride_in_bytes =
               mapper.GetUVMetaStride(mmm_color_format, desc.width);
           out_layout->planes[meta_plane_index].scanlines =
-              mapper.GetUVMetaScanlines(mmm_color_format, desc.height);
+              mapper.GetUVMetaScanlines(mmm_color_format, height);
           break;
         default:
           break;
