@@ -19,6 +19,7 @@ public:
   SDMDisplayLifeCycleIntf *CreateLifeCycleIntf();
   SDMDisplaySettingsIntf *CreateSettingsIntf();
   SDMDisplaySideBandIntf *CreateSideBandIntf();
+  SDMDisplayAiqeIntf *CreateAiqeIntf();
 };
 
 } // namespace sdm

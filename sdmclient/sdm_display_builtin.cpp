@@ -1695,4 +1695,8 @@ void SDMDisplayBuiltIn::ReqPerfHintRelease() {
   cpu_hint_->ReqHintRelease();
 }
 
+DisplayError SDMDisplayBuiltIn::SetSsrcMode(const std::string &mode) {
+  return display_intf_->SetSsrcMode(mode);
+}
+
 } // namespace sdm
