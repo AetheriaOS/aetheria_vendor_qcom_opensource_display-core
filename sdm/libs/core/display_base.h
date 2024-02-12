@@ -477,6 +477,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   uint32_t rc_blocks_reserved_ = 0;
   DynLib extension_lib_;
   bool ssrc_feature_enabled_ = false;
+  bool xr_variant_ = false;
 
  private:
   // Max tolerable power-state-change wait-times in milliseconds.
