@@ -1055,7 +1055,9 @@ DisplayError SDMDisplayBuilder::GetDisplayHwId(uint64_t disp_id,
   if ((map_info.client_id == disp_id) &&
       (map_info.disp_type == sdm::kBuiltIn)) {
     if (map_info.sdm_id >= 0) {
-      *disp_hw_id = static_cast<uint32_t>(map_info.sdm_id);
+      uint32_t base_core_id = DisplayId::GetBaseCoreId(map_info.sdm_id);
+      uint32_t conn_id = DisplayId::GetConnId(map_info.sdm_id, base_core_id);
+      *disp_hw_id = conn_id;
       return kErrorNone;
     }
   }
