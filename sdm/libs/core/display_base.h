@@ -23,7 +23,7 @@
 */
 
 /*
-* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
+* Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -58,6 +58,7 @@
 
 #include "comp_manager.h"
 #include "color_manager.h"
+#include "dpu_core_factory.h"
 #include "dpu_core_mux.h"
 
 using aiqe::GetABCFeatureFactIntf;

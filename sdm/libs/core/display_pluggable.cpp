@@ -22,7 +22,7 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/* Changes from Qualcomm Innovation Center are provided under the following license:
+/* Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
  *
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -58,9 +58,8 @@ DisplayPluggable::DisplayPluggable(DisplayId display_id, DisplayEventHandler *ev
 DisplayError DisplayPluggable::Init() {
   ClientLock lock(disp_mutex_);
 
-  DisplayError error = kErrorNone;
-
-  dpu_core_mux_ = new DPUCoreMux(display_id_info_, kPluggable, hw_info_intf_, buffer_allocator_);
+  DisplayError error = DPUCoreFactory::Create(display_id_info_, kPluggable, hw_info_intf_,
+                                              buffer_allocator_, &dpu_core_mux_);
   if (error != kErrorNone) {
     if (kErrorDeviceRemoved == error) {
       DLOGW("Aborted creating hardware interface. Device removed.");
