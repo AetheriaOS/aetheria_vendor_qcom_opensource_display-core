@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #ifndef __SNAP_HANDLE_INTERNAL_H__
@@ -42,8 +42,9 @@ class SnapHandleInternal : public SnapHandle {
   uint64_t reserved_region_base;
   uint64_t custom_content_md_region_base;
   static const int kNumFds = 2;
-
   unsigned int flush = false;
+  // Lock count to ensure nested lock/unlock situations are handled correctly
+  int lock_count = 0;
 
  private:
   int ref_count = 0;

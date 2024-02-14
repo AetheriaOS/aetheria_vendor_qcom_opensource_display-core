@@ -959,6 +959,7 @@ DisplayError DisplayBase::ForceToneMapUpdate (LayerStack *layer_stack) {
       cached_layer.input_buffer.extended_content_metadata =
           stack_layer->input_buffer.extended_content_metadata;
       cached_layer.input_buffer.timestamp_data = stack_layer->input_buffer.timestamp_data;
+      cached_layer.geometry_changes = stack_layer->geometry_changes;
 
       hw_config.left_pipe.lut_info.clear();
       hw_config.right_pipe.lut_info.clear();
@@ -3518,9 +3519,8 @@ void DisplayBase::CommitLayerParams(LayerStack *layer_stack) {
     disp_layer_stack_->stack_info.common_info.elapse_timestamp = layer_stack->elapse_timestamp;
   }
 
-  for (int i = 0; i < disp_layer_stack_->info.size(); i++) {
-    disp_layer_stack_->info[i].expected_present_time = layer_stack->expected_present_time;
-  }
+  disp_layer_stack_->stack_info.common_info.expected_present_time =
+      layer_stack->expected_present_time;
 
   return;
 }

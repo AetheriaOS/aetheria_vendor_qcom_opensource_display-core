@@ -121,7 +121,8 @@ public:
 
   ConcurrencyMgr();
   DisplayError Init(SDMCompositorCbIntf *callbacks,
-                    BufferAllocator *buffer_allocator) override;
+                    BufferAllocator *buffer_allocator,
+                    SocketHandler *socket_handler) override;
   DisplayError Deinit();
 
   DisplayError AcceptDisplayChanges(Display display_id);

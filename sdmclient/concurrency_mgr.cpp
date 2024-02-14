@@ -161,7 +161,8 @@ void ConcurrencyMgr::GetHpdData(int *hpd_bpp, int *hpd_pattern,
 }
 
 DisplayError ConcurrencyMgr::Init(SDMCompositorCbIntf *callbacks,
-                                  BufferAllocator *buffer_allocator) {
+                                  BufferAllocator *buffer_allocator,
+                                  SocketHandler *socket_handler) {
   SCOPE_LOCK(locker_[SDM_DISPLAY_PRIMARY]);
 
   if (is_composer_up_) {
@@ -173,6 +174,7 @@ DisplayError ConcurrencyMgr::Init(SDMCompositorCbIntf *callbacks,
 
   callbacks_ = callbacks;
   buffer_allocator_ = buffer_allocator;
+  socket_handler_ = socket_handler;
 
   DisplayError status = kErrorNotSupported;
 
