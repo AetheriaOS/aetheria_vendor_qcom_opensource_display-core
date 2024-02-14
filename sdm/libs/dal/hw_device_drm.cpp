@@ -492,10 +492,8 @@ int HWDeviceDRM::Registry::MapBufferToFbId(Layer *layer, const LayerBuffer &buff
     uint32_t fb_id_size = is_cac_buffer ? 4 : 1;
     auto it = layer->buffer_map->buffer_map.find(handle_id);
     if (it != layer->buffer_map->buffer_map.end()) {
-      std::unordered_map<uint32_t,
-           std::vector<std::shared_ptr<LayerBufferObject>>> dpu_buffer_map = it->second;
-      auto itr = dpu_buffer_map.find(core_id_);
-      if (itr != dpu_buffer_map.end()) {
+      auto itr = it->second.find(core_id_);
+      if (itr != it->second.end()) {
         FrameBufferObject *fb_obj = static_cast<FrameBufferObject*>(itr->second[kCacNone].get());
         if (fb_obj->IsEqual(buffer.format, buffer.width, buffer.height, secure_present) &&
             (it->second.size() >= fb_id_size)) {
@@ -591,27 +589,22 @@ void HWDeviceDRM::Registry::Clear() {
   output_buffer_map_.clear();
 }
 
-std::vector<uint32_t> HWDeviceDRM::Registry::GetFbId(Layer *layer, uint64_t handle_id) {
+void HWDeviceDRM::Registry::GetFbId(Layer *layer, uint64_t handle_id,
+                                    std::vector<uint32_t> *fb_id_vec) {
   auto it = layer->buffer_map->buffer_map.find(handle_id);
-  std::vector<uint32_t> fb_id_vec;
   if (it != layer->buffer_map->buffer_map.end()) {
-    std::unordered_map<uint32_t,
-                       std::vector<std::shared_ptr<LayerBufferObject>>> dpu_buffer_map = it->second;
-    auto itr = dpu_buffer_map.find(core_id_);
-    if (itr != dpu_buffer_map.end()) {
-      std::vector<std::shared_ptr<LayerBufferObject>> fb_obj_vec = itr->second;
-      for (int i = 0; i < fb_obj_vec.size(); i++) {
-        FrameBufferObject *fb_obj = static_cast<FrameBufferObject*>(fb_obj_vec[i].get());
-         fb_id_vec.push_back(fb_obj->GetFbId());
+    auto itr = it->second.find(core_id_);
+    if (itr != it->second.end()) {
+      for (int i = 0; i < itr->second.size(); i++) {
+        FrameBufferObject *fb_obj = static_cast<FrameBufferObject *>(itr->second[i].get());
+        fb_id_vec->push_back(fb_obj->GetFbId());
       }
     }
   }
 
-  if (fb_id_vec.size() == 0) {
-    fb_id_vec.push_back(0);  // failure case
+  if (fb_id_vec->size() == 0) {
+    fb_id_vec->push_back(0);  // failure case
   }
-
-  return fb_id_vec;
 }
 
 uint32_t HWDeviceDRM::Registry::GetOutputFbId(uint64_t handle_id) {
@@ -1649,7 +1642,8 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
         input_buffer = &hw_rotator_session->output_buffer;
       }
 
-      std::vector<uint32_t> fb_id = registry_.GetFbId(&layer, input_buffer->handle_id);
+      std::vector<uint32_t> fb_id = {};
+      registry_.GetFbId(&layer, input_buffer->handle_id, &fb_id);
 
       if (pipe_info->valid && fb_id[pipe_info->cac_color]) {
         uint32_t pipe_id = pipe_info->pipe_id;
@@ -2146,7 +2140,8 @@ DisplayError HWDeviceDRM::DefaultCommit(HWLayersInfo *hw_layers_info) {
   res_mgr->GetMode(&mode);
 
   uint64_t handle_id = hw_layers_info->hw_layers.at(0).input_buffer.handle_id;
-  std::vector<uint32_t> fb_id = registry_.GetFbId(&hw_layers_info->hw_layers.at(0), handle_id);
+  std::vector<uint32_t> fb_id = {};
+  registry_.GetFbId(&hw_layers_info->hw_layers.at(0), handle_id, &fb_id);
   ret = drmModeSetCrtc(dev_fd, crtc_id, fb_id[kCacNone], 0 /* x */, 0 /* y */, &connector_id,
                        1 /* num_connectors */, &mode);
   if (ret < 0) {
