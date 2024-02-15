@@ -928,6 +928,7 @@ DisplayError HWDeviceDRM::PopulateDisplayAttributes(uint32_t index) {
   display_attributes_[index].is_device_split = (display_attributes_[index].topology_num_split > 1);
   display_attributes_[index].allowed_mode_switch = connector_info_.modes[index].allowed_mode_switch;
   display_attributes_[index].avr_step = connector_info_.modes[index].avr_step_fps;
+  display_attributes_[index].early_ept_timeout = connector_info_.modes[index].early_ept_timeout;
 
   DLOGI(
       "Display %d-%d attributes[%d]: WxH: %dx%d, DPI: %fx%f, FPS: %d, LM_SPLIT: %d, V_BACK_PORCH:"

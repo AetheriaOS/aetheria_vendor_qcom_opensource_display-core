@@ -2543,4 +2543,14 @@ DisplayError ConcurrencyMgr::SetFrameIntervalNs(Display display, uint32_t frame_
   return kErrorNone;
 }
 
+int ConcurrencyMgr::GetNotifyEptConfig(Display display) {
+  int disp_idx = GetDisplayIndex(display);
+  if (disp_idx == -1) {
+    DLOGE("Invalid display = %d", disp_idx);
+    return -1;
+  }
+
+  return sdm_display_[disp_idx]->GetNotifyEptConfig();
+}
+
 } // namespace sdm

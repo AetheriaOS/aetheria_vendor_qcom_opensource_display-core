@@ -1720,4 +1720,8 @@ DisplayError SDMDisplayBuiltIn::SetupVRRConfig() {
   return error;
 }
 
+int SDMDisplayBuiltIn::GetNotifyEptConfig() {
+  return notify_ept_heads_up_config_;
+}
+
 } // namespace sdm

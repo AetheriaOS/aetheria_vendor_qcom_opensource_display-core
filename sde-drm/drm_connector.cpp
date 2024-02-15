@@ -809,6 +809,7 @@ void DRMConnector::ParseModeProperties(uint64_t blob_id, DRMConnectorInfo *info)
   const string qsync_min_fps = "qsync_min_fps=";
   const string bpp_mode = "bpp_mode=";
   const string avr_step_fps = "avr_step_fps=";
+  const string early_ept_timeout = "early_ept_timeout=";
 
   DRMModeInfo *mode_item = &info->modes.at(0);
   DRMSubModeInfo *submode_item = NULL;
@@ -924,6 +925,8 @@ void DRMConnector::ParseModeProperties(uint64_t blob_id, DRMConnectorInfo *info)
       submode_item->bpp_mode = std::stoi(string(line, bpp_mode.length()));
     } else if (line.find(avr_step_fps) != string::npos) {
       mode_item->avr_step_fps = std::stoi(string(line, avr_step_fps.length()));
+    } else if (line.find(early_ept_timeout) != string::npos) {
+      mode_item->early_ept_timeout = std::stoi(string(line, early_ept_timeout.length()));
     }
   }
 

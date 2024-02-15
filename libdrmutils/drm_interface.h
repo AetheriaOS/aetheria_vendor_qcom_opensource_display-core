@@ -1011,6 +1011,7 @@ struct DRMModeInfo {
   uint32_t qsync_min_fps;
   uint32_t curr_bpp_mode;
   uint32_t avr_step_fps;
+  uint32_t early_ept_timeout;
 };
 
 /* Per Connector Info*/

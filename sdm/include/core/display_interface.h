@@ -273,12 +273,14 @@ struct DisplayConfigVariableInfo : public DisplayConfigGroupInfo {
   uint32_t vsync_period_ns = 0;   //!< VSync period in nanoseconds.
   bool is_virtual_config = false;
   int32_t parent_config_index = -1;   //!< if virtual config, then corresponding panel config
+  uint32_t early_ept_timeout = 0;     //!< Early EPT timeout value ns
 
   bool operator==(const DisplayConfigVariableInfo& info) const {
     return ((x_pixels == info.x_pixels) && (y_pixels == info.y_pixels) &&
             (h_total == info.h_total) && (v_total == info.v_total) && (x_dpi == info.x_dpi) &&
-            (y_dpi == info.y_dpi) && (fps == info.fps) && (vsync_period_ns == info.vsync_period_ns)
-            && (is_yuv == info.is_yuv) && (smart_panel == info.smart_panel));
+            (y_dpi == info.y_dpi) && (fps == info.fps) &&
+            (vsync_period_ns == info.vsync_period_ns) && (is_yuv == info.is_yuv) &&
+            (smart_panel == info.smart_panel) && (early_ept_timeout == info.early_ept_timeout));
   }
 };
 

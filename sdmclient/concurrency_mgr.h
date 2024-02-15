@@ -525,6 +525,7 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   DisplayError NotifyExpectedPresent(Display display, uint64_t expected_present_time,
                                      uint32_t frame_interval_ns);
   DisplayError SetFrameIntervalNs(Display display, uint32_t frameIntervalNs);
+  int GetNotifyEptConfig(Display display);
 
   DisplayError SetSsrcMode(uint64_t display_id, const std::string &mode_name);
   DisplayError EnableCopr(uint64_t display_id, bool enable);

@@ -518,6 +518,7 @@ public:
                                              uint32_t frame_interval_ns);
   virtual void SetFrameIntervalNs(uint32_t fi) { frame_interval_ns_ = fi; }
   virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
+  virtual int GetNotifyEptConfig() { return -1; }
 
  protected:
   static uint32_t throttling_refresh_rate_;
