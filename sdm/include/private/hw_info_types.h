@@ -1120,6 +1120,14 @@ struct DispLayerStack {
   LayerStack *stack = NULL;          // Input layer stack. Set by the caller.
   LayerStackInfo stack_info = {};    // Composition layer stack as seen by client
   std::map<uint32_t, HWLayersInfo> info;
+
+  void Clear() {
+    stack = NULL;
+    stack_info = {};
+    for (auto it = info.begin(); it != info.end(); it++) {
+      info[it->first] = {};
+    }
+  }
 };
 
 struct HWDisplayAttributes : DisplayConfigVariableInfo {
