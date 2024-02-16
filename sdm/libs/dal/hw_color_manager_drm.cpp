@@ -1,3 +1,4 @@
+// clang-format off
 /*
 * Copyright (c) 2017-2018, 2020-2021, The Linux Foundation. All rights reserved.
 *
@@ -28,40 +29,11 @@
 */
 
 /*
- *  Changes from Qualcomm Innovation Center are provided under the following license:
- *
- *  Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted (subject to the limitations in the
- *  disclaimer below) provided that the following conditions are met:
- *
- *      * Redistributions of source code must retain the above copyright
- *        notice, this list of conditions and the following disclaimer.
- *
- *      * Redistributions in binary form must reproduce the above
- *        copyright notice, this list of conditions and the following
- *        disclaimer in the documentation and/or other materials provided
- *        with the distribution.
- *
- *      * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
- *        contributors may be used to endorse or promote products derived
- *        from this software without specific prior written permission.
- *
- *  NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
- *  GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
- *  HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
- *   WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- *  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
- *  IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- *  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
- *  IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
+ * Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
+// clang-format on
 
 #define __CLASS__ "HWColorManagerDRM"
 
@@ -83,6 +55,7 @@ static const uint32_t kPgcShift = 16;
 
 static const uint32_t kIgcDataMask = 0xFFF;
 static const uint32_t kIgcShift = 16;
+static const uint32_t kRegU16Mask = 0xFFFF;
 
 #ifdef DRM_MSM_PA_HSIC
 static const uint32_t kPAHueMask = (1 << 12);
@@ -191,6 +164,8 @@ uint32_t HWColorManagerDrm::GetFeatureVersion(const DRMPPFeatureInfo &feature) {
         version = PPFeatureVersion::kSDEPccV17;
       } else if (feature.version == 4) {
         version = PPFeatureVersion::kSDEPccV4;
+      } else if (feature.version == 6) {
+        version = PPFeatureVersion::kSDEPccV6;
       }
       break;
     case kFeatureIgc:
@@ -198,11 +173,16 @@ uint32_t HWColorManagerDrm::GetFeatureVersion(const DRMPPFeatureInfo &feature) {
         version = PPFeatureVersion::kSDEIgcV30;
       } else if (feature.version == 4) {
         version = PPFeatureVersion::kSDEIgcV40;
+      } else if (feature.version == 5) {
+        version = PPFeatureVersion::kSDEIgcV50;
       }
       break;
     case kFeaturePgc:
-      if (feature.version == 1)
+      if (feature.version == 1) {
         version = PPFeatureVersion::kSDEPgcV17;
+      } else if (feature.version == 2) {
+        version = PPFeatureVersion::kSDEPgcV2;
+      }
       break;
     case kFeatureMixerGc:
         version = PPFeatureVersion::kSDEPgcV17;
@@ -398,7 +378,8 @@ DisplayError HWColorManagerDrm::GetDrmPCC(const PPFeatureInfo &in_data,
 
   switch (in_data.feature_version_) {
   case PPFeatureVersion::kSDEPccV4:
-    sde_pcc = (struct SDEPccV4Cfg *) in_data.GetConfigData();
+  case PPFeatureVersion::kSDEPccV6:
+    sde_pcc = (struct SDEPccV4Cfg *)in_data.GetConfigData();
     break;
   default:
     DLOGE("Unsupported pcc feature version: %d", in_data.feature_version_);
@@ -472,16 +453,20 @@ DisplayError HWColorManagerDrm::GetDrmIGC(const PPFeatureInfo &in_data,
                                           DRMPPFeatureInfo *out_data) {
   DisplayError ret = kErrorNone;
 #ifdef PP_DRM_ENABLE
-  struct SDEIgcV30LUTData *sde_igc;
+  struct SDEIgcV30LUTData *sde_igc = nullptr;
   struct drm_msm_igc_lut *mdp_igc;
   uint32_t *c0_c1_data_ptr = NULL;
   uint32_t *c2_data_ptr = NULL;
+  struct SDEIgcV50LUTData *sde_igc_v5 = nullptr;
 
   switch (in_data.feature_version_) {
   case PPFeatureVersion::kSDEIgcV30:
   case PPFeatureVersion::kSDEIgcV40:
   case kSourceFeatureV5:
     sde_igc = (struct SDEIgcV30LUTData *) in_data.GetConfigData();
+    break;
+  case PPFeatureVersion::kSDEIgcV50:
+    sde_igc_v5 = (struct SDEIgcV50LUTData *)in_data.GetConfigData();
     break;
   default:
     DLOGE("Unsupported igc feature version: %d", in_data.feature_version_);
@@ -507,31 +492,70 @@ DisplayError HWColorManagerDrm::GetDrmIGC(const PPFeatureInfo &in_data,
     return kErrorMemory;
   }
 
-  if (sde_igc->flags & IGC_DITHER_EN)
-    mdp_igc->flags = IGC_DITHER_ENABLE;
-  mdp_igc->strength = sde_igc->strength;
+  if (sde_igc) {
+    if (sde_igc->flags & IGC_DITHER_EN)
+      mdp_igc->flags = IGC_DITHER_ENABLE;
+    mdp_igc->strength = sde_igc->strength;
 
-  c0_c1_data_ptr = reinterpret_cast<uint32_t*>(sde_igc->c0_c1_data);
-  c2_data_ptr = reinterpret_cast<uint32_t*>(sde_igc->c2_data);
+    c0_c1_data_ptr = reinterpret_cast<uint32_t *>(sde_igc->c0_c1_data);
+    c2_data_ptr = reinterpret_cast<uint32_t *>(sde_igc->c2_data);
 
-  if (!c0_c1_data_ptr || !c2_data_ptr) {
-    DLOGE("Invaid igc data pointer");
-    delete mdp_igc;
-    out_data->payload = NULL;
-    return kErrorParameters;
+    if (!c0_c1_data_ptr || !c2_data_ptr) {
+      DLOGE("Invaid igc data pointer");
+      delete mdp_igc;
+      out_data->payload = NULL;
+      return kErrorParameters;
+    }
+
+    int i;
+    for (i = 0; i < IGC_TBL_LEN; i++) {
+      mdp_igc->c0[i] = c0_c1_data_ptr[i] & kIgcDataMask;
+      mdp_igc->c1[i] = (c0_c1_data_ptr[i] >> kIgcShift) & kIgcDataMask;
+      mdp_igc->c2[i] = c2_data_ptr[i] & kIgcDataMask;
+    }
+    mdp_igc->c0_last = c0_c1_data_ptr[i] & kIgcDataMask;
+    mdp_igc->c1_last = (c0_c1_data_ptr[i] >> kIgcShift) & kIgcDataMask;
+    mdp_igc->c2_last = c2_data_ptr[i] & kIgcDataMask;
+
+    out_data->payload = mdp_igc;
+  } else if (sde_igc_v5) {
+    if (sde_igc_v5->flags & IGC_DITHER_EN)
+      mdp_igc->flags = IGC_DITHER_ENABLE;
+    mdp_igc->strength = sde_igc_v5->strength;
+
+    c0_c1_data_ptr = reinterpret_cast<uint32_t *>(sde_igc_v5->c0_c1_data);
+    c2_data_ptr = reinterpret_cast<uint32_t *>(sde_igc_v5->c2_data);
+
+    if (!c0_c1_data_ptr || !c2_data_ptr) {
+      DLOGE("Invaid igc data pointer");
+      delete mdp_igc;
+      out_data->payload = NULL;
+      return kErrorParameters;
+    }
+
+    int i;
+    for (i = 0; i < IGC_TBL_LEN; i++) {
+      mdp_igc->c0[i] = c0_c1_data_ptr[i] & kRegU16Mask;
+      mdp_igc->c1[i] = (c0_c1_data_ptr[i] >> kIgcShift) & kRegU16Mask;
+      mdp_igc->c2[i] = c2_data_ptr[i] & kRegU16Mask;
+    }
+    mdp_igc->c0_last = c0_c1_data_ptr[i] & kRegU16Mask;
+    mdp_igc->c1_last = (c0_c1_data_ptr[i] >> kIgcShift) & kRegU16Mask;
+    mdp_igc->c2_last = c2_data_ptr[i] & kRegU16Mask;
+ #ifdef IGC_HIGH_PREC_ENABLE
+    if (sde_igc_v5->flags & SDM_IGC_HIGH_PREC_EN) {
+      mdp_igc->flags = IGC_HIGH_PREC_ENABLE;
+      for (i = 0; i < IGC_TBL_LEN_EXTENDED; i++) {
+        mdp_igc->c0_extended[i] = c0_c1_data_ptr[i + 1 + IGC_TBL_LEN] & kRegU16Mask;
+        mdp_igc->c1_extended[i] =
+            (c0_c1_data_ptr[i + 1 + IGC_TBL_LEN] >> kIgcShift) & kRegU16Mask;
+        mdp_igc->c2_extended[i] = c2_data_ptr[i + 1 + IGC_TBL_LEN] & kRegU16Mask;
+      }
+    }
+#endif
+
+    out_data->payload = mdp_igc;
   }
-
-  int i;
-  for (i = 0; i < IGC_TBL_LEN; i++) {
-    mdp_igc->c0[i] = c0_c1_data_ptr[i] & kIgcDataMask;
-    mdp_igc->c1[i] = (c0_c1_data_ptr[i] >> kIgcShift) & kIgcDataMask;
-    mdp_igc->c2[i] = c2_data_ptr[i] & kIgcDataMask;
-  }
-  mdp_igc->c0_last = c0_c1_data_ptr[i] & kIgcDataMask;
-  mdp_igc->c1_last = (c0_c1_data_ptr[i] >> kIgcShift) & kIgcDataMask;
-  mdp_igc->c2_last = c2_data_ptr[i] & kIgcDataMask;
-
-  out_data->payload = mdp_igc;
 #endif
   return ret;
 }
@@ -565,8 +589,13 @@ DisplayError HWColorManagerDrm::GetDrmPGC(const PPFeatureInfo &in_data,
   }
 
   mdp_pgc->flags = 0;
+#ifdef PGC_HIGHPREC_EN
+  if (sde_pgc->flags & SDM_PGC_HIGHPREC_MODE)
+    mdp_pgc->flags |= PGC_HIGHPREC_EN;
+#endif
 
-  for (int i = 0, j = 0; i < PGC_TBL_LEN; i++, j += 2) {
+  int i = 0, j = 0;
+  for (; i < PGC_TBL_LEN; i++, j += 2) {
     mdp_pgc->c0[i] = (sde_pgc->c0_data[j] & kPgcDataMask) |
         (sde_pgc->c0_data[j + 1] & kPgcDataMask) << kPgcShift;
     mdp_pgc->c1[i] = (sde_pgc->c1_data[j] & kPgcDataMask) |
@@ -574,6 +603,24 @@ DisplayError HWColorManagerDrm::GetDrmPGC(const PPFeatureInfo &in_data,
     mdp_pgc->c2[i] = (sde_pgc->c2_data[j] & kPgcDataMask) |
         (sde_pgc->c2_data[j + 1] & kPgcDataMask) << kPgcShift;
   }
+
+#ifdef PGC_HIGHPREC_EN
+  int len_ext = 0;
+  if (mdp_pgc->flags & PGC_HIGHPREC_EN)
+    len_ext = PGC_TBL_LEN_EXTENDED;
+  for (i = 0; i < len_ext; i++, j += 2) {
+    mdp_pgc->c0_extended[i] = (sde_pgc->c0_data[j] & kPgcDataMask) |
+                              (sde_pgc->c0_data[j + 1] & kPgcDataMask)
+                                  << kPgcShift;
+    mdp_pgc->c1_extended[i] = (sde_pgc->c1_data[j] & kPgcDataMask) |
+                              (sde_pgc->c1_data[j + 1] & kPgcDataMask)
+                                  << kPgcShift;
+    mdp_pgc->c2_extended[i] = (sde_pgc->c2_data[j] & kPgcDataMask) |
+                              (sde_pgc->c2_data[j + 1] & kPgcDataMask)
+                                  << kPgcShift;
+  }
+#endif
+
   out_data->payload = mdp_pgc;
 #endif
   return ret;

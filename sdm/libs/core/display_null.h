@@ -28,9 +28,10 @@
  */
 
 /*
- * Changes from Qualcomm Innovation Center are provided under the following license:
+ * Changes from Qualcomm Innovation Center are provided under the following
+ * license:
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
@@ -83,7 +84,7 @@ class DisplayNull : public DisplayInterface {
   virtual void Abort() {}
   virtual uint32_t GetAvailableMixerCount() { return 0; }
   virtual DisplayError GetDisplayId(int32_t *display_id);
-  virtual DisplayError GetDisplayType(DisplayType *display_type);
+  virtual DisplayError GetDisplayType(SDMDisplayType *display_type);
   virtual DisplayError PerformCacConfig(CacConfig config, bool enable) {
     return kErrorNotSupported;
   }
@@ -130,7 +131,7 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(GetDisplayPort(DisplayPort *))
   MAKE_NO_OP(GetConnectorId(int32_t *))
   MAKE_NO_OP(SetCompositionState(LayerComposition, bool))
-  MAKE_NO_OP(GetClientTargetSupport(uint32_t, uint32_t, LayerBufferFormat, const ColorMetaData &))
+  MAKE_NO_OP(GetClientTargetSupport(uint32_t, uint32_t, LayerBufferFormat, const Dataspace &))
   MAKE_NO_OP(HandleSecureEvent(SecureEvent, bool *))
   MAKE_NO_OP(PostHandleSecureEvent(SecureEvent))
   MAKE_NO_OP(SetQSyncMode(QSyncMode))
@@ -167,8 +168,10 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(SetJitterConfig(uint32_t, float, uint32_t))
   MAKE_NO_OP(CaptureCwb(const LayerBuffer &, const CwbConfig &));
   MAKE_NO_OP(GetPanelFeatureInfo(PanelFeatureInfo *info));
+  MAKE_NO_OP(PanelOprInfo(const std::string &client_name, bool enable,
+                          SdmDisplayCbInterface<PanelOprPayload> *cb_intf));
 
- protected:
+protected:
   DisplayConfigVariableInfo default_variable_config_ = {};
   DisplayConfigFixedInfo default_fixed_config_ = {};
   // 1920x1080 60fps panel of name Null Display with PnPID QCM

@@ -224,11 +224,23 @@ DisplayError DisplayBuiltIn::Init() {
   disable_cwb_idle_fallback_ = 1;
 #endif
 
+  if (!disable_cwb_idle_fallback_) {
+    value = 0;
+    Debug::Get()->GetProperty(IDLE_FALLBACK_ON_DSPP, &value);
+    idle_fallback_on_dspp_ = (value == 1);
+  }
+
   NoiseInit();
   InitCWBBuffer();
 
   left_frame_roi_.resize(core_count_);
   right_frame_roi_.resize(core_count_);
+
+  if (event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this,
+                             extension_lib_) != kErrorNone) {
+    DLOGW("Failed to initialize event proxy info");
+    event_proxy_info_.Deinit();
+  }
 
   return error;
 }
@@ -261,6 +273,7 @@ DisplayError DisplayBuiltIn::Deinit() {
     hw_rc_blocks_in_use_ -= rc_blocks_reserved_;
   }
   dpps_info_.Deinit();
+  event_proxy_info_.Deinit();
   return DisplayBase::Deinit();
 }
 
@@ -306,6 +319,11 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
   }
   error = ChangeFps();
   lower_fps_ = disp_layer_stack_->stack_info.lower_fps;
+
+  if (color_mgr_ && client_ctx_.hw_panel_info.mode == kModeVideo && idle_fallback_on_dspp_) {
+    color_mgr_->ColorMgrIdleFallback(lower_fps_);
+    needs_validate_ |= color_mgr_->IsValidateNeeded();
+  }
 
   return kErrorNotValidated;
 }
@@ -2016,7 +2034,7 @@ std::string DisplayBuiltIn::Dump() {
         snprintf(flags, sizeof(flags), "0x%08x", pipe.flags);
         snprintf(decimation, sizeof(decimation), "%3d x %3d", pipe.horizontal_decimation,
                  pipe.vertical_decimation);
-        ColorMetaData &color_metadata = hw_layer.input_buffer.color_metadata;
+        Dataspace &color_metadata = hw_layer.input_buffer.dataspace;
         snprintf(color_primary, sizeof(color_primary), "%d", color_metadata.colorPrimaries);
         snprintf(range, sizeof(range), "%d", color_metadata.range);
         snprintf(transfer, sizeof(transfer), "%d", color_metadata.transfer);
@@ -2484,9 +2502,9 @@ DisplayError DisplayBuiltIn::BuildLayerStackStats(LayerStack *layer_stack) {
     } else {
       stack_info.app_layer_count++;
     }
-    if (IsWideColor(layer->input_buffer.color_metadata.colorPrimaries)) {
+    if (IsWideColor(layer->input_buffer.dataspace.colorPrimaries)) {
       stack_info.wide_color_primaries.push_back(
-          layer->input_buffer.color_metadata.colorPrimaries);
+          layer->input_buffer.dataspace.colorPrimaries);
     }
     if (layer->flags.is_game) {
       stack_info.game_present = true;
@@ -2675,8 +2693,8 @@ PrimariesTransfer DisplayBuiltIn::GetBlendSpaceFromStcColorMode(
     return blend_space;
   }
 
-  blend_space.primaries = color_mode.gamut;
-  blend_space.transfer = color_mode.gamma;
+  blend_space.primaries = qti_primaries_map[color_mode.gamut];
+  blend_space.transfer = qti_transfer_map[color_mode.gamma];
 
   return blend_space;
 }
@@ -2705,7 +2723,7 @@ DisplayError DisplayBuiltIn::GetConfig(DisplayConfigFixedInfo *fixed_info) {
   fixed_info->hdr_supported = hdr_supported;
   // Built-in displays always support HDR10+ when the target supports HDR
   fixed_info->hdr_plus_supported = fixed_info->hdr_supported && hdr_plus_supported;
-  fixed_info->dolby_vision_supported = fixed_info->hdr_supported && dolby_vision_supported;  
+  fixed_info->dolby_vision_supported = fixed_info->hdr_supported && dolby_vision_supported;
   // Populate luminance values only if hdr will be supported on that display
   fixed_info->max_luminance = fixed_info->hdr_supported ?
                               client_ctx_.hw_panel_info.peak_luminance: 0;
@@ -3391,6 +3409,101 @@ DisplayError DisplayBuiltIn::PerformCacConfig(CacConfig config, bool enable) {
   cac_config_ = config;
   validated_ = false;
   event_handler_->Refresh();
+
+  return kErrorNone;
+}
+
+DisplayError
+DisplayBuiltIn::PanelOprInfo(const std::string &client_name, bool enable,
+                             SdmDisplayCbInterface<PanelOprPayload> *cb_intf) {
+  return event_proxy_info_.PanelOprInfo(client_name, enable, cb_intf);
+}
+
+DisplayError EventProxyInfo::Init(const std::string &panel_name,
+                                  DisplayInterface *intf,
+                                  DynLib &extension_lib) {
+  std::lock_guard<std::mutex> guard(lock_);
+
+  if (!intf) {
+    DLOGE("Invalid display interface");
+    return kErrorParameters;
+  }
+
+  if (event_proxy_intf_.get()) {
+    DLOGV("Event proxy interface is already created");
+    return kErrorNone;
+  }
+
+  typedef DispEventProxyFactIntf *(*GetDispEventProxyFactFunc)();
+  GetDispEventProxyFactFunc get_disp_event_proxy_fact_func;
+
+  if (!extension_lib.Sym(
+          "GetDispEventProxyFactIntf",
+          reinterpret_cast<void **>(&get_disp_event_proxy_fact_func))) {
+    DLOGW("Fail to retrieve GetDispEventProxyFactIntf from %s",
+          EXTENSION_LIBRARY_NAME);
+    return kErrorUndefined;
+  }
+
+  DispEventProxyFactIntf *factory_intf = get_disp_event_proxy_fact_func();
+  if (!factory_intf) {
+    DLOGW("Failed to get display event proxy factory interface");
+    return kErrorUndefined;
+  }
+
+  std::shared_ptr<DisplayEventProxyIntf> proxy_intf =
+      factory_intf->CreateDispEventProxyIntf(panel_name, intf);
+  if (!proxy_intf) {
+    DLOGW("Failed to create display event proxy interface");
+    return kErrorMemory;
+  }
+
+  int ret = proxy_intf->Init();
+  if (ret) {
+    DLOGW("Failed to initialize event proxy interface, ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  event_proxy_intf_ = proxy_intf;
+  return kErrorNone;
+}
+
+DisplayError EventProxyInfo::Deinit() {
+  std::lock_guard<std::mutex> guard(lock_);
+  if (event_proxy_intf_) {
+    event_proxy_intf_->Deinit();
+    event_proxy_intf_.reset();
+    event_proxy_intf_ = nullptr;
+  }
+  return kErrorNone;
+}
+
+DisplayError
+EventProxyInfo::PanelOprInfo(const std::string &client_name, bool enable,
+                             SdmDisplayCbInterface<PanelOprPayload> *cb_intf) {
+  if (!event_proxy_intf_.get()) {
+    DLOGW("Event proxy intf is not available");
+    return kErrorParameters;
+  }
+
+  PanelOprInfoParam *opr_info = nullptr;
+  GenericPayload payload;
+  int ret = payload.CreatePayload(opr_info);
+  if (ret || !opr_info) {
+    DLOGE("Failed to create payload for OPR info, ret %d", ret);
+    return kErrorParameters;
+  }
+
+  opr_info->name = client_name;
+  opr_info->enable = enable;
+  opr_info->cb_intf = cb_intf;
+
+  ret = event_proxy_intf_->SetParameter(kSetPanelOprInfoEnable, payload);
+  if (ret) {
+    DLOGE("Failed to set panel Opr info enablement, ret %d", ret);
+    return kErrorUndefined;
+  }
+
   return kErrorNone;
 }
 

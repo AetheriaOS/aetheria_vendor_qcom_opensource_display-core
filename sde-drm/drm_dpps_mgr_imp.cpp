@@ -29,7 +29,7 @@
 
 /*
  * Changes from Qualcomm Innovation Center are provided under the following license:
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
@@ -287,10 +287,18 @@ void DRMDppsManagerImp::Init(int fd, drmModeRes* res) {
     DRMProperty::SDE_DSPP_BL_SCALE, prop_mgr_.GetPropertyId(DRMProperty::SDE_DSPP_BL_SCALE),
     false /* is_event */};
 
+  uint32_t i = (uint32_t)DRMProperty::INVALID;
   if (prop_mgr_.IsPropertyAvailable(DRMProperty::SDE_LTM_VERSION)) {
-    dpps_feature_[kFeatureLtm] = DRMDppsPropInfo {1 /* version */,
-      DRMProperty::SDE_LTM_VERSION, prop_mgr_.GetPropertyId(DRMProperty::SDE_LTM_VERSION),
-      false /* is_event */};
+    i = static_cast<uint32_t>(DRMProperty::SDE_LTM_VERSION);
+  } else if (prop_mgr_.IsPropertyAvailable(DRMProperty::SDE_LTM_VERSION_V2)) {
+    i = static_cast<uint32_t>(DRMProperty::SDE_LTM_VERSION_V2);
+  }
+
+  if (i != (uint32_t)DRMProperty::INVALID) {
+    dpps_feature_[kFeatureLtm].prop_enum = (DRMProperty)i;
+    dpps_feature_[kFeatureLtm].prop_id = prop_mgr_.GetPropertyId((DRMProperty)i);
+    dpps_feature_[kFeatureLtm].version = i - (uint32_t)DRMProperty::SDE_LTM_VERSION + 1;
+
     dpps_feature_[kFeatureLtmInit] = DRMDppsPropInfo {1 /* version */,
       DRMProperty::SDE_LTM_INIT, prop_mgr_.GetPropertyId(DRMProperty::SDE_LTM_INIT),
       false /* is_event */};

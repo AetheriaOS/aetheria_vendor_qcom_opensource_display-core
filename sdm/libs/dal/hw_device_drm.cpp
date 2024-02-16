@@ -2372,28 +2372,28 @@ void HWDeviceDRM::SelectCscType(const LayerBuffer &input_buffer, DRMCscType *typ
   // for other metadata types we will run into issues.
   bool extended_md_present = input_buffer.extended_content_metadata != nullptr &&
                               input_buffer.extended_content_metadata->size;
-  if (extended_md_present && (input_buffer.color_metadata.transfer == Transfer_SMPTE_170M
-                          || input_buffer.color_metadata.transfer == Transfer_sRGB)) {
+  if (extended_md_present && (input_buffer.dataspace.transfer == QtiTransfer_SMPTE_170M
+                          || input_buffer.dataspace.transfer == QtiTransfer_sRGB)) {
       *type = DRMCscType::kCscYuv2RgbDolbyVisionP5;
       return;
   }
 
-  switch (input_buffer.color_metadata.colorPrimaries) {
-    case ColorPrimaries_BT601_6_525:
-    case ColorPrimaries_BT601_6_625:
-      *type = ((input_buffer.color_metadata.range == Range_Full) ?
+  switch (input_buffer.dataspace.colorPrimaries) {
+    case QtiColorPrimaries_BT601_6_525:
+    case QtiColorPrimaries_BT601_6_625:
+      *type = ((input_buffer.dataspace.range == QtiRange_Full) ?
                DRMCscType::kCscYuv2Rgb601FR : DRMCscType::kCscYuv2Rgb601L);
       break;
-    case ColorPrimaries_BT709_5:
-      *type = ((input_buffer.color_metadata.range == Range_Full) ?
+    case QtiColorPrimaries_BT709_5:
+      *type = ((input_buffer.dataspace.range == QtiRange_Full) ?
                DRMCscType::kCscYuv2Rgb709FR : DRMCscType::kCscYuv2Rgb709L);
       break;
-    case ColorPrimaries_BT2020:
-      *type = ((input_buffer.color_metadata.range == Range_Full) ?
+    case QtiColorPrimaries_BT2020:
+      *type = ((input_buffer.dataspace.range == QtiRange_Full) ?
                 DRMCscType::kCscYuv2Rgb2020FR : DRMCscType::kCscYuv2Rgb2020L);
       break;
-    case ColorPrimaries_DCIP3:
-      *type = ((input_buffer.color_metadata.range == Range_Full) ?
+    case QtiColorPrimaries_DCIP3:
+      *type = ((input_buffer.dataspace.range == QtiRange_Full) ?
                 DRMCscType::kCscYuv2RgbDCIP3FR : DRMCscType::kCscTypeMax);
       break;
     default:
@@ -2422,13 +2422,13 @@ void HWDeviceDRM::SelectFp16Config(const LayerBuffer &input_buffer, int *igc_en,
 
   // FP16 block should only be configured for the expected use cases.
   // All other cases will be disabled by default.
-  if ((input_buffer.color_metadata.colorPrimaries == ColorPrimaries_BT709_5) &&
-      (input_buffer.color_metadata.range == Range_Extended)) {
+  if ((input_buffer.dataspace.colorPrimaries == QtiColorPrimaries_BT709_5) &&
+      (input_buffer.dataspace.range == QtiRange_Extended)) {
     *csc_type = sde_drm::DRMFp16CscType::kFP16CscSrgb2Bt2020;
     gc->mode = FP16_GC_MODE_PQ;
-    if (input_buffer.color_metadata.transfer == Transfer_sRGB) {
+    if (input_buffer.dataspace.transfer == QtiTransfer_sRGB) {
       *igc_en = 1;
-    } else if (input_buffer.color_metadata.transfer == Transfer_Linear) {
+    } else if (input_buffer.dataspace.transfer == QtiTransfer_Linear) {
       *igc_en = 0;
     }
 

@@ -57,7 +57,7 @@ using std::vector;
 
 class HWEventsDRM : public HWEventsInterface {
  public:
-  virtual DisplayError Init(DisplayId display_id, DisplayType display_type,
+  virtual DisplayError Init(DisplayId display_id, SDMDisplayType display_type,
                             HWEventHandler *event_handler, const vector<HWEvent> &event_list);
   virtual DisplayError Deinit();
   virtual DisplayError SetEventState(HWEvent event, bool enable, void *aux = nullptr);

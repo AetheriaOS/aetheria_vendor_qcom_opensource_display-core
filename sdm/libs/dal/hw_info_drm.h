@@ -59,7 +59,7 @@ class HWInfoDRM : public HWInfoInterface {
   virtual DisplayError GetHWResourceInfo(HWResourceInfo *hw_resource);
   virtual DisplayError GetFirstDisplayInterfaceType(HWDisplayInterfaceInfo *hw_disp_info);
   virtual DisplayError GetDisplaysStatus(HWDisplaysInfo *hw_displays_info);
-  virtual DisplayError GetMaxDisplaysSupported(DisplayType type, int32_t *max_displays);
+  virtual DisplayError GetMaxDisplaysSupported(SDMDisplayType type, int32_t *max_displays);
   virtual DisplayError GetRequiredDemuraFetchResourceCount(
                        std::map<uint32_t, uint8_t> *required_demura_fetch_cnt);
   virtual DisplayError GetDemuraPanelIds(std::vector<uint64_t> *panel_ids);

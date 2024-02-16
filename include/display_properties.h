@@ -30,7 +30,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -248,6 +248,7 @@
 #define ENABLE_ROUNDED_CORNER_CONFIG_DUMP    DISPLAY_PROP("enable_rounded_corner_config_dump")
 #define DISABLE_ROUNDED_CORNER_DEST_SCALER   DISPLAY_PROP("disable_rounded_corner_dest_scaler")
 #define DISABLE_ROUNDED_CORNER_TUI           DISPLAY_PROP("disable_rounded_corner_tui")
+#define IDLE_FALLBACK_ON_DSPP                DISPLAY_PROP("idle_fallback_on_dspp")
 
 // Add all other.properties above
 // End of property

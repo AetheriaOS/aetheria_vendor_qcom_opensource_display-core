@@ -46,7 +46,7 @@ namespace sdm {
 
 struct RCInputConfig {
   int32_t display_id = -1;                 // Used only for mask dumping and logging.
-  DisplayType display_type = kDisplayMax;  // Used only for mask dumping and logging.
+  SDMDisplayType display_type = kDisplayMax;  // Used only for mask dumping and logging.
   uint32_t display_xres = 0;
   uint32_t display_yres = 0;
   uint32_t max_mem_size = 0;

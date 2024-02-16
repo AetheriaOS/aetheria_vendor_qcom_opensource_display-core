@@ -81,6 +81,7 @@
 
 #include "layer_buffer.h"
 #include "sdm_types.h"
+#include <color_metadata.h>
 
 namespace sdm {
 // clang-format off
@@ -232,7 +233,7 @@ struct LayerFlags {
 
       uint32_t cursor : 1;    //!< This flag shall be set by client to indicate that this layer
                               //!< is a cursor
-                              //!< Display Device may handle this layer using HWCursor
+                              //!< Display Device may handle this layer using cursor
 
       uint32_t single_buffer : 1;
                               //!< This flag shall be set by client to indicate that the layer
@@ -325,9 +326,14 @@ struct LayerRequestFlags {
 struct LayerRequest {
   LayerRequestFlags flags;  // Flags associated with this request
   LayerBufferFormat format = kFormatRGBA8888;  // Requested format
-  ColorMetaData color_metadata = { .colorPrimaries = ColorPrimaries_BT709_5,
-                                   .range = Range_Full,
-                                   .transfer = Transfer_sRGB };
+  Dataspace dataspace = { .colorPrimaries = QtiColorPrimaries_BT709_5,
+                                   .range = QtiRange_Full,
+                                   .transfer = QtiTransfer_sRGB };
+  QtiMatrixCoEfficients matrixCoefficients;
+  QtiMasteringDisplay masteringDisplayInfo;
+  QtiContentLightLevel contentLightLevel;
+  QtiColorRemappingInfo cRI;
+  QtiDynamicMetadata dynamicMetadata;
                                   // Requested color metadata
   uint32_t width = 0;  // Requested unaligned width.
   uint32_t height = 0;  // Requested unalighed height
@@ -543,8 +549,8 @@ struct Layer {
 */
 
 struct PrimariesTransfer {
-  ColorPrimaries primaries = ColorPrimaries_BT709_5;
-  GammaTransfer transfer = Transfer_sRGB;
+  QtiColorPrimaries primaries = QtiColorPrimaries_BT709_5;
+  QtiGammaTransfer transfer = QtiTransfer_sRGB;
 
   bool operator==(const PrimariesTransfer& blend_cs) const {
     return ((primaries == blend_cs.primaries) && (transfer == blend_cs.transfer));

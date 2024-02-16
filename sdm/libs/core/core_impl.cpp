@@ -233,7 +233,7 @@ DisplayError CoreImpl::Deinit() {
   return kErrorNone;
 }
 
-DisplayError CoreImpl::CreateDisplay(DisplayType type, DisplayEventHandler *event_handler,
+DisplayError CoreImpl::CreateDisplay(SDMDisplayType type, DisplayEventHandler *event_handler,
                                      DisplayInterface **intf) {
   SCOPE_LOCK(locker_);
 
@@ -308,7 +308,7 @@ DisplayError CoreImpl::CreateDisplay(int32_t display_id, DisplayEventHandler *ev
   }
 
   DisplayBase *display_base = NULL;
-  DisplayType display_type = iter->second.display_type;
+  SDMDisplayType display_type = iter->second.display_type;
 
   if (core_count > hw_info_intf_.Size()) {
     return kErrorCriticalResource;
@@ -454,7 +454,7 @@ DisplayError CoreImpl::GetDisplaysStatus(HWDisplaysInfo *hw_displays_info) {
   for (auto disp_id_to_disp_info_pair : *hw_displays_info) {
     uint32_t disp_id = disp_id_to_disp_info_pair.first;
     HWDisplayInfo disp_info = disp_id_to_disp_info_pair.second;
-    DisplayType disp_type = disp_id_to_disp_info_pair.second.display_type;
+    SDMDisplayType disp_type = disp_id_to_disp_info_pair.second.display_type;
     bool has_disp_in_other_core = disp_id_to_disp_info_pair.second.has_disp_in_other_core;
 
     // merge two displays if same type and on two DPU
@@ -485,7 +485,7 @@ DisplayError CoreImpl::GetDisplaysStatus(HWDisplaysInfo *hw_displays_info) {
   return kErrorNone;
 }
 
-DisplayError CoreImpl::GetMaxDisplaysSupported(DisplayType type, int32_t *max_displays) {
+DisplayError CoreImpl::GetMaxDisplaysSupported(SDMDisplayType type, int32_t *max_displays) {
   SCOPE_LOCK(locker_);
 
   // ToDo: Revisit this avoid creating duplicate slot in dual core case

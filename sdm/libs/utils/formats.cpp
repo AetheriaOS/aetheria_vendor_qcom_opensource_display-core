@@ -36,6 +36,7 @@
 
 #include <utils/formats.h>
 #include <errno.h>
+#include <cstring>
 
 #define __CLASS__ "FormatsUtils"
 
@@ -354,10 +355,10 @@ bool HasAlphaChannel(LayerBufferFormat format) {
   }
 }
 
-bool IsWideColor(const ColorPrimaries &primary) {
+bool IsWideColor(const QtiColorPrimaries &primary) {
   switch (primary) {
-    case ColorPrimaries_DCIP3:
-    case ColorPrimaries_BT2020:
+    case QtiColorPrimaries_DCIP3:
+    case QtiColorPrimaries_BT2020:
       return true;
     default:
       return false;
@@ -365,7 +366,64 @@ bool IsWideColor(const ColorPrimaries &primary) {
 }
 
 bool IsExtendedRange(LayerBuffer buffer) {
-  return (Is16BitFormat(buffer.format) && buffer.color_metadata.range == Range_Extended);
+  return (Is16BitFormat(buffer.format) && buffer.dataspace.range == QtiRange_Extended);
+}
+
+// TODO(user): eventually we should upgrade the legacy ColorMetadata struct in
+// snapdragon_color_intf.h so we don't have to do all this
+ColorMetaData convertToLegacyColorMetadata(const LayerBuffer *buffer) {
+  ColorMetaData data;
+  data.colorPrimaries = primaries_map[buffer->dataspace.colorPrimaries];
+  data.range = range_map[buffer->dataspace.range];
+  data.transfer = transfer_map[buffer->dataspace.transfer];
+  data.matrixCoefficients = matrix_map[buffer->matrixCoefficients];
+
+  // mastering display
+  data.masteringDisplayInfo.colorVolumeSEIEnabled = buffer->masteringDisplayInfo.colorVolumeSEIEnabled;
+  data.masteringDisplayInfo.primaries.rgbPrimaries[0][0] = buffer->masteringDisplayInfo.primaryRed.x;
+  data.masteringDisplayInfo.primaries.rgbPrimaries[0][1] = buffer->masteringDisplayInfo.primaryRed.y;
+  data.masteringDisplayInfo.primaries.rgbPrimaries[1][0] = buffer->masteringDisplayInfo.primaryGreen.x;
+  data.masteringDisplayInfo.primaries.rgbPrimaries[1][1] = buffer->masteringDisplayInfo.primaryGreen.y;
+  data.masteringDisplayInfo.primaries.rgbPrimaries[2][0] = buffer->masteringDisplayInfo.primaryBlue.x;
+  data.masteringDisplayInfo.primaries.rgbPrimaries[2][1] = buffer->masteringDisplayInfo.primaryBlue.y;
+  data.masteringDisplayInfo.primaries.whitePoint[0] = buffer->masteringDisplayInfo.whitePoint.x;
+  data.masteringDisplayInfo.primaries.whitePoint[1] = buffer->masteringDisplayInfo.whitePoint.y;
+  data.masteringDisplayInfo.maxDisplayLuminance = buffer->masteringDisplayInfo.maxDisplayLuminance;
+  data.masteringDisplayInfo.minDisplayLuminance = buffer->masteringDisplayInfo.minDisplayLuminance;
+
+  // content light level
+  data.contentLightLevel.lightLevelSEIEnabled = buffer->contentLightLevel.lightLevelSEIEnabled;
+  data.contentLightLevel.maxContentLightLevel = buffer->contentLightLevel.maxContentLightLevel;
+  data.contentLightLevel.maxPicAverageLightLevel = buffer->contentLightLevel.maxFrameAverageLightLevel;
+
+  // color remapping info
+  data.cRI.criEnabled = buffer->cRI.criEnabled;
+  data.cRI.crId = buffer->cRI.crId;
+  data.cRI.crCancelFlag = buffer->cRI.crCancelFlag;
+  data.cRI.crPersistenceFlag = buffer->cRI.crPersistenceFlag;
+  data.cRI.crVideoSignalInfoPresentFlag = buffer->cRI.crVideoSignalInfoPresentFlag;
+  data.cRI.crRange = buffer->cRI.crRange;
+  data.cRI.crPrimaries = primaries_map[buffer->cRI.crPrimaries];
+  data.cRI.crTransferFunction = transfer_map[buffer->cRI.crTransferFunction];
+  data.cRI.crMatrixCoefficients = matrix_map[buffer->cRI.crMatrixCoefficients];
+  data.cRI.crInputBitDepth = buffer->cRI.crInputBitDepth;
+  data.cRI.crOutputBitDepth = buffer->cRI.crOutputBitDepth;
+  memcpy(&data.cRI.crPreLutNumValMinusOne, &buffer->cRI.crPreLutNumValMinusOne, (sizeof(uint32_t)*3));
+  memcpy(&data.cRI.crPreLutCodedValue, &buffer->cRI.crPreLutCodedValue, (sizeof(uint32_t)*99));
+  memcpy(&data.cRI.crPreLutTargetValue, &buffer->cRI.crPreLutTargetValue, (sizeof(uint32_t)*99));
+  data.cRI.crMatrixPresentFlag = buffer->cRI.crMatrixPresentFlag;
+  data.cRI.crLog2MatrixDenom = buffer->cRI.crLog2MatrixDenom;
+  memcpy(&data.cRI.crCoefficients, &buffer->cRI.crCoefficients, (sizeof(uint32_t)*9));
+  memcpy(&data.cRI.crPostLutNumValMinusOne, &buffer->cRI.crPostLutNumValMinusOne, (sizeof(uint32_t)*3));
+  memcpy(&data.cRI.crPostLutCodedValue, &buffer->cRI.crPostLutCodedValue, (sizeof(uint32_t)*99));
+  memcpy(&data.cRI.crPostLutTargetValue, &buffer->cRI.crPostLutTargetValue, (sizeof(uint32_t)*99));
+
+  // dynamic metadata
+  data.dynamicMetaDataValid = buffer->dynamicMetadata.dynamicMetaDataValid;
+  data.dynamicMetaDataLen = buffer->dynamicMetadata.dynamicMetaDataLen;
+  memcpy(&data.dynamicMetaDataPayload, &buffer->dynamicMetadata.dynamicMetaDataPayload, buffer->dynamicMetadata.dynamicMetaDataLen);
+
+  return data;
 }
 
 }  // namespace sdm

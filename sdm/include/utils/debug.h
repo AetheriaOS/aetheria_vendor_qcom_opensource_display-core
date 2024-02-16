@@ -31,7 +31,7 @@ class Debug {
   static bool IsRotatorDownScaleDisabled();
   static bool IsRotatorEnabledForUi();
   static bool IsDecimationDisabled();
-  static int GetMaxPipesPerMixer(DisplayType display_type);
+  static int GetMaxPipesPerMixer(SDMDisplayType display_type);
   static int GetMaxUpscale();
   static bool IsVideoModeEnabled();
   static bool IsRotatorUbwcDisabled();

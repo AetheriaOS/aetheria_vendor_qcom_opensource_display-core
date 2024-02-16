@@ -168,7 +168,7 @@ DisplayError DisplayNull::GetDisplayId(int32_t *display_id) {
   return kErrorNone;
 }
 
-DisplayError DisplayNull::GetDisplayType(DisplayType *display_type) {
+DisplayError DisplayNull::GetDisplayType(SDMDisplayType *display_type) {
   *display_type = kBuiltIn;
   return kErrorNone;
 }

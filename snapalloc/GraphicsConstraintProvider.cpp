@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #include "GraphicsConstraintProvider.h"
@@ -168,13 +168,22 @@ int GraphicsConstraintProvider::GetCapabilities(BufferDescriptor desc, Capabilit
       desc.usage & vendor_qti_hardware_display_common_BufferUsage::GPU_MIPMAP_COMPLETE ||
       desc.usage & vendor_qti_hardware_display_common_BufferUsage::GPU_DATA_BUFFER ||
       desc.usage & vendor_qti_hardware_display_common_BufferUsage::RENDERSCRIPT) {
-    ALOGD_IF(DEBUG, "GraphicsConstraintProvider is enabled");
     out->enabled = true;
   } else {
-    ALOGD_IF(DEBUG, "GraphicsConstraintProvider is not enabled");
     out->enabled = false;
   }
 
+  uint64_t pixel_format_modifier = GetPixelFormatModifier(desc);
+  if (GetGpuPixelFormat(
+          desc.format,
+          static_cast<vendor_qti_hardware_display_common_PixelFormatModifier>(
+              pixel_format_modifier)) == ADRENO_PIXELFORMAT_UNKNOWN) {
+    out->enabled = false;
+  }
+
+  ALOGD_IF(DEBUG, (out->enabled == true
+                       ? "GraphicsConstraintProvider is enabled"
+                       : "GraphicsConstraintProvider is not enabled"));
   return 0;
 }
 
@@ -218,6 +227,7 @@ int GraphicsConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferCo
       // This returns aligned width in pixels
       AlignUnCompressedRGB(desc.width, desc.height, format, tile_enabled, pixel_format_modifier,
                            &aligned_w, &aligned_h);
+      OVERFLOW_ERR_RETURN(static_cast<uint64_t>(aligned_w), (format_data.bits_per_pixel / 8.0f));
       plane_layout.stride.horizontal_stride =
           static_cast<uint64_t>(aligned_w) * (format_data.bits_per_pixel / 8.0f);
       plane_layout.scanline.scanline = static_cast<uint64_t>(aligned_h);

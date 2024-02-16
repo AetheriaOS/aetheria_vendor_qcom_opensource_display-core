@@ -22,11 +22,12 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
-*
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
-* SPDX-License-Identifier: BSD-3-Clause-Clear
-*/
+ * Changes from Qualcomm Innovation Center are provided under the
+ * following license:
+ *
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #include <dlfcn.h>
 #include <private/color_interface.h>
@@ -145,13 +146,17 @@ void ColorManagerProxy::Deinit() {
   }
 }
 
-ColorManagerProxy::ColorManagerProxy(int32_t id, DisplayType type, DPUCoreMux *dpu_core_mux,
+ColorManagerProxy::ColorManagerProxy(int32_t id, SDMDisplayType type, DPUCoreMux *dpu_core_mux,
                                      const HWDisplayAttributes &attr,
                                      const HWPanelInfo &info, const uint32_t &core_id)
     : display_id_(id), device_type_(type), pp_hw_attributes_(), dpu_core_mux_(dpu_core_mux),
       color_intf_(NULL), pp_features_(), feature_intf_(NULL), core_id_(core_id) {
   int32_t enable_posted_start_dyn = 0;
   bool dyn_switch = false;
+
+  // Initialize PCC with identity
+  curr_color_xform_.coeff_array = COLOR_TRANSFORM_IDENTITY;
+
   Debug::Get()->GetProperty(ENABLE_POSTED_START_DYN_PROP, &enable_posted_start_dyn);
   if (info.mode == kModeCommand) {
     switch (enable_posted_start_dyn) {
@@ -178,7 +183,7 @@ ColorManagerProxy::ColorManagerProxy(int32_t id, DisplayType type, DPUCoreMux *d
   }
 }
 
-ColorManagerProxy *ColorManagerProxy::CreateColorManagerProxy(DisplayType type,
+ColorManagerProxy *ColorManagerProxy::CreateColorManagerProxy(SDMDisplayType type,
                                                               DPUCoreMux *dpu_core_mux,
                                                               const HWDisplayAttributes &attribute,
                                                               const HWPanelInfo &panel_info,
@@ -260,6 +265,16 @@ ColorManagerProxy *ColorManagerProxy::CreateColorManagerProxy(DisplayType type,
         int ret = color_manager_proxy->stc_intf_->SetProperty(payload);
         if (ret) {
           DLOGW("Failed to SetProperty, property = %d error = %d", payload.prop, ret);
+        }
+
+        ScPayload pp_ver_pay;
+        pp_ver_pay.len = sizeof(versions);
+        pp_ver_pay.prop = snapdragoncolor::kSetPPFeatureVersion;
+        pp_ver_pay.payload = reinterpret_cast<uint64_t>(&versions);
+        ret = color_manager_proxy->stc_intf_->SetProperty(pp_ver_pay);
+        if (ret) {
+          DLOGW("Failed to SetProperty, property = %d error = %d",
+                pp_ver_pay.prop, ret);
         }
       }
 
@@ -498,6 +513,18 @@ DisplayError ColorManagerProxy::ColorMgrGetModeInfo(int32_t mode_id, AttrVal *qu
   return color_intf_->ColorIntfGetModeInfo(&pp_features_, 0, mode_id, query);
 }
 
+static bool TransformIsIdentity(std::array<float, snapdragoncolor::kMatrixSize> &coeff) {
+  if (coeff.at(0) == 1.0 && coeff.at(5) == 1.0 && coeff.at(10) == 1.0 && coeff.at(15) == 1.0) {
+    if (coeff.at(1) == 0.0 && coeff.at(2) == 0.0 && coeff.at(3) == 0.0 && coeff.at(4) == 0.0 &&
+        coeff.at(6) == 0.0 && coeff.at(7) == 0.0 && coeff.at(8) == 0.0 && coeff.at(9) == 0.0 &&
+        coeff.at(11) == 0.0 && coeff.at(12) == 0.0 && coeff.at(13) == 0.0 && coeff.at(14) == 0.0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 DisplayError ColorManagerProxy::ColorMgrSetColorTransform(uint32_t length,
                                                           const double *trans_data) {
   if (!trans_data) {
@@ -521,6 +548,7 @@ DisplayError ColorManagerProxy::ColorMgrSetColorTransform(uint32_t length,
     color_transform.coeff_array[i] = static_cast<float>(*(trans_data + i));
   }
 
+  curr_color_xform_.coeff_array = color_transform.coeff_array;
   ScPayload in_data = {};
   in_data.prop = snapdragoncolor::kSetColorTransform;
   in_data.len = sizeof(color_transform);
@@ -576,10 +604,10 @@ DisplayError ColorManagerProxy::Validate(DispLayerStack *disp_layer_stack) {
       hdr_present = true;
     }
 
-    if (hdr_present && hdr_layer.input_buffer.color_metadata.dynamicMetaDataValid &&
-        hdr_layer.input_buffer.color_metadata.dynamicMetaDataLen) {
+    if (hdr_present && hdr_layer.input_buffer.dynamicMetadata.dynamicMetaDataValid &&
+        hdr_layer.input_buffer.dynamicMetadata.dynamicMetaDataLen) {
       update_meta_data = true;
-      meta_data_ = hdr_layer.input_buffer.color_metadata;
+      meta_data_ = convertToLegacyColorMetadata(&hdr_layer.input_buffer);
     }
   }
 
@@ -703,7 +731,10 @@ DisplayError ColorManagerProxy::ConvertToPPFeatures(const HwConfigOutputParams &
   for (auto it = params.payload.begin(); it != params.payload.end(); it++) {
     error = color_intf_->ColorIntfConvertFeature(UINT32(display_id_), *it, out_data);
     if (error != kErrorNone) {
-      DLOGE("Failed to convert %s feature to PPFeature : err %d", it->hw_asset.c_str(), error);
+      if (error == kErrorNotSupported)
+        DLOGW("Failed to convert %s feature to PPFeature : err %d", it->hw_asset.c_str(), error);
+      else
+        DLOGE("Failed to convert %s feature to PPFeature : err %d", it->hw_asset.c_str(), error);
       return error;
     }
   }
@@ -742,8 +773,11 @@ DisplayError ColorManagerProxy::UpdateModeHwassets(int32_t mode_id,
 
   error = ConvertToPPFeatures(hw_params, &pp_features_);
   if (error != kErrorNone) {
-    DLOGE("Failed to convert hw assets to PP features, error = %d", error);
-    return kErrorUndefined;
+    if (error == kErrorNotSupported)
+      DLOGW("Failed to convert hw assets to PP features, error = %d", error);
+    else
+      DLOGE("Failed to convert hw assets to PP features, error = %d", error);
+    return error;
   }
   pp_features_.MarkAsDirty();
   return error;
@@ -888,6 +922,68 @@ DisplayError ColorManagerProxy::ConfigureCWBDither(CwbConfig *cwb_cfg, bool free
   if (dither_payload && (dither_payload->enable_flags_ & kOpsEnable))
     cwb_cfg->dither_info = dither_payload;
   DLOGV_IF(kTagQDCM, "config cwb dither data done");
+  return error;
+}
+
+DisplayError ColorManagerProxy::ColorMgrIdleFallback(bool idle_fallback_hint) {
+  DisplayError error = kErrorNone;
+
+  if(prev_idle_fallback_hint_ == idle_fallback_hint) {
+    return kErrorNone;
+  }
+
+  prev_idle_fallback_hint_ = idle_fallback_hint;
+  bool curr_xform_is_identity = TransformIsIdentity(curr_color_xform_.coeff_array);
+
+  if (idle_fallback_hint) {
+    ColorMode idle_fallback_mode;
+    struct snapdragoncolor::ColorTransform color_transform = {};
+    color_transform.coeff_array = COLOR_TRANSFORM_IDENTITY;
+
+    // Storing current ColorMode which will be used while exiting IdleFallBack
+    prev_idle_fallback_mode_ = curr_mode_;
+
+    //Set Native mode on idle fallback
+    idle_fallback_mode.gamut = ColorPrimaries_BT709_5;
+    idle_fallback_mode.gamma = Transfer_sRGB;
+    idle_fallback_mode.intent = snapdragoncolor::RenderIntent::kNative;
+    idle_fallback_mode.intent_name = "Standard";
+
+    DLOGV_IF(kTagQDCM, "idle fallback entry mode: gamut: %d, gamma: %d, intent: %d",
+      idle_fallback_mode.gamut, idle_fallback_mode.gamma, idle_fallback_mode.intent);
+    error = ColorMgrSetStcMode(idle_fallback_mode);
+
+    if (stc_intf_ && !curr_xform_is_identity) {
+      ScPayload in_data = {};
+      in_data.prop = snapdragoncolor::kSetColorTransform;
+      in_data.len = sizeof(color_transform);
+      in_data.payload = reinterpret_cast<uint64_t>(&color_transform);
+      if (stc_intf_->SetProperty(in_data)) {
+        DLOGE("Failed to set identity transform on idle fallback entry!");
+        error = kErrorUndefined;
+      }
+    }
+
+    return error;
+  }
+
+  DLOGV_IF(kTagQDCM, "idle fallback exit mode: gamut: %d, gamma: %d, intent: %d",
+      prev_idle_fallback_mode_.gamut, prev_idle_fallback_mode_.gamma,
+      prev_idle_fallback_mode_.intent);
+  error = ColorMgrSetStcMode(prev_idle_fallback_mode_);
+  prev_idle_fallback_mode_ = {};
+
+  if (stc_intf_ && !curr_xform_is_identity) {
+    ScPayload in_data = {};
+    in_data.prop = snapdragoncolor::kSetColorTransform;
+    in_data.len = sizeof(curr_color_xform_);
+    in_data.payload = reinterpret_cast<uint64_t>(&curr_color_xform_);
+    if (stc_intf_->SetProperty(in_data)) {
+      DLOGE("Failed to set color transform on idle fallback exit!");
+      error = kErrorUndefined;
+    }
+  }
+
   return error;
 }
 
@@ -1313,7 +1409,7 @@ int DPUColorManager::CreatePhysicalDisplayIds(DisplayId display_id_info) {
 }
 
 // Create physical display ID and create color manager proxy per physical display
-DPUColorManager *DPUColorManager::CreateDpuColorManager(DisplayType type,
+DPUColorManager *DPUColorManager::CreateDpuColorManager(SDMDisplayType type,
                                                         DPUCoreMux *dpu_core_mux,
                                                         DisplayDeviceContext &display_device_ctx,
                                                         DisplayClientContext &display_client_ctx,
@@ -1815,6 +1911,10 @@ DisplayError DPUColorManager::ColorMgrSetSprIntf(std::shared_ptr<SPRIntf> spr_in
   return kErrorNotSupported;
 }
 
+DisplayError DPUColorManager::ColorMgrIdleFallback(bool idle_fallback_hint) {
+  return kErrorNotSupported;
+}
+
 // TBD: Should remove this legacy API?
 DisplayError DPUColorManager::ApplyDefaultDisplayMode() {
   return kErrorNotSupported;
@@ -1835,7 +1935,7 @@ DisplayError DPUColorManager::ColorMgrCombineColorModes() {
 
 static ColorMgrFactoryIntfImpl color_mgr_impl;
 
-ColorManagerIntf* ColorMgrFactoryIntfImpl::CreateColorManagerIntf(DisplayType type,
+ColorManagerIntf* ColorMgrFactoryIntfImpl::CreateColorManagerIntf(SDMDisplayType type,
                                                     DPUCoreMux *dpu_core_mux,
                                                     DisplayDeviceContext &display_device_ctx,
                                                     DisplayClientContext &display_client_ctx,

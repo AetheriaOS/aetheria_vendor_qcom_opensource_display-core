@@ -41,7 +41,7 @@ DisplayError HWInfoDefault::GetDisplaysStatus(HWDisplaysInfo *hw_displays_info) 
   return kErrorNone;
 }
 
-DisplayError HWInfoDefault::GetMaxDisplaysSupported(const DisplayType type, int32_t *max_displays) {
+DisplayError HWInfoDefault::GetMaxDisplaysSupported(const SDMDisplayType type, int32_t *max_displays) {
   switch (type) {
     case kPluggable:
     case kVirtual:
