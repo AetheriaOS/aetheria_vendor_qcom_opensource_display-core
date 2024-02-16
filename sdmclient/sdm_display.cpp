@@ -676,7 +676,7 @@ void SDMDisplay::PopulateSDMExtendedDisplayResolution() {
     return;
   }
 
-  uint32_t config_index = num_configs_;
+  uint32_t config_index = variable_config_map_.size();
   for (uint32_t res_index = 0; res_index < extended_display_resolutions.size(); res_index++) {
     if (IsPanelConfig(extended_display_resolutions.at(res_index).first,
                       extended_display_resolutions.at(res_index).second)) {

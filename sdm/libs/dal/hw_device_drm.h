@@ -252,7 +252,6 @@ class HWDeviceDRM : public HWInterface {
                    int64_t *release_fence_fd, int64_t *retire_fence_fd);
   void SetSecureConfig(const LayerBuffer &input_buffer, sde_drm::DRMSecureMode *fb_secure_mode,
                        sde_drm::DRMSecurityLevel *security_level);
-  bool IsResolutionSwitchEnabled() const { return resolution_switch_enabled_; }
   void SetTopology(sde_drm::DRMTopology drm_topology, HWTopology *hw_topology);
   void SetMultiRectMode(const uint32_t flags, sde_drm::DRMMultiRectMode *target);
   void SetSsppTonemapFeatures(HWPipeInfo *pipe_info);
@@ -391,7 +390,6 @@ class HWDeviceDRM : public HWInterface {
   void GetCWBCapabilities();
 
   std::string interface_str_ = "DSI";
-  bool resolution_switch_enabled_ = false;
   bool autorefresh_ = false;
   std::unique_ptr<HWColorManagerDrm> hw_color_mgr_ = {};
   bool seamless_mode_switch_ = false;
