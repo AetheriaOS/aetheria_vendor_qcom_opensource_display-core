@@ -35,12 +35,12 @@
  */
 #include "sdm_layers.h"
 #include "sdm_debugger.h"
-#include <QtiGrallocDefs.h>
 #include <UBWCVersion.h>
 #include <cmath>
 #include <dlfcn.h>
 #include <stdint.h>
 #include <utility>
+#include <atomic>
 #include <utils/debug.h>
 
 #define __CLASS__ "SDMLayer"
@@ -188,10 +188,10 @@ DisplayError SDMLayer::SetLayerBuffer(const SnapHandle *handle,
   }
   layer_buffer->unaligned_width = UINT32(width_temp);
   layer_buffer->unaligned_height = UINT32(height_temp);
-  uint32_t buffer_type;
+  uint32_t buffer_type = 0;
   snapmapper_->GetMetadata(*handle, MetadataType::BUFFER_TYPE, &buffer_type);
 
-  layer_buffer->flags.video = (buffer_type == BUFFER_TYPE_VIDEO) ? true : false;
+  layer_buffer->flags.video = (buffer_type == 1) ? true : false;
   if (SetMetaData(handle, layer_) != kErrorNone) {
     return kErrorParameters;
   }
@@ -236,7 +236,6 @@ DisplayError SDMLayer::SetLayerBuffer(const SnapHandle *handle,
   }
   buffer_flipped_ = reinterpret_cast<uint64_t>(handle) != layer_buffer->buffer_id;
   layer_buffer->buffer_id = reinterpret_cast<uint64_t>(handle);
-  int64_t hd_id, hd_usage;
   err = snapmapper_->GetMetadata(*handle, MetadataType::BUFFER_ID, &layer_buffer->handle_id);
   if (err != Error::NONE) {
     DLOGW("Failed to retrieve buffer id");
@@ -737,8 +736,7 @@ DisplayError SDMLayer::SetMetaData(const SnapHandle *handle, Layer *layer) {
   ValidateAndSetCSC(handle);
 
   bool extended_md_set;
-  auto err =
-    snapmapper_->GetMetadataState(*handle, MetadataType::CUSTOM_CONTENT_METADATA, &extended_md_set);
+  snapmapper_->GetMetadataState(*handle, MetadataType::CUSTOM_CONTENT_METADATA, &extended_md_set);
   if (extended_md_set) {
     std::shared_ptr<CustomContentMetadata> dv_md = std::make_shared<CustomContentMetadata>();
     auto err =
@@ -827,7 +825,7 @@ void SDMLayer::ValidateAndSetCSC(const SnapHandle *handle) {
   if (dataspace_ != 0) {
     use_color_metadata = false;
     bool valid_csc = buffer_allocator_->GetSDMColorSpace(dataspace_, &csc);
-    ;
+
     if (!valid_csc) {
       dataspace_supported_ = false;
       return;
@@ -854,8 +852,8 @@ void SDMLayer::ValidateAndSetCSC(const SnapHandle *handle) {
   if (use_color_metadata) {
     ColorMetadata new_metadata;
     CopyMetadataFromBuffer(&new_metadata, layer_buffer);
-    if (sdm::SetCSC(handle, &new_metadata, snapmapper_) == kErrorNone) {
-      // If dataspace is KNOWN, overwrite the gralloc metadata CSC using the
+    if (sdm::SetCSC(handle, &new_metadata, snapmapper_) == Error::NONE) {
+      // If dataspace is KNOWN, overwrite the snapalloc metadata CSC using the
       // previously derived CSC from dataspace.
       if (dataspace_ != 0) {
         new_metadata.dataspace.colorPrimaries =
@@ -887,7 +885,7 @@ void SDMLayer::ValidateAndSetCSC(const SnapHandle *handle) {
           new_metadata.cRI.criEnabled,
           new_metadata.dynamicMetadata.dynamicMetaDataValid,
           new_metadata.dynamicMetadata.dynamicMetaDataLen);
-      // Read color metadata from gralloc handle if it's enabled by clients,
+      // Read color metadata from snapalloc handle if it's enabled by clients,
       // this will override the values set using the Composer
       // API's(SetLayerPerFrameMetaData)
       if (new_metadata.masteringDisplayInfo.colorVolumeSEIEnabled &&

@@ -34,7 +34,6 @@
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 #include <stdarg.h>
-#include <sync/sync.h>
 #include <utils/constants.h>
 #include <utils/debug.h>
 
@@ -165,7 +164,7 @@ SDMDisplayVirtual::SetOutputBuffer(const SnapHandle *output_handle,
     return kErrorParameters;
   }
 
-  if (sdm::SetCSC(output_handle, &color_metadata, snapmapper_) != kErrorNone) {
+  if (sdm::SetCSC(output_handle, &color_metadata, snapmapper_) != Error::NONE) {
     return kErrorParameters;
   }
 

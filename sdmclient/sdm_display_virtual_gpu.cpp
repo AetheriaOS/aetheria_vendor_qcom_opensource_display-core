@@ -126,7 +126,7 @@ DisplayError SDMDisplayVirtualGPU::Validate(uint32_t *out_num_types,
 
   *out_num_types = UINT32(layer_changes_.size());
   *out_num_requests = UINT32(layer_requests_.size());
-  ;
+
   has_client_composition_ = !needs_gpu_bypass;
   validate_done_ = true;
 
@@ -190,17 +190,7 @@ SDMDisplayVirtualGPU::Present(shared_ptr<Fence> *out_retire_fence) {
   // Ensure that blit is initialized.
   // GPU context gets in secure or non-secure mode depending on output buffer
   // provided.
-  /*aparmar
-  if (!gl_color_convert_) {
-    // Get instance.
-    color_convert_task_.PerformTask(ColorConvertTaskCode::kCodeGetInstance,
-  nullptr); if (gl_color_convert_ == nullptr) { DLOGE("Failed to get Color
-  Convert Instance"); return kErrorResources; } else { DLOGI("Created
-  ColorConvert instance: %p", gl_color_convert_);
-    }
-    return status;
-  }
-  */
+  color_convert_task_.PerformTask(ColorConvertTaskCode::kCodeGetInstance, nullptr);
 
   ColorConvertBlitContext ctx = {};
 
@@ -224,35 +214,25 @@ SDMDisplayVirtualGPU::Present(shared_ptr<Fence> *out_retire_fence) {
   return status;
 }
 
-void SDMDisplayVirtualGPU::OnTask(
-    const ColorConvertTaskCode &task_code,
-    SyncTask<ColorConvertTaskCode>::TaskContext *task_context) {
-  /*aparmar
-    switch (task_code) {
-      case ColorConvertTaskCode::kCodeGetInstance: {
-        gl_color_convert_ = GLColorConvert::GetInstance(kTargetYUV,
-    output_buffer_->flags.secure); } break; case
-    ColorConvertTaskCode::kCodeBlit: { DTRACE_SCOPED(); ColorConvertBlitContext
-    *ctx = reinterpret_cast<ColorConvertBlitContext *>(task_context);
-        gl_color_convert_->Blit(reinterpret_cast<const native_handle_t
-    *>(ctx->src_hnd), reinterpret_cast<const native_handle_t *>(ctx->dst_hnd),
-                                ctx->src_rect, ctx->dst_rect,
-                                ctx->src_acquire_fence, ctx->dst_acquire_fence,
-                                &(ctx->release_fence));
-      } break;
-      case ColorConvertTaskCode::kCodeReset: {
-        DTRACE_SCOPED();
-        if (gl_color_convert_) {
-          gl_color_convert_->Reset();
-        }
-      } break;
-      case ColorConvertTaskCode::kCodeDestroyInstance: {
-        if (gl_color_convert_) {
-          GLColorConvert::Destroy(gl_color_convert_);
-        }
-      } break;
-    }
-  */
+void SDMDisplayVirtualGPU::OnTask(const ColorConvertTaskCode &task_code,
+                                  SyncTask<ColorConvertTaskCode>::TaskContext *task_context) {
+  switch (task_code) {
+    case ColorConvertTaskCode::kCodeGetInstance: {
+      callbacks_->InitColorConvert(id_, output_buffer_->flags.secure);
+    } break;
+    case ColorConvertTaskCode::kCodeBlit: {
+      DTRACE_SCOPED();
+      ColorConvertBlitContext *ctx = reinterpret_cast<ColorConvertBlitContext *>(task_context);
+      callbacks_->ColorConvertBlit(id_, ctx);
+    } break;
+    case ColorConvertTaskCode::kCodeReset: {
+      DTRACE_SCOPED();
+      callbacks_->ResetColorConvert(id_);
+    } break;
+    case ColorConvertTaskCode::kCodeDestroyInstance: {
+      callbacks_->DestroyColorConvert(id_);
+    } break;
+  }
 }
 
 bool SDMDisplayVirtualGPU::FreezeScreen() {

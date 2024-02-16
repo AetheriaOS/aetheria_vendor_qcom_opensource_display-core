@@ -33,7 +33,6 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
-#include <display_config.h>
 #include <utils/constants.h>
 
 #include <algorithm>
@@ -59,7 +58,7 @@ void SDMServices::Init(SDMDisplayBuilder *disp,
   locker_ = locker;
   tui_ = tui;
 
-  color_mgr_ = SDMColorManager::CreateColorManager(buffer_allocator);
+  color_mgr_ = SDMColorManager::CreateColorManager(buffer_allocator, socket_handler_);
   if (!color_mgr_) {
     DLOGW("Failed to load SDMColorManager.");
   }
@@ -73,10 +72,8 @@ void SDMServices::Deinit() {
   }
 }
 
-DisplayError SDMServices::notifyCallback(uint32_t command,
-                                         SDMParcel *input_parcel,
+DisplayError SDMServices::notifyCallback(uint32_t command, SDMParcel *input_parcel,
                                          SDMParcel *output_parcel) {
-  DisplayError status = kErrorNotSupported;
   DLOGI("sdmclient qservice command %d", command);
 
   if (!input_parcel) {
@@ -202,8 +199,8 @@ DisplayError SDMServices::SetFrameDumpConfig(
       continue;
     }
 
-    if (i != UINT32(qdutils::DISPLAY_VIRTUAL) &&
-        i != UINT32(qdutils::DISPLAY_VIRTUAL_2)) {
+    if (i != UINT32(qdutilsDisplayType::DISPLAY_VIRTUAL) &&
+        i != UINT32(qdutilsDisplayType::DISPLAY_VIRTUAL_2)) {
       if (processable_cwb_requests <= 0 && !input_buffer_dump) {
         continue;
       } else if (processable_cwb_requests > 0) {
@@ -285,19 +282,19 @@ DisplayError SDMServices::ConfigureRefreshRate(uint32_t operation,
   }
 
   switch (operation) {
-  case qdutils::DISABLE_METADATA_DYN_REFRESH_RATE:
-    return sdm_display->Perform(SET_METADATA_DYN_REFRESH_RATE, false);
+    case MetadataOps::DISABLE_METADATA_DYN_REFRESH_RATE:
+      return sdm_display->Perform(SET_METADATA_DYN_REFRESH_RATE, false);
 
-  case qdutils::ENABLE_METADATA_DYN_REFRESH_RATE:
-    return sdm_display->Perform(SET_METADATA_DYN_REFRESH_RATE, true);
+    case MetadataOps::ENABLE_METADATA_DYN_REFRESH_RATE:
+      return sdm_display->Perform(SET_METADATA_DYN_REFRESH_RATE, true);
 
-  case qdutils::SET_BINDER_DYN_REFRESH_RATE: {
-    if (refresh_rate == 0) {
-      DLOGE("Invalid refresh rate requested: %d", refresh_rate);
-      return kErrorNotSupported;
+    case MetadataOps::SET_BINDER_DYNAMIC_REFRESH_RATE: {
+      if (refresh_rate == 0) {
+        DLOGE("Invalid refresh rate requested: %d", refresh_rate);
+        return kErrorNotSupported;
+      }
+      return sdm_display->Perform(MetadataOps::SET_BINDER_DYNAMIC_REFRESH_RATE, refresh_rate);
     }
-    return sdm_display->Perform(SET_BINDER_DYN_REFRESH_RATE, refresh_rate);
-  }
 
   default:
     DLOGW("Invalid operation %d", operation);
@@ -830,7 +827,7 @@ DisplayError SDMServices::SetPanelLuminanceAttributes(int disp_id,
                                                       float min_lum,
                                                       float max_lum) {
   // currently doing only for virtual display
-  if (disp_id != qdutils::DISPLAY_VIRTUAL) {
+  if (disp_id != qdutilsDisplayType::DISPLAY_VIRTUAL) {
     return kErrorNotSupported;
   }
 
@@ -988,7 +985,6 @@ DisplayError SDMServices::SetDemuraState(SDMParcel *input_parcel,
                                          SDMParcel *output_parcel) {
   int disp_id = input_parcel->readInt32();
   int state = input_parcel->readInt32();
-  DisplayError status = kErrorNone;
   auto ret = cb_->SetDemuraState(disp_id, state);
   if (ret != kErrorNone) {
     return ret;
@@ -1175,7 +1171,7 @@ DisplayError SDMServices::setColorSamplingEnabled(SDMParcel *input_parcel) {
 DisplayError SDMServices::ConfigureRefreshRate(SDMParcel *input_parcel) {
   uint32_t operation = UINT32(input_parcel->readInt32());
   uint32_t refresh_rate = 0;
-  if (operation == qdutils::SET_BINDER_DYN_REFRESH_RATE) {
+  if (operation == MetadataOps::SET_BINDER_DYNAMIC_REFRESH_RATE) {
     refresh_rate = UINT32(input_parcel->readInt32());
   }
   return ConfigureRefreshRate(operation, refresh_rate);
@@ -1212,13 +1208,12 @@ DisplayError SDMServices::ValidateFrameDumpConfig(
   bool output_buffer_dump = bit_mask_layer_type & (1 << OUTPUT_LAYER_DUMP);
   if (output_buffer_dump) {
     // Get running virtual display count which are using H/W WB block.
-    uint32_t virtual_dpy_index =
-        disp_->GetDisplayIndex(qdutils::DISPLAY_VIRTUAL);
+    uint32_t virtual_dpy_index = disp_->GetDisplayIndex(qdutilsDisplayType::DISPLAY_VIRTUAL);
     uint32_t running_vds = (virtual_dpy_index != -1 &&
                             cb_->GetDisplayFromClientId(virtual_dpy_index))
                                ? 1
                                : 0;
-    virtual_dpy_index = disp_->GetDisplayIndex(qdutils::DISPLAY_VIRTUAL_2);
+    virtual_dpy_index = disp_->GetDisplayIndex(qdutilsDisplayType::DISPLAY_VIRTUAL_2);
     running_vds += ((virtual_dpy_index != -1) &&
                     cb_->GetDisplayFromClientId(virtual_dpy_index))
                        ? 1
@@ -1226,9 +1221,8 @@ DisplayError SDMServices::ValidateFrameDumpConfig(
 
     // Get requested virtual display count.
     uint32_t requested_vds =
-        (bit_mask_display_type.test(qdutils::DISPLAY_VIRTUAL)) ? 1 : 0;
-    requested_vds +=
-        (bit_mask_display_type.test(qdutils::DISPLAY_VIRTUAL_2)) ? 1 : 0;
+        (bit_mask_display_type.test(qdutilsDisplayType::DISPLAY_VIRTUAL)) ? 1 : 0;
+    requested_vds += (bit_mask_display_type.test(qdutilsDisplayType::DISPLAY_VIRTUAL_2)) ? 1 : 0;
 
     // Get requested physical display count.
     uint32_t requested_pds = bit_mask_display_type.count() - requested_vds;
@@ -1470,9 +1464,12 @@ DisplayError SDMServices::GetActiveConfigIndex(SDMParcel *input_parcel,
   int disp_id = input_parcel->readInt32();
   uint32_t config = 0;
   DisplayError status = GetActiveConfigIndex(disp_id, &config);
-  output_parcel->writeInt32(INT(config));
+  if (!status) {
+    output_parcel->writeInt32(INT(config));
+    return kErrorNone;
+  }
 
-  return kErrorNone;
+  return status;
 }
 
 DisplayError SDMServices::GetConfigCount(SDMParcel *input_parcel,
@@ -1589,12 +1586,10 @@ DisplayError SDMServices::QdcmCMDDispatch(
     return kErrorHardware;
   }
 
-  if (display_id ==
-      disp_->GetDisplayMapInfo(qdutils::DISPLAY_PRIMARY)[0].client_id) {
+  if (display_id == disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_PRIMARY)[0].client_id) {
     is_physical_display = true;
   } else {
-    for (auto &map_info :
-         disp_->GetDisplayMapInfo(qdutils::DISPLAY_BUILTIN_2)) {
+    for (auto &map_info : disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_BUILTIN_2)) {
       if (map_info.client_id == display_id) {
         is_physical_display = true;
         break;
@@ -1706,10 +1701,8 @@ DisplayError SDMServices::QdcmCMDHandler(SDMParcel *input_parcel,
         }
         break;
       case kEnableFrameCapture: {
-        int external_dpy_index =
-            disp_->GetDisplayIndex(qdutils::DISPLAY_EXTERNAL);
-        int virtual_dpy_index =
-            disp_->GetDisplayIndex(qdutils::DISPLAY_VIRTUAL);
+        int external_dpy_index = disp_->GetDisplayIndex(qdutilsDisplayType::DISPLAY_EXTERNAL);
+        int virtual_dpy_index = disp_->GetDisplayIndex(qdutilsDisplayType::DISPLAY_VIRTUAL);
         if (((external_dpy_index != -1) &&
              cb_->GetDisplayFromClientId(external_dpy_index)) ||
             ((virtual_dpy_index != -1) &&
@@ -1738,8 +1731,7 @@ DisplayError SDMServices::QdcmCMDHandler(SDMParcel *input_parcel,
       case kNoAction:
         break;
       case kMultiDispProc:
-        for (auto &map_info :
-             disp_->GetDisplayMapInfo(qdutils::DISPLAY_BUILTIN_2)) {
+        for (auto &map_info : disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_BUILTIN_2)) {
           uint32_t id = UINT32(map_info.client_id);
           if (id < kNumDisplays && cb_->GetDisplayFromClientId(id)) {
             auto result = kErrorNone;
@@ -1764,8 +1756,7 @@ DisplayError SDMServices::QdcmCMDHandler(SDMParcel *input_parcel,
           if (cb_->GetDisplayFromClientId(SDM_DISPLAY_PRIMARY)) {
             disp_id[SDM_DISPLAY_PRIMARY] = SDM_DISPLAY_PRIMARY;
           }
-          for (auto &map_info :
-               disp_->GetDisplayMapInfo(qdutils::DISPLAY_BUILTIN_2)) {
+          for (auto &map_info : disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_BUILTIN_2)) {
             uint64_t id = map_info.client_id;
             if (id < kNumDisplays && cb_->GetDisplayFromClientId(id)) {
               disp_id[id] = (uint8_t)id;
@@ -1815,8 +1806,7 @@ DisplayError SDMServices::SetDsiClk(SDMParcel *input_parcel) {
   uint32_t disp_id = UINT32(input_parcel->readInt32());
   uint64_t clk = UINT64(input_parcel->readInt64());
   if (disp_id != SDM_DISPLAY_PRIMARY) {
-    auto &map_info_builtin =
-        disp_->GetDisplayMapInfo(qdutils::DISPLAY_BUILTIN_2);
+    auto &map_info_builtin = disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_BUILTIN_2);
     if (!std::any_of(map_info_builtin.begin(), map_info_builtin.end(),
                      [&disp_id](auto &i) { return disp_id == i.client_id; })) {
       return kErrorNotSupported;
@@ -1857,7 +1847,7 @@ DisplayError SDMServices::SetPanelLuminanceAttributes(SDMParcel *input_parcel) {
 
   auto status = SetPanelLuminanceAttributes(disp_id, min_lum, max_lum);
   if (!status) {
-    // TODO(aparmar): std::lock_guard<std::mutex> obj(mutex_lum_);
+    std::lock_guard<std::mutex> obj(*cb_->GetLumMutex());
     disp_->SetLuminance(min_lum, max_lum);
     DLOGI("set max_lum %f, min_lum %f", max_lum, min_lum);
   }

@@ -35,7 +35,6 @@
  */
 #include <algorithm>
 #include <array>
-#include <cutils/properties.h>
 #include <fstream>
 #include <sstream>
 #include <string>

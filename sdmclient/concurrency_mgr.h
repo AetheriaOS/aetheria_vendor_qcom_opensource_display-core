@@ -39,7 +39,6 @@
 #include <core/display_interface.h>
 #include <core/ipc_interface.h>
 #include <core/socket_handler.h>
-#include <display_config.h>
 #include <utils/constants.h>
 #include <utils/locker.h>
 
@@ -381,7 +380,7 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   bool IsModeSwitchAllowed(uint64_t disp_id, int32_t config) override;
   DisplayError GetActiveBuiltinDisplay(uint64_t *disp_id) override;
 
-  void RegisterSideBandCallback(SDMSideBandCompositorCbIntf *cb) override;
+  void RegisterSideBandCallback(SDMSideBandCompositorCbIntf *cb, bool enable) override;
 
   void GetCapabilities(uint32_t *outCount, int32_t *outCapabilities);
   void Dump(uint32_t *out_size, char *out_buffer);
@@ -528,6 +527,7 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
                                      uint32_t frame_interval_ns);
   DisplayError SetFrameIntervalNs(Display display, uint32_t frameIntervalNs);
   int GetNotifyEptConfig(Display display);
+  std::mutex *GetLumMutex() { return &mutex_lum_; }
 
   DisplayError SetSsrcMode(uint64_t display_id, const std::string &mode_name);
   DisplayError EnableCopr(uint64_t display_id, bool enable);
@@ -658,7 +658,7 @@ private:
   Locker primary_display_lock_;
   bool primary_pending_ = true;
 
-  std::map<hwc2_display_t, std::future<DisplayError>> commit_done_future_;
+  std::map<uint64_t, std::future<DisplayError>> commit_done_future_;
   bool disable_get_screen_decorator_support_ = false;
 
   SDMHotPlug *hpd_ = nullptr;
@@ -684,7 +684,6 @@ private:
 
   Locker client_lock_;
 
-  SDMSideBandCompositorCbIntf *sideband_cb_ = nullptr;
   std::shared_ptr<ISnapMapper> snapmapper_ = nullptr;
 };
 } // namespace sdm

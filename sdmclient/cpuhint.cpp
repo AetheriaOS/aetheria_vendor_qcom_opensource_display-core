@@ -33,7 +33,6 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
-#include <cutils/properties.h>
 #include <dlfcn.h>
 #include <thread>
 #include <utils/debug.h>
@@ -45,7 +44,8 @@
 
 namespace sdm {
 
-DisplayError CPUHint::Init(SDMDebugHandler *debug_handler) {
+DisplayError CPUHint::Init(SDMDebugHandler *debug_handler, SDMCompositorCallbacks *cb) {
+  cb_ = cb;
   char path[PROPERTY_VALUE_MAX];
   if (debug_handler->GetProperty("ro.vendor.extension_library", path) !=
       kErrorNone) {
@@ -81,7 +81,7 @@ DisplayError CPUHint::Init(SDMDebugHandler *debug_handler) {
 int CPUHint::ReqHintsOffload(int hint, int tid) {
   if (enabled_ && hint > 0) {
     if (large_comp_cycle_.status == kActive) {
-      nsecs_t current_time = systemTime(SYSTEM_TIME_MONOTONIC);
+      nsecs_t current_time = cb_->SystemTime(SYSTEM_TIME_MONOTONIC);
       nsecs_t difference = current_time - large_comp_cycle_.start_time;
 
       if (nanoseconds_to_seconds(difference) >= 4) {
@@ -115,7 +115,7 @@ int CPUHint::ReqHintsOffload(int hint, int tid) {
 
       large_comp_cycle_.handle_id = handle;
       large_comp_cycle_.tid = (tid != 0) ? tid : large_comp_cycle_.tid;
-      large_comp_cycle_.start_time = systemTime(SYSTEM_TIME_MONOTONIC);
+      large_comp_cycle_.start_time = cb_->SystemTime(SYSTEM_TIME_MONOTONIC);
       large_comp_cycle_.status = kActive;
       DLOGV_IF(kTagCpuHint,
                "Successfully %s large comp hint: handle_id:%d type:0x%x "

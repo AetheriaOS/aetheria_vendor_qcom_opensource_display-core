@@ -27,6 +27,7 @@ public:
 
   static SDMLayerBuilder *GetInstance();
   static void PutInstance();
+  void Deinit();
 
   DisplayError Init(BufferAllocator *buffer_allocator,
                     uint64_t display_id) override;

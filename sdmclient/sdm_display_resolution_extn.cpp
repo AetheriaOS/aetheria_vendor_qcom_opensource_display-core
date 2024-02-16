@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include <math.h>
 #include <tinyxml2.h>
 #include <fstream>
 

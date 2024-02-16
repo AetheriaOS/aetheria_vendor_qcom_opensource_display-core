@@ -34,14 +34,12 @@
 #include <algorithm>
 #include <bitset>
 #include <core/buffer_allocator.h>
-#include <cutils/properties.h>
 #include <iterator>
 #include <memory>
 #include <private/color_params.h>
 #include <string>
 #include <thread>
 #include <utility>
-#include <utils/String16.h>
 #include <utils/constants.h>
 #include <utils/debug.h>
 #include <utils/utils.h>
@@ -309,7 +307,7 @@ DisplayError ConcurrencyMgr::Deinit() {
 }
 
 DisplayError ConcurrencyMgr::InitSubModules(DebugCallbackIntf *debug) {
-  ipc_intf_ = std::make_shared<IPCImpl>(IPCImpl());
+  ipc_intf_ = std::make_shared<IPCImpl>(IPCImpl(&callbacks_));
   ipc_intf_->Init();
 
   int core_id_mask = 0Xff;      // default value when property is not present
@@ -344,7 +342,7 @@ DisplayError ConcurrencyMgr::InitSubModules(DebugCallbackIntf *debug) {
     return kErrorResources;
   }
 
-  hpd_ = new SDMHotPlug(this);
+  hpd_ = new SDMHotPlug(this, &callbacks_);
   hpd_->Init();
 
   cwb_ = new SDMConcurrentWriteBack(this, snapmapper_);
@@ -356,7 +354,7 @@ DisplayError ConcurrencyMgr::InitSubModules(DebugCallbackIntf *debug) {
   tui_ = new SDMTrustedUI(this);
   tui_->Init(disp_, locker_, pluggable_lock_index_);
 
-  services_ = new SDMServices(this, buffer_allocator_);
+  services_ = new SDMServices(this, buffer_allocator_, socket_handler_);
   services_->Init(disp_, buffer_allocator_, locker_, tui_);
 
   return kErrorNone;
@@ -373,7 +371,7 @@ DisplayError ConcurrencyMgr::PostBuffer(const CwbConfig &cwb_config,
 }
 
 void ConcurrencyMgr::NotifyCWBStatus(int32_t status, void *buffer) {
-  sideband_cb_->NotifyCWBStatus(status, buffer);
+  callbacks_.NotifyCWBStatus(status, buffer);
 }
 
 void ConcurrencyMgr::GetCapabilities(uint32_t *outCount,
@@ -616,8 +614,7 @@ DisplayError ConcurrencyMgr::getDisplayDecorationSupport(Display display,
 void ConcurrencyMgr::PerformQsyncCallback(Display display, bool qsync_enabled,
                                           uint32_t refresh_rate,
                                           uint32_t qsync_refresh_rate) {
-  sideband_cb_->NotifyQsyncChange(display, qsync_enabled, refresh_rate,
-                                  qsync_refresh_rate);
+  callbacks_.NotifyQsyncChange(display, qsync_enabled, refresh_rate, qsync_refresh_rate);
 }
 
 void ConcurrencyMgr::PerformIdleStatusCallback(Display display) {
@@ -628,7 +625,7 @@ void ConcurrencyMgr::PerformIdleStatusCallback(Display display) {
 }
 
 int ConcurrencyMgr::NotifyIdleStatus(bool idle_status) {
-  sideband_cb_->NotifyIdleStatus(true);
+  callbacks_.NotifyIdleStatus(true);
   return 0;
 }
 
@@ -772,8 +769,7 @@ void ConcurrencyMgr::RegisterCompositorCallback(SDMCompositorCbIntf *cb, bool en
   vector<Display> pending_hotplugs;
 
   if (enable && client_connected_) {
-    for (auto &map_info :
-         disp_->GetDisplayMapInfo(qdutils::DISPLAY_BUILTIN_2)) {
+    for (auto &map_info : disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_BUILTIN_2)) {
       SCOPE_LOCK(locker_[map_info.client_id]);
 
       if (sdm_display_[map_info.client_id]) {
@@ -781,7 +777,7 @@ void ConcurrencyMgr::RegisterCompositorCallback(SDMCompositorCbIntf *cb, bool en
       }
     }
 
-    for (auto &map_info : disp_->GetDisplayMapInfo(qdutils::DISPLAY_EXTERNAL)) {
+    for (auto &map_info : disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_EXTERNAL)) {
       SCOPE_LOCK(locker_[map_info.client_id]);
 
       if (sdm_display_[map_info.client_id]) {
@@ -931,8 +927,7 @@ ConcurrencyMgr::SetColorTransform(Display display,
       isIdentity ? SDMColorTransform::TRANSFORM_IDENTITY
                  : SDMColorTransform::TRANSFORM_ARBITRARY_MATRIX;
 
-  android_color_transform_t transform_hint =
-      static_cast<android_color_transform_t>(hint);
+  SDMColorTransform transform_hint = static_cast<SDMColorTransform>(hint);
   return CallDisplayFunction(display, &SDMDisplay::SetColorTransform,
                              static_cast<const float *>(matrix.data()),
                              transform_hint);
@@ -960,7 +955,7 @@ ConcurrencyMgr::SetOutputBuffer(uint64_t display, const SnapHandle *buffer,
   }
 
   bool found = false;
-  for (auto disp : {qdutils::DISPLAY_VIRTUAL, qdutils::DISPLAY_VIRTUAL_2}) {
+  for (auto disp : {qdutilsDisplayType::DISPLAY_VIRTUAL, qdutilsDisplayType::DISPLAY_VIRTUAL_2}) {
     if (INT32(display) == disp_->GetDisplayIndex(disp)) {
       found = true;
       break;
@@ -1185,7 +1180,7 @@ void ConcurrencyMgr::HpdEventHandler() {
 
   // Pass on legacy HDMI hot-plug event
   if (hpd_connected_ != -1) {
-    sideband_cb_->OnHdmiHotplug(hpd_connected_);
+    callbacks_.OnHdmiHotplug(hpd_connected_);
   }
 }
 
@@ -1206,7 +1201,6 @@ DisplayError ConcurrencyMgr::GetVsyncPeriod(Display disp,
   }
 
   *vsync_period = INT32(attributes.vsync_period_ns);
-  ;
 
   return kErrorNone;
 }
@@ -1327,14 +1321,14 @@ void ConcurrencyMgr::HandleSecureSession() {
   // If there are any ongoing non-secure virtual displays, we need to destroy
   // them.
   bool is_active_virtual_display = false;
-  for (auto &map_info : disp_->GetDisplayMapInfo(qdutils::DISPLAY_VIRTUAL)) {
+  for (auto &map_info : disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_VIRTUAL)) {
     if (map_info.disp_type == kVirtual) {
       is_active_virtual_display = true;
       client_id = map_info.client_id;
     }
   }
   if (is_active_virtual_display) {
-    auto error = disp_->DestroyVirtualDisplay(client_id);
+    disp_->DestroyVirtualDisplay(client_id);
   }
 
   // If it is called during primary prepare/commit, we need to pause any ongoing
@@ -1433,7 +1427,7 @@ void ConcurrencyMgr::HandlePendingPowerMode(
     bool disconnected = false;
     DisplayMapInfo *disp_map_info = nullptr;
 
-    for (auto &map_info : disp_->GetDisplayMapInfo(qdutils::DISPLAY_EXTERNAL)) {
+    for (auto &map_info : disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_EXTERNAL)) {
       if (display != map_info.client_id) {
         continue;
       }
@@ -1496,8 +1490,7 @@ void ConcurrencyMgr::HandlePendingHotplug(
     return;
   }
 
-  Display virtual_display_idx =
-      disp_->GetDisplayIndex(qdutils::DISPLAY_VIRTUAL);
+  Display virtual_display_idx = disp_->GetDisplayIndex(qdutilsDisplayType::DISPLAY_VIRTUAL);
   if (sdm_display_[virtual_display_idx]) {
     return;
   }
@@ -1558,7 +1551,7 @@ ConcurrencyMgr::SetReadbackBuffer(uint64_t display, void *buffer,
     return kErrorNotSupported;
   }
 
-  int virtual_dpy_index = disp_->GetDisplayIndex(qdutils::DISPLAY_VIRTUAL);
+  int virtual_dpy_index = disp_->GetDisplayIndex(qdutilsDisplayType::DISPLAY_VIRTUAL);
   if ((virtual_dpy_index != -1) && sdm_display_[virtual_dpy_index]) {
     return kErrorNotSupported;
   }
@@ -1742,8 +1735,8 @@ DisplayError ConcurrencyMgr::WaitForResources(bool wait_for_resources,
                                               Display active_builtin_id,
                                               Display display_id) {
   std::vector<DisplayMapInfo> map_info = {
-      disp_->GetDisplayMapInfo(qdutils::DISPLAY_PRIMARY)[0]};
-  auto &map_info_builtin = disp_->GetDisplayMapInfo(qdutils::DISPLAY_BUILTIN_2);
+      disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_PRIMARY)[0]};
+  auto &map_info_builtin = disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_BUILTIN_2);
   std::copy(map_info_builtin.begin(), map_info_builtin.end(),
             std::back_inserter(map_info));
 
@@ -1796,7 +1789,7 @@ DisplayError ConcurrencyMgr::WaitForResources(bool wait_for_resources,
         std::unique_lock<std::mutex> caller_lock(hotplug_mutex_);
         resource_ready_ = false;
 
-        static constexpr uint32_t min_vsync_period_ms = 500;
+        static constexpr uint32_t min_vsync_period_ms = 5000;
         auto timeout = std::chrono::system_clock::now() +
                        std::chrono::milliseconds(min_vsync_period_ms);
 
@@ -1810,7 +1803,6 @@ DisplayError ConcurrencyMgr::WaitForResources(bool wait_for_resources,
             needs_active_builtin_reconfig && cached_retire_fence_) {
           Fence::Wait(cached_retire_fence_);
         }
-        cached_retire_fence_ == nullptr;
       }
       {
         SCOPE_LOCK(locker_[display_id]);
@@ -1856,8 +1848,7 @@ DisplayError ConcurrencyMgr::SetActiveConfigWithConstraints(
       vsync_period_change_constraints, out_timeline);
 }
 
-DisplayError ConcurrencyMgr::WaitForCommitDoneAsync(hwc2_display_t display,
-                                                    int client_id) {
+DisplayError ConcurrencyMgr::WaitForCommitDoneAsync(uint64_t display, int client_id) {
   std::chrono::milliseconds span(2000);
   if (commit_done_future_[display].valid()) {
     std::future_status status =
@@ -1868,11 +1859,10 @@ DisplayError ConcurrencyMgr::WaitForCommitDoneAsync(hwc2_display_t display,
     }
   }
 
-  commit_done_future_[display] = std::async(
-      [](ConcurrencyMgr *session, hwc2_display_t display, int client_id) {
-        return session->WaitForCommitDone(display, client_id);
-      },
-      this, display, client_id);
+  commit_done_future_[display] =
+      std::async([](ConcurrencyMgr *session, uint64_t display,
+                    int client_id) { return session->WaitForCommitDone(display, client_id); },
+                 this, display, client_id);
   if (commit_done_future_[display].wait_for(span) ==
       std::future_status::timeout) {
     return kErrorTimeOut;
@@ -2038,7 +2028,7 @@ void ConcurrencyMgr::NotifyDisplayAttributes(Display display, Config config) {
   attributes.panelType = SDMDisplayIntf::DEFAULT;
   attributes.isYuv = var_info.is_yuv;
 
-  sideband_cb_->NotifyResolutionChange(display, attributes);
+  callbacks_.NotifyResolutionChange(display, attributes);
 }
 
 DisplayError
@@ -2092,7 +2082,7 @@ DisplayError ConcurrencyMgr::SetDisplayStatus(uint64_t disp_id,
     return kErrorNotSupported;
   }
 
-  if (disp_idx == qdutils::DISPLAY_PRIMARY) {
+  if (disp_idx == qdutilsDisplayType::DISPLAY_PRIMARY) {
     DLOGE("Not supported for this display");
     return err;
   }
@@ -2235,20 +2225,20 @@ ConcurrencyMgr::getDisplayMaxBrightness(uint32_t display,
 
 DisplayError ConcurrencyMgr::SetCameraSmoothInfo(SDMCameraSmoothOp op,
                                                  int32_t fps) {
-  sideband_cb_->NotifyCameraSmoothInfo(op, fps);
+  callbacks_.NotifyCameraSmoothInfo(op, fps);
 
   return kErrorNone;
 }
 
 DisplayError ConcurrencyMgr::NotifyTUIDone(int ret, int disp_id,
                                            SDMTUIEventType event_type) {
-  sideband_cb_->NotifyTUIEventDone(ret, disp_id, event_type);
+  callbacks_.NotifyTUIEventDone(ret, disp_id, event_type);
 
   return kErrorNone;
 }
 
 DisplayError ConcurrencyMgr::SetContentFps(const std::string &name, int32_t fps) {
-  sideband_cb_->NotifyContentFps(name, fps);
+  callbacks_.NotifyContentFps(name, fps);
 
   return kErrorNone;
 }
@@ -2369,7 +2359,6 @@ DisplayError ConcurrencyMgr::CreateVirtualDisplay(int width, int height,
       disp_->CreateVirtualDisplayObj(width, height, &format, &virtual_id);
   if (status != kErrorNone) {
     DLOGE("Failed to create virtual display: %d", status);
-    ;
     return status;
   }
 
@@ -2500,8 +2489,8 @@ DisplayError ConcurrencyMgr::SetPanelLuminanceAttributes(uint64_t display_id,
   return kErrorNone;
 }
 
-void ConcurrencyMgr::RegisterSideBandCallback(SDMSideBandCompositorCbIntf *cb) {
-  sideband_cb_ = cb;
+void ConcurrencyMgr::RegisterSideBandCallback(SDMSideBandCompositorCbIntf *cb, bool enable) {
+  callbacks_.RegisterSideband(cb, enable);
 }
 
 DisplayError ConcurrencyMgr::SetSsrcMode(uint64_t display_id, const std::string &mode_name) {

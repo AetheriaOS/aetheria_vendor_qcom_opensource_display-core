@@ -34,7 +34,6 @@
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 #include <algorithm>
-#include <cutils/properties.h>
 #include <utils/constants.h>
 #include <utils/debug.h>
 
@@ -331,10 +330,8 @@ SDMDisplayPluggable::SetColorModeWithRenderIntent(SDMColorMode mode,
   return status;
 }
 
-DisplayError
-SDMDisplayPluggable::SetColorTransform(const float *matrix,
-                                       android_color_transform_t hint) {
-  if (HAL_COLOR_TRANSFORM_IDENTITY == hint) {
+DisplayError SDMDisplayPluggable::SetColorTransform(const float *matrix, SDMColorTransform hint) {
+  if (hint == SDMColorTransform::TRANSFORM_IDENTITY) {
     has_color_tranform_ = false;
     // From 2.1 IComposerClient.hal:
     // If the device is not capable of either using the hint or the matrix to
