@@ -114,11 +114,16 @@ SDMDisplayVirtualDPU::SetOutputBuffer(const SnapHandle *output_handle,
   uint32_t active_width, active_height;
 
   GetMixerResolution(&active_width, &active_height);
+
   snapmapper_->GetMetadata(*output_handle, MetadataType::CUSTOM_DIMENSIONS_STRIDE, &new_width);
   snapmapper_->GetMetadata(*output_handle, MetadataType::CUSTOM_DIMENSIONS_HEIGHT, &new_height);
-  buffer_allocator_->GetAlignedWidthAndHeight(
-      INT(new_width), INT(new_height), output_handle_format, 0,
-      &active_aligned_w, &active_aligned_h);
+
+  buffer_allocator_->GetAlignedWidthAndHeight(new_width, new_height, output_handle_format, 0,
+                                              &new_aligned_w, &new_aligned_h);
+
+  buffer_allocator_->GetAlignedWidthAndHeight(active_width, active_height, output_handle_format, 0,
+                                              &active_aligned_w, &active_aligned_h);
+
   if (new_aligned_w != active_aligned_w || new_aligned_h != active_aligned_h) {
     auto status = SetConfig(UINT32(new_width), UINT32(new_height));
     if (status != kErrorNone) {
