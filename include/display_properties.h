@@ -248,6 +248,7 @@
 #define ENABLE_ROUNDED_CORNER_CONFIG_DUMP    DISPLAY_PROP("enable_rounded_corner_config_dump")
 #define DISABLE_ROUNDED_CORNER_DEST_SCALER   DISPLAY_PROP("disable_rounded_corner_dest_scaler")
 #define DISABLE_ROUNDED_CORNER_TUI           DISPLAY_PROP("disable_rounded_corner_tui")
+#define DISABLE_RCMASK_SIMD_OPT              DISPLAY_PROP("disable_rcmask_simd_opt")
 #define IDLE_FALLBACK_ON_DSPP                DISPLAY_PROP("idle_fallback_on_dspp")
 
 // Add all other.properties above

@@ -291,9 +291,7 @@ public:
   DisplayError CreateDisplay(SDMDisplayType type, int32_t width, int32_t height,
                              int32_t *format, uint64_t *display_id);
 
-  DisplayError DestroyDisplay(uint64_t display_id) {
-    return kErrorNone; // TODO(user)
-  }
+  DisplayError DestroyDisplay(uint64_t display_id) { return DestroyVirtualDisplay(display_id); }
 
   DisplayError GetDisplayList(std::vector<SDMDisplayInfo> *display_info_list) {
     return kErrorNone; // TODO(user)
