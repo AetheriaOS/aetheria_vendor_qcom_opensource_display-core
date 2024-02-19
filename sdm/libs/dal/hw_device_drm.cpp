@@ -442,9 +442,11 @@ int HWDeviceDRM::Registry::CreateFbId(const LayerBuffer &buffer, std::vector<uin
                  static_cast<HWCacColorComponent>(color));
     ret = master->CreateFbId(layout, fb_id_data);
     if (ret < 0) {
-      DLOGE("CreateFbId failed. width %d, height %d, format: %s, stride %u, cac_color %d error %d",
+      DLOGE(
+          "CreateFbId failed. width %d, height %d, format: %s, stride %u, "
+          "cac_color %d, usage %d error %d",
           layout.width, layout.height, GetFormatString(buf_info.format), layout.stride[0], color,
-          errno);
+          buffer.usage, errno);
     }
     fb_id_data++;
   }
