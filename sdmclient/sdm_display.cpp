@@ -810,7 +810,8 @@ void SDMDisplay::BuildLayerStack() {
     bool is_video = false;
     SnapHandle *hdl = (SnapHandle *) layer->input_buffer.buffer_id;
     if (hdl) {
-      int buffer_type = snapmapper_->GetMetadata(*hdl, MetadataType::BUFFER_TYPE, &buffer_type);
+      uint32_t buffer_type;
+      snapmapper_->GetMetadata(*hdl, MetadataType::BUFFER_TYPE, &buffer_type);
       if (buffer_type == BUFFER_TYPE_VIDEO) {
         layer_stack_.flags.video_present = true;
         is_video = true;
