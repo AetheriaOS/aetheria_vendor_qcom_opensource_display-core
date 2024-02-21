@@ -197,9 +197,12 @@ DisplayError SDMLayer::SetLayerBuffer(const SnapHandle *handle,
   }
 
   // TZ Protected Buffer - L1
-  secure_ = (flag & BufferUsage::PROTECTED);
-  bool secure_camera = secure_ && (flag & BufferUsage::CAMERA_OUTPUT);
-  bool secure_display = (flag & BufferUsage::QTI_PRIVATE_SECURE_DISPLAY);
+  BufferUsage handle_flags;
+  snapmapper_->GetMetadata(*handle, MetadataType::USAGE, &handle_flags);
+
+  secure_ = (handle_flags & BufferUsage::PROTECTED);
+  bool secure_camera = secure_ && (handle_flags & BufferUsage::CAMERA_OUTPUT);
+  bool secure_display = (handle_flags & BufferUsage::QTI_PRIVATE_SECURE_DISPLAY);
   if (secure_ != layer_buffer->flags.secure ||
       secure_camera != layer_buffer->flags.secure_camera ||
       secure_display != layer_buffer->flags.secure_display) {
