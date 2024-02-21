@@ -152,6 +152,7 @@ SDMDisplayVirtual::SetOutputBuffer(const SnapHandle *output_handle,
   snapmapper_->GetMetadata(*output_handle, MetadataType::PIXEL_FORMAT_ALLOCATED, &output_handle_format);
   snapmapper_->GetMetadata(*output_handle, MetadataType::COMPRESSION, &output_compression_type);
   ColorMetadata color_metadata = {};
+  int ubwc_flag = output_handle_flags ? INT32(MetadataType::IS_UBWC) : 0;
 
   if (output_handle_format ==
       static_cast<int>(SDMPixelFormat::PIXEL_FORMAT_RGBA_8888)) {
@@ -160,7 +161,7 @@ SDMDisplayVirtual::SetOutputBuffer(const SnapHandle *output_handle,
   }
 
   LayerBufferFormat new_sdm_format =
-      buffer_allocator_->GetSDMFormat(output_handle_format, output_handle_flags, output_compression_type);
+      buffer_allocator_->GetSDMFormat(output_handle_format, ubwc_flag, output_compression_type);
   if (new_sdm_format == kFormatInvalid) {
     return kErrorParameters;
   }
