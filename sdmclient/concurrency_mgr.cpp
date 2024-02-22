@@ -510,15 +510,12 @@ DisplayError ConcurrencyMgr::GetAllDisplayAttributes(
                              info);
 }
 
-DisplayError
-ConcurrencyMgr::GetDisplayAttributes(uint64_t display, int32_t index,
-                                     DisplayConfigVariableInfo *attributes,
-                                     uint32_t *group_id) {
+DisplayError ConcurrencyMgr::GetDisplayAttributes(uint64_t display, int32_t index,
+                                                  DisplayConfigVariableInfo *attributes) {
   if (!attributes) {
     return kErrorParameters;
   }
-  return CallDisplayFunction(display, &SDMDisplay::GetDisplayAttributes, index,
-                             attributes, group_id);
+  return CallDisplayFunction(display, &SDMDisplay::GetDisplayAttributes, index, attributes);
 }
 
 DisplayError
@@ -1160,7 +1157,7 @@ DisplayError ConcurrencyMgr::GetVsyncPeriod(Display disp,
 
   DisplayConfigVariableInfo attributes{};
   if (sdm_display_[disp]) {
-    sdm_display_[disp]->GetDisplayAttributes(0, &attributes, nullptr);
+    sdm_display_[disp]->GetDisplayAttributes(0, &attributes);
   }
 
   *vsync_period = INT32(attributes.vsync_period_ns);
