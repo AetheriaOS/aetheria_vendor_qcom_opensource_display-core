@@ -741,7 +741,8 @@ DisplayError SDMLayer::SetMetaData(const SnapHandle *handle, Layer *layer) {
     snapmapper_->GetMetadataState(*handle, MetadataType::CUSTOM_CONTENT_METADATA, &extended_md_set);
   if (extended_md_set) {
     std::shared_ptr<CustomContentMetadata> dv_md = std::make_shared<CustomContentMetadata>();
-    auto err = snapmapper_->GetMetadata(*handle, MetadataType::CUSTOM_CONTENT_METADATA, &dv_md);
+    auto err =
+        snapmapper_->GetMetadata(*handle, MetadataType::CUSTOM_CONTENT_METADATA, dv_md.get());
 
     if (!err) {
       if (!layer_buffer->extended_content_metadata ||
