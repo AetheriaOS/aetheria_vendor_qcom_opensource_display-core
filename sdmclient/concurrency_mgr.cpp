@@ -2283,6 +2283,11 @@ void ConcurrencyMgr::SetClientUp() {
   is_client_up_ = true;
 
   auto display = sdm_display_[SDM_DISPLAY_PRIMARY];
+  if (!display) {
+    DLOGW("display is null");
+    return;
+  }
+
   display->MarkClientActive(true);
 }
 

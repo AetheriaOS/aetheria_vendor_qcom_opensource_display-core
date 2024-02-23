@@ -810,7 +810,8 @@ void SDMDisplay::BuildLayerStack() {
     bool is_video = false;
     SnapHandle *hdl = (SnapHandle *) layer->input_buffer.buffer_id;
     if (hdl) {
-      int buffer_type = snapmapper_->GetMetadata(*hdl, MetadataType::BUFFER_TYPE, &buffer_type);
+      uint32_t buffer_type;
+      snapmapper_->GetMetadata(*hdl, MetadataType::BUFFER_TYPE, &buffer_type);
       if (buffer_type == BUFFER_TYPE_VIDEO) {
         layer_stack_.flags.video_present = true;
         is_video = true;
@@ -3568,17 +3569,26 @@ DisplayError SDMDisplay::SetReadbackBuffer(void *buffer,
   if (err) {
     DLOGE("Failed to retrieve format");
   }
-  BufferUsage flag;
-  err = snapmapper_->GetMetadata(*hdl, MetadataType::USAGE, &flag);
+  BufferUsage usage_flag;
+  err = snapmapper_->GetMetadata(*hdl, MetadataType::USAGE, &usage_flag);
   if (err) {
     DLOGE("Failed to retrieve flag");
   }
+  output_buffer.usage = static_cast<uint64_t>(usage_flag);
 
   int64_t compression_type;
   err = snapmapper_->GetMetadata(*hdl, MetadataType::COMPRESSION, &compression_type);
   if (err) {
     DLOGE("Failed to retrieve compression type");
   }
+
+  int64_t is_ubwc = 0, flag = 0;
+  err = snapmapper_->GetMetadata(*hdl, MetadataType::IS_UBWC, &is_ubwc);
+  if (err) {
+    DLOGE("Failed to retrieve is_ubwc");
+    return kErrorNotSupported;
+  }
+  flag = is_ubwc ? INT32(MetadataType::IS_UBWC) : 0;
 
   output_buffer.format = buffer_allocator_->GetSDMFormat(format, flag, compression_type);
   err = snapmapper_->GetMetadata(*hdl, MetadataType::FD, &output_buffer.planes[0].fd);
