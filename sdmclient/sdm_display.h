@@ -376,9 +376,7 @@ public:
   virtual DisplayError GetDisplayConfigs(std::vector<int32_t> *out_configs);
   DisplayError
   GetAllDisplayAttributes(std::map<uint32_t, DisplayConfigVariableInfo> *info);
-  virtual DisplayError GetDisplayAttributes(int32_t config,
-                                            DisplayConfigVariableInfo *info,
-                                            uint32_t *group_id);
+  virtual DisplayError GetDisplayAttributes(int32_t config, DisplayConfigVariableInfo *info);
   virtual DisplayError GetClientTargetSupport(int32_t in_width,
                                               int32_t in_height,
                                               LayerBufferFormat format,

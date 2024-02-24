@@ -2629,16 +2629,13 @@ DisplayError SDMDisplay::GetAllDisplayAttributes(
 
   for (auto &config : variable_config_map_) {
     info->insert(std::make_pair(index, config.second));
-    info->at(index).group_id = config.first;
     index++;
   }
 
   return kErrorNone;
 }
 
-DisplayError SDMDisplay::GetDisplayAttributes(int32_t config,
-                                              DisplayConfigVariableInfo *info,
-                                              uint32_t *group_id) {
+DisplayError SDMDisplay::GetDisplayAttributes(int32_t config, DisplayConfigVariableInfo *info) {
   if (variable_config_map_.find(config) == variable_config_map_.end()) {
     DLOGE("Get variable config failed");
     return kErrorNotSupported;
@@ -2651,10 +2648,6 @@ DisplayError SDMDisplay::GetDisplayAttributes(int32_t config,
   if (variable_config.x_pixels <= 0 || variable_config.y_pixels <= 0) {
     DLOGE("window rects are not within the supported range");
     return kErrorNotSupported;
-  }
-
-  if (group_id) {
-    *group_id = GetDisplayConfigGroup(*info);
   }
 
   *info = variable_config;
@@ -2680,20 +2673,16 @@ DisplayError SDMDisplay::GetSupportedDisplayRefreshRates(
   Config active_config = 0;
   GetActiveConfig(false, &active_config);
 
-  uint32_t config_group = -1, active_config_group = -1;
-  DisplayConfigVariableInfo attributes{};
-  auto error =
-      GetDisplayAttributes(active_config, &attributes, &active_config_group);
-  if (error != kErrorNone) {
+  uint32_t active_config_group = GetDisplayConfigGroup(variable_config_map_[active_config]);
+  if (active_config_group == -1) {
     DLOGE("Failed to get config group of active config");
     return kErrorNotSupported;
   }
 
   supported_refresh_rates->resize(0);
   for (auto &config : variable_config_map_) {
-    attributes = {};
-    error = GetDisplayAttributes(config.first, &attributes, &config_group);
-    if (error != kErrorNone) {
+    uint32_t config_group = GetDisplayConfigGroup(config.second);
+    if (config_group == -1) {
       DLOGE("Failed to get config group for config index: %u", config.first);
       return kErrorNotSupported;
     }
@@ -3072,7 +3061,7 @@ SDMDisplay::GetVsyncPeriodByActiveConfig(bool get_real_config,
   }
 
   DisplayConfigVariableInfo attributes{};
-  error = GetDisplayAttributes(active_config, &attributes, nullptr);
+  error = GetDisplayAttributes(active_config, &attributes);
   if (error != kErrorNone) {
     DLOGE("Failed to get VsyncPeriod of config: %d", active_config);
     return error;

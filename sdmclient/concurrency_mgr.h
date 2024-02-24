@@ -164,8 +164,7 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
                           std::map<uint32_t, DisplayConfigVariableInfo> *info);
 
   DisplayError GetDisplayAttributes(uint64_t in_display_id, int32_t in_index,
-                                    DisplayConfigVariableInfo *ret,
-                                    uint32_t *group_id);
+                                    DisplayConfigVariableInfo *ret);
 
   DisplayError GetPanelBlMaxLvl(uint64_t in_display_id, int32_t *ret) {
     return kErrorNone; // TODO(user)
