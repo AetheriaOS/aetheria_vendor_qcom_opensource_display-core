@@ -393,10 +393,22 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
           meta_offset + out_layout->planes[meta_plane_index].size_in_bytes;
       meta_offset += (out_layout->planes[meta_plane_index].size_in_bytes +
                       out_layout->planes[data_plane_index].size_in_bytes);
+      out_layout->size_in_bytes +=
+          out_layout->planes[data_plane_index].size_in_bytes +
+          out_layout->planes[meta_plane_index].size_in_bytes;
+    }
+    if ((pixel_format_modifier == PIXEL_FORMAT_MODIFIER_UBWC_FLEX) ||
+        (pixel_format_modifier == PIXEL_FORMAT_MODIFIER_UBWC_FLEX_2_BATCH) ||
+        (pixel_format_modifier == PIXEL_FORMAT_MODIFIER_UBWC_FLEX_4_BATCH) ||
+        (pixel_format_modifier == PIXEL_FORMAT_MODIFIER_UBWC_FLEX_8_BATCH)) {
+      out_layout->size_in_bytes = out_ad->size;
     }
 
     out_layout->aligned_width_in_bytes = out_layout->planes[0].horizontal_stride_in_bytes;
-    ALOGD_IF(DEBUG, "out_layout->aligned_width_in_bytes %d", out_layout->aligned_width_in_bytes);
+    ALOGD_IF(
+        DEBUG,
+        "out_layout->aligned_width_in_bytes %d, out_layout->size_in_bytes %d",
+        out_layout->aligned_width_in_bytes, out_layout->size_in_bytes);
     out_layout->aligned_height = out_layout->planes[0].scanlines;
   } else {
     // TODO: meta plane handling (if needed)
@@ -452,8 +464,10 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
       }
       out_layout->aligned_width_in_bytes = out_layout->planes[0].horizontal_stride_in_bytes;
       out_layout->aligned_height = out_layout->planes[0].scanlines;
-      ALOGD_IF(DEBUG, "aligned_width_in_bytes %d aligned_height %d",
-               out_layout->aligned_width_in_bytes, out_layout->aligned_height);
+      out_layout->size_in_bytes = size;
+      ALOGD_IF(DEBUG, "aligned_width_in_bytes %d aligned_height %d, size %d",
+               out_layout->aligned_width_in_bytes, out_layout->aligned_height,
+               size);
     } else {
       ALOGE("%s Format 0x%x is not supported by GPU for UBWC policy", __FUNCTION__,
             static_cast<int>(desc.format));
