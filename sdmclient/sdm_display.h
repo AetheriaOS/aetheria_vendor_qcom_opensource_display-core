@@ -516,7 +516,9 @@ public:
     display_intf_->DestroyLayer();
   }
 
-protected:
+  virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
+
+ protected:
   static uint32_t throttling_refresh_rate_;
   // Maximum number of layers supported by display manager.
   static const uint32_t kMaxLayerCount = 32;

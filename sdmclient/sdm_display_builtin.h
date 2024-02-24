@@ -167,8 +167,9 @@ public:
   virtual DisplayError SetDemuraState(int state);
   virtual DisplayError SetDemuraConfig(int demura_idx);
   virtual DisplayError PerformCacConfig(CacConfig config, bool enable);
+  virtual DisplayError SetSsrcMode(const std::string &mode);
 
-private:
+ private:
   SDMDisplayBuiltIn(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
                     SDMCompositorCbIntf *callbacks,
                     SDMDisplayEventHandler *event_handler, Display id,

@@ -276,6 +276,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) {
     return kErrorNotSupported;
   }
+  virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
 
  protected:
   struct DisplayMutex {
@@ -475,8 +476,9 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   static std::atomic<uint32_t> hw_rc_blocks_in_use_;
   uint32_t rc_blocks_reserved_ = 0;
   DynLib extension_lib_;
+  bool ssrc_feature_enabled_ = false;
 
-private:
+ private:
   // Max tolerable power-state-change wait-times in milliseconds.
   static const int kPowerStateTimeout = 5000;
 

@@ -170,8 +170,9 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(GetPanelFeatureInfo(PanelFeatureInfo *info));
   MAKE_NO_OP(PanelOprInfo(const std::string &client_name, bool enable,
                           SdmDisplayCbInterface<PanelOprPayload> *cb_intf));
+  MAKE_NO_OP(SetSsrcMode(const std::string &mode));
 
-protected:
+ protected:
   DisplayConfigVariableInfo default_variable_config_ = {};
   DisplayConfigFixedInfo default_fixed_config_ = {};
   // 1920x1080 60fps panel of name Null Display with PnPID QCM

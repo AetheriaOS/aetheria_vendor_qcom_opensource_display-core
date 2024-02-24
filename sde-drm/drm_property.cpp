@@ -255,6 +255,8 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "bg_alpha") { return DRMProperty::BG_ALPHA; }
   if (name == "src_img_size") { return DRMProperty::IMG_SIZE_RECT; }
   if (name == "ubwc_clk") { return DRMProperty::UBWC_CLK; }
+  if (name == "SDE_DSPP_AIQE_SSRC_CONFIG_V1") { return DRMProperty::SDE_DSPP_AIQE_SSRC_CONFIG_V1; }
+  if (name == "SDE_DSPP_AIQE_SSRC_DATA_V1") { return DRMProperty::SDE_DSPP_AIQE_SSRC_DATA_V1; }
 
   return DRMProperty::INVALID;
 }

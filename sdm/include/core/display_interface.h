@@ -1352,7 +1352,15 @@ class DisplayInterface {
   PanelOprInfo(const std::string &client_name, bool enable,
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) = 0;
 
-protected:
+  /*! @brief Method to set mode for SSRC feature.
+
+   @param[in] mode : SSRC mode string
+
+   @return \link DisplayError \endlink
+  */
+  virtual DisplayError SetSsrcMode(const std::string &mode) = 0;
+
+ protected:
   virtual ~DisplayInterface() { }
 };
 
