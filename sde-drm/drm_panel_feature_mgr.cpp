@@ -30,7 +30,7 @@
 /*
  * Changes from Qualcomm Innovation Center are provided under the following license:
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted (subject to the limitations in the
@@ -132,7 +132,6 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
   }
 
   drm_property_map_[kDRMPanelFeatureDemuraResources] = DRMProperty::DEMURA_BOOT_PLANE_V1;
-  drm_property_map_[kDRMPanelFeatureDemuraInit] = DRMProperty::DEMURA_INIT_CFG_V1;
   drm_property_map_[kDRMPanelFeaturePanelId] = DRMProperty::DEMURA_PANEL_ID;
   drm_property_map_[kDRMPanelFeatureSPRUDC] = DRMProperty::SPR_UDC_CFG_V2;
   drm_property_map_[kDRMPanelFeatureSPRPackType] = DRMProperty::CAPABILITIES;
@@ -162,8 +161,6 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
 
   feature_info_tbl_[kDRMPanelFeatureDemuraResources] = DRMPanelFeatureInfo {
     kDRMPanelFeatureDemuraResources, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, 0, 0};
-  feature_info_tbl_[kDRMPanelFeatureDemuraInit] = DRMPanelFeatureInfo {kDRMPanelFeatureDemuraInit,
-      DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, sizeof(drm_msm_dem_cfg), 0};
   feature_info_tbl_[kDRMPanelFeaturePanelId] = DRMPanelFeatureInfo {kDRMPanelFeaturePanelId,
       DRM_MODE_OBJECT_CONNECTOR, UINT32_MAX, 1, sizeof(uint64_t), 0};
   feature_info_tbl_[kDRMPanelFeatureSPRUDC] = DRMPanelFeatureInfo{
@@ -263,6 +260,24 @@ int DRMPanelFeatureMgr::InitObjectProps(int obj_id, int obj_type) {
                                                                        2,
                                                                        sizeof(drm_msm_spr_init_cfg),
                                                                        0};
+    } else if (prop_enum == DRMProperty::DEMURA_INIT_CFG_V1) {
+      drm_property_map_[kDRMPanelFeatureDemuraInit] = DRMProperty::DEMURA_INIT_CFG_V1;
+      feature_info_tbl_[kDRMPanelFeatureDemuraInit] = DRMPanelFeatureInfo{
+                                                                        kDRMPanelFeatureDemuraInit,
+                                                                        DRM_MODE_OBJECT_CRTC,
+                                                                        UINT32_MAX,
+                                                                        1,
+                                                                        sizeof(drm_msm_dem_cfg),
+                                                                        0};
+    } else if (prop_enum == DRMProperty::DEMURA_INIT_CFG_V3) {
+      drm_property_map_[kDRMPanelFeatureDemuraInit] = DRMProperty::DEMURA_INIT_CFG_V3;
+      feature_info_tbl_[kDRMPanelFeatureDemuraInit] = DRMPanelFeatureInfo{
+                                                                        kDRMPanelFeatureDemuraInit,
+                                                                        DRM_MODE_OBJECT_CRTC,
+                                                                        UINT32_MAX,
+                                                                        3,
+                                                                        sizeof(drm_msm_dem_cfg),
+                                                                        0};
     }
 
     prop_mgr_.SetPropertyId(prop_enum, info->prop_id);
