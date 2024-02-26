@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #include "SnapMetadataManager.h"
@@ -425,6 +425,19 @@ Error SnapMetadataManager::VTTimestampHelper(SnapMetadata *metadata, SnapHandleI
     return Error::NONE;
   } else if (in_set != nullptr) {
     metadata->vtTimeStamp = *static_cast<uint64_t *>(in_set);
+    return Error::NONE;
+  }
+  return Error::BAD_VALUE;
+}
+
+Error SnapMetadataManager::BufferDequeueDurationHelper(SnapMetadata *metadata,
+                                                       SnapHandleInternal *handle, void *in_set,
+                                                       void *out_get, BufferDescriptor *buf_des) {
+  if (out_get != nullptr) {
+    *static_cast<int64_t *>(out_get) = metadata->bufferDequeueDuration;
+    return Error::NONE;
+  } else if (in_set != nullptr) {
+    metadata->bufferDequeueDuration = *static_cast<int64_t *>(in_set);
     return Error::NONE;
   }
   return Error::BAD_VALUE;

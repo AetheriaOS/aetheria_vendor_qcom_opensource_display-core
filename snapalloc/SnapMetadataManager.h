@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #ifndef __SNAP_METADATA_MANAGER_H__
@@ -226,6 +226,9 @@ class SnapMetadataManager {
   Error PixelFormatAllocatedHelper(SnapMetadata *metadata, SnapHandleInternal *handle,
                                  void *in_set = nullptr, void *out_get = nullptr,
                                  BufferDescriptor *buf_des = nullptr);
+  Error BufferDequeueDurationHelper(SnapMetadata *metadata, SnapHandleInternal *handle,
+                                    void *in_set = nullptr, void *out_get = nullptr,
+                                    BufferDescriptor *buf_des = nullptr);
 
   struct DRMFormatDescriptor {
     uint32_t drm_format;
@@ -448,6 +451,7 @@ class SnapMetadataManager {
           {IS_CACHED, &SnapMetadataManager::IsCachedHelper},
           {HEAP_NAME, &SnapMetadataManager::HeapNameHelper},
           {PIXEL_FORMAT_ALLOCATED, &SnapMetadataManager::PixelFormatAllocatedHelper},
+          {BUFFER_DEQUEUE_DURATION, &SnapMetadataManager::BufferDequeueDurationHelper},
   };
   struct metadata_traits {
     bool is_default_metadata;
@@ -513,6 +517,7 @@ class SnapMetadataManager {
           {IS_CACHED, {true, false}},
           {HEAP_NAME, {true, false}},
           {PIXEL_FORMAT_ALLOCATED, {true, false}},
+          {BUFFER_DEQUEUE_DURATION, {false, true}},
       };
 };
 }  // namespace snapalloc
