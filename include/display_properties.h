@@ -254,6 +254,9 @@
 #define DISABLE_RCMASK_SIMD_OPT              DISPLAY_PROP("disable_rcmask_simd_opt")
 #define IDLE_FALLBACK_ON_DSPP                DISPLAY_PROP("idle_fallback_on_dspp")
 
+// Enable AI Scaler
+#define ENABLE_AI_SCALER_PROP                DISPLAY_PROP("enable_ai_scaler")
+
 // Add all other.properties above
 // End of property
 // clang-format on

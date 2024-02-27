@@ -77,6 +77,7 @@
 #include "xf86drmMode.h"
 #include <drm/msm_drm.h>
 #include <display/drm/msm_drm_pp.h>
+#include <display/drm/msm_drm_aiqe.h>
 #include <display/drm/sde_drm.h>
 namespace sde_drm {
 
@@ -830,6 +831,7 @@ struct DRMCrtcInfo {
   CacVersion cac_version = CacVersion::NONE;
   DDRVersion ddr_version = DDRVersion::kDDRVersion5;
   bool has_cesta = false;
+  uint32_t ai_scaler_count = 0;
 };
 
 enum struct DRMPlaneType {
@@ -1174,6 +1176,7 @@ enum DRMPanelFeatureID {
   kDRMPanelFeatureDemuraCfg0Param2,
   kDRMPanelFeatureAiqeSSRCConfig,
   kDRMPanelFeatureAiqeSSRCData,
+  kDRMPanelFeatureAIScalerCfg,
   kDRMPanelFeatureMax,
 };
 

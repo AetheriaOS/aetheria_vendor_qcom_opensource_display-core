@@ -31,7 +31,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -146,7 +146,7 @@ class CompManager : public CwbCallback {
   uint32_t GetMixerCount(DisplayId display_id);
   uint32_t GetActiveDisplayCount();
   void SetDisplayLayerStack(Handle display_ctx, DispLayerStack *disp_layer_stack);
-  void GetDSConfig(Handle display_ctx, DestScaleInfoMap *dest_scale_info_map);
+  void GetDSConfig(Handle display_ctx, HWLayersInfo *hw_layers_info);
   bool IsDisplayHWAvailable();
   DisplayError SetSprIntf(Handle display_ctx, std::shared_ptr<SPRIntf> intf);
 

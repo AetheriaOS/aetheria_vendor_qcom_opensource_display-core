@@ -291,6 +291,7 @@ DisplayError HWInfoDRM::GetHWResourceInfo(HWResourceInfo *hw_resource) {
   hw_resource->hw_dest_scalar_info.max_scale_up = 0;
   hw_resource->hw_dest_scalar_info.max_input_width = 0;
   hw_resource->hw_dest_scalar_info.max_output_width = 0;
+  hw_resource->hw_ai_scaler_count = 0;
   hw_resource->is_src_split = true;
   hw_resource->has_qseed3 = false;
   hw_resource->has_concurrent_writeback = false;
@@ -310,15 +311,25 @@ DisplayError HWInfoDRM::GetHWResourceInfo(HWResourceInfo *hw_resource) {
   GetHWPlanesInfo(hw_resource);
   GetWBInfo(hw_resource);
 
-  // Disable destination scalar count to 0 if extension library is not present or disabled
-  // through property
   int value = 0;
+  bool enable_ai_scaler = false;
+  if (Debug::GetProperty(ENABLE_AI_SCALER_PROP, &value) == kErrorNone) {
+    enable_ai_scaler = (value == 1);
+  }
+
+  if (!enable_ai_scaler) {
+    hw_resource->hw_ai_scaler_count = 0;
+  }
+
+  // Disable destination scalar count to 0 if extension library is not present or disabled
+  // through property or when AI scaler is enabled
+  value = 0;
   bool disable_dest_scalar = false;
   if (Debug::GetProperty(DISABLE_DESTINATION_SCALER_PROP, &value) == kErrorNone) {
     disable_dest_scalar = (value == 1);
   }
   DynLib extension_lib;
-  if (!extension_lib.Open("libsdmextension.so") || disable_dest_scalar) {
+  if (!extension_lib.Open("libsdmextension.so") || disable_dest_scalar || enable_ai_scaler) {
     hw_resource->hw_dest_scalar_info.count = 0;
   }
 
@@ -473,6 +484,7 @@ void HWInfoDRM::GetSystemInfo(HWResourceInfo *hw_resource) {
   hw_resource->rc_count = info.rc_count;
   hw_resource->rc_total_mem_size = info.rc_total_mem_size;
   hw_resource->dsc_block_count = info.dsc_block_count;
+  hw_resource->hw_ai_scaler_count = info.ai_scaler_count;
 }
 
 void HWInfoDRM::GetHWPlanesInfo(HWResourceInfo *hw_resource) {

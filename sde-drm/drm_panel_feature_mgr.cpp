@@ -143,6 +143,7 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
   drm_property_map_[kDRMPanelFeatureDemuraCfg0Param2] = DRMProperty::DEMURA_CFG0_PARAM2;
   drm_property_map_[kDRMPanelFeatureAiqeSSRCConfig] = DRMProperty::SDE_DSPP_AIQE_SSRC_CONFIG_V1;
   drm_property_map_[kDRMPanelFeatureAiqeSSRCData] = DRMProperty::SDE_DSPP_AIQE_SSRC_DATA_V1;
+  drm_property_map_[kDRMPanelFeatureAIScalerCfg] = DRMProperty::AI_SCALER_CFG_V1;
 
   drm_prop_type_map_[kDRMPanelFeatureDemuraResources] = DRMPropType::kPropBitmask;
   drm_prop_type_map_[kDRMPanelFeatureDemuraInit] = DRMPropType::kPropBlob;
@@ -158,6 +159,7 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
   drm_prop_type_map_[kDRMPanelFeatureDemuraCfg0Param2] = DRMPropType::kPropBlob;
   drm_prop_type_map_[kDRMPanelFeatureAiqeSSRCConfig] = DRMPropType::kPropBlob;
   drm_prop_type_map_[kDRMPanelFeatureAiqeSSRCData] = DRMPropType::kPropBlob;
+  drm_prop_type_map_[kDRMPanelFeatureAIScalerCfg] = DRMPropType::kPropBlob;
 
   feature_info_tbl_[kDRMPanelFeatureDemuraResources] = DRMPanelFeatureInfo {
     kDRMPanelFeatureDemuraResources, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, 0, 0};
@@ -198,6 +200,12 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
                           1,
                           sizeof(drm_msm_ssrc_data),
                           0};
+  feature_info_tbl_[kDRMPanelFeatureAIScalerCfg] = DRMPanelFeatureInfo{kDRMPanelFeatureAIScalerCfg,
+                                                                       DRM_MODE_OBJECT_CRTC,
+                                                                       UINT32_MAX,
+                                                                       1,
+                                                                       sizeof(drm_msm_ai_scaler),
+                                                                       0};
 }
 
 void DRMPanelFeatureMgr::Deinit() {

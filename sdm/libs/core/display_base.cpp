@@ -4814,9 +4814,12 @@ DisplayError DisplayBase::DisableDestinationScalar() {
     DLOGW("Could not reconfigure mixer, err=%d", err);
     return err;
   }
-  DestScaleInfoMap dest_scale_info_map = {};
-  comp_manager_->GetDSConfig(display_comp_ctx_, &dest_scale_info_map);
-  hw_intf_->SetDestScalarData(dest_scale_info_map);
+
+  HWLayersInfo hw_layers_info;
+  hw_layers_info.dest_scale_info_map = {};
+  hw_layers_info.ai_scale_info_map = {};
+  comp_manager_->GetDSConfig(display_comp_ctx_, &hw_layers_info);
+  hw_intf_->SetDestScalarData(hw_layers_info);
 
   return kErrorNone;
 }

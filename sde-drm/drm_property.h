@@ -254,6 +254,7 @@ enum struct DRMProperty {
   UBWC_CLK,
   SDE_DSPP_AIQE_SSRC_CONFIG_V1,
   SDE_DSPP_AIQE_SSRC_DATA_V1,
+  AI_SCALER_CFG_V1,
 
   // Insert above
   MAX
