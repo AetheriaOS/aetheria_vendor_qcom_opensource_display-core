@@ -221,6 +221,7 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "panel_mode") { return DRMProperty::PANEL_MODE; }
   if (name == "bpp_mode") { return DRMProperty::BPP_MODE; }
   if (name == "SDE_DEMURA_INIT_CFG_V1") { return DRMProperty::DEMURA_INIT_CFG_V1; }
+  if (name == "SDE_DEMURA_INIT_CFG_V3") { return DRMProperty::DEMURA_INIT_CFG_V3; }
   if (name == "SDE_DEMURA_CFG0_PARAM2") {
     return DRMProperty::DEMURA_CFG0_PARAM2;
   }
@@ -255,6 +256,9 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "bg_alpha") { return DRMProperty::BG_ALPHA; }
   if (name == "src_img_size") { return DRMProperty::IMG_SIZE_RECT; }
   if (name == "ubwc_clk") { return DRMProperty::UBWC_CLK; }
+  if (name == "SDE_DSPP_AIQE_SSRC_CONFIG_V1") { return DRMProperty::SDE_DSPP_AIQE_SSRC_CONFIG_V1; }
+  if (name == "SDE_DSPP_AIQE_SSRC_DATA_V1") { return DRMProperty::SDE_DSPP_AIQE_SSRC_DATA_V1; }
+  if (name == "SDE_DSPP_AIQE_AI_SCALER_V1") { return DRMProperty::AI_SCALER_CFG_V1; }
 
   return DRMProperty::INVALID;
 }

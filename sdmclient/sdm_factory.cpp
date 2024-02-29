@@ -75,4 +75,13 @@ SDMDisplaySideBandIntf *SDMInterfaceFactoryImpl::CreateSideBandIntf() {
   return sideband;
 }
 
+SDMDisplayAiqeIntf *SDMInterfaceFactoryImpl::CreateAiqeIntf() {
+  SDMDisplayAiqeIntf *aqie_intf = ConcurrencyMgr::GetInstance();
+  if (!aqie_intf) {
+    DLOGI("Unable to retrieve aiqe intf");
+    return nullptr;
+  }
+
+  return aqie_intf;
+}
 } // namespace sdm

@@ -30,7 +30,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted (subject to the limitations in the
@@ -113,11 +113,12 @@ class HWPeripheralDRM : public HWDeviceDRM, public PanelFeaturePropertyIntf {
   virtual DisplayError EnableSelfRefresh(SelfRefreshState self_refresh_state);
   virtual DisplayError SetAlternateDisplayConfig(uint32_t *alt_config);
   virtual DisplayError UpdateTransferTime(uint32_t transfer_time);
-  void SetDestScalarData(const DestScaleInfoMap dest_scale_info_map);
+  void SetDestScalarData(const HWLayersInfo &hw_layer_info);
 
  private:
   void InitDestScaler();
-  void SetDestScalarData(const HWLayersInfo &hw_layer_info);
+  void SetDestScalarData(const DestScaleInfoMap dest_scale_info_map);
+  void SetAIScalerData(const AIScalerInfoMap ai_scale_info_map);
   void ResetDestScalarCache();
   void CreatePanelFeaturePropertyMap();
   void SetIdlePCState() {
@@ -128,19 +129,27 @@ class HWPeripheralDRM : public HWDeviceDRM, public PanelFeaturePropertyIntf {
   void SetSelfRefreshState();
   void SetVMReqState();
   void ResetPropertyCache();
+  void InitAIScaler();
 
   struct DestScalarCache {
     SDEScaler scalar_data = {};
     uint32_t flags = {};
   };
 
+  struct AIScalerCache {
+    struct drm_msm_ai_scaler scaler_data = {};
+  };
+
   sde_drm_dest_scaler_data sde_dest_scalar_data_ = {};
+  struct drm_msm_ai_scaler sde_ai_scaler_cfg_;
   std::vector<SDEScaler> scalar_data_ = {};
   sde_drm::DRMIdlePCState idle_pc_state_ = sde_drm::DRMIdlePCState::NONE;
   bool idle_pc_enabled_ = true;
   std::vector<DestScalarCache> dest_scalar_cache_ = {};
+  std::vector<AIScalerCache> ai_scaler_cache_ = {};
   drm_msm_ad4_roi_cfg ad4_roi_cfg_ = {};
   bool needs_ds_update_ = false;
+  bool needs_ai_scaler_update_ = false;
   void PopulateBitClkRates();
   std::vector<uint64_t> bitclk_rates_;
   std::string brightness_base_path_ = "";

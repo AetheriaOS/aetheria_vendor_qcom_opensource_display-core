@@ -121,7 +121,7 @@ class ResourceDefault : public ResourceInterface {
   virtual uint32_t GetMixerCount(DisplayId display_id);
   virtual DisplayError SetBlendSpace(Handle display_ctx, const PrimariesTransfer &blend_space);
   virtual void HandleTUITransition(Handle display_ctx, bool tui_active);
-  virtual void GetDSConfig(Handle display_ctx, DestScaleInfoMap *dest_scale_info_map) { return; }
+  virtual void GetDSConfig(Handle display_ctx, HWLayersInfo *hw_layers_info) { return; }
   virtual bool IsDisplayHWAvailable() { return true; }
   virtual DisplayError GetDefaultQoSData(Handle display_ctx,
                                          std::map<uint32_t, HWQosData> *default_qos_data) {

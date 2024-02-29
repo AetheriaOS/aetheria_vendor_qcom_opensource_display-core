@@ -66,7 +66,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -112,6 +112,7 @@ DisplayError HWPeripheralDRM::Init() {
   }
 
   InitDestScaler();
+  InitAIScaler();
 
   PopulateBitClkRates();
   CreatePanelFeaturePropertyMap();
@@ -144,6 +145,28 @@ void HWPeripheralDRM::InitDestScaler() {
   topology_control_ = UINT32(sde_drm::DRMTopologyControl::DSPP);
   if (dest_scaler_blocks_used_) {
     topology_control_ |= UINT32(sde_drm::DRMTopologyControl::DEST_SCALER);
+  }
+}
+
+void HWPeripheralDRM::InitAIScaler() {
+  if (hw_resource_.hw_ai_scaler_count) {
+    // Do all ai scaler block resource allocations here.
+    // ai_scaler_blocks_used_ will be only one irrespective of single or dual DSI.
+    if (kQuadSplit == mixer_attributes_.split_type) {
+      ai_scaler_blocks_used_ = 0;  // Not Supported
+      return;
+    }
+
+    ai_scaler_blocks_used_ = 1;
+    if (hw_resource_.hw_ai_scaler_count >= (hw_ai_scaler_blocks_used_ + ai_scaler_blocks_used_)) {
+      // Enough ai scaler blocks available so update the static counter.
+      hw_ai_scaler_blocks_used_ += ai_scaler_blocks_used_;
+    } else {
+      ai_scaler_blocks_used_ = 0;
+    }
+    ai_scaler_cache_.resize(ai_scaler_blocks_used_);
+    // Update crtc (layer-mixer) configuration info.
+    mixer_attributes_.ai_scaler_blocks_used = ai_scaler_blocks_used_;
   }
 }
 
@@ -332,13 +355,27 @@ DisplayError HWPeripheralDRM::Commit(HWLayersInfo *hw_layers_info) {
 }
 
 void HWPeripheralDRM::ResetDestScalarCache() {
-  for (uint32_t j = 0; j < scalar_data_.size(); j++) {
-    dest_scalar_cache_[j] = {};
+  if (dest_scaler_blocks_used_ > 0) {
+    for (uint32_t j = 0; j < scalar_data_.size(); j++) {
+      dest_scalar_cache_[j] = {};
+    }
+  }
+
+  if (ai_scaler_blocks_used_ > 0) {
+    for (uint32_t j = 0; j < ai_scaler_cache_.size(); j++) {
+      ai_scaler_cache_[j] = {};
+    }
   }
 }
 
 void HWPeripheralDRM::SetDestScalarData(const HWLayersInfo &hw_layer_info) {
-  SetDestScalarData(hw_layer_info.dest_scale_info_map);
+  if (dest_scaler_blocks_used_ > 0) {
+    SetDestScalarData(hw_layer_info.dest_scale_info_map);
+  }
+
+  if (ai_scaler_blocks_used_ > 0) {
+    SetAIScalerData(hw_layer_info.ai_scale_info_map);
+  }
 }
 
 void HWPeripheralDRM::SetDestScalarData(const DestScaleInfoMap dest_scale_info_map) {
@@ -389,14 +426,81 @@ void HWPeripheralDRM::SetDestScalarData(const DestScaleInfoMap dest_scale_info_m
   }
 }
 
+void HWPeripheralDRM::SetAIScalerData(const AIScalerInfoMap ai_scale_info_map) {
+  if (!ai_scaler_blocks_used_) {
+    return;
+  }
+
+  for (uint32_t i = 0; i < ai_scaler_blocks_used_; i++) {
+    auto it = ai_scale_info_map.find(i);
+
+    if (it == ai_scale_info_map.end()) {
+      return;
+    }
+
+    HWAIScalerInfo *ai_scale_info = it->second;
+    struct drm_msm_ai_scaler *ai_scaler_cfg = &sde_ai_scaler_cfg_;
+    ai_scaler_cfg->flags = 0;
+
+    // Update UAPI structure for AI Scaler config
+    ai_scaler_cfg->config = ai_scale_info->ai_scale_data.config;
+    ai_scaler_cfg->src_w = ai_scale_info->ai_scale_data.src_w;
+    ai_scaler_cfg->src_h = ai_scale_info->ai_scale_data.src_h;
+    ai_scaler_cfg->dst_w = ai_scale_info->ai_scale_data.dst_w;
+    ai_scaler_cfg->dst_h = ai_scale_info->ai_scale_data.dst_h;
+    if (ai_scale_info->ai_scale_update) {
+      ai_scaler_cfg->flags = 1;
+    }
+    if (ai_scale_info->ai_scale_data.is_param_valid) {
+      memcpy(ai_scaler_cfg->param, ai_scale_info->ai_scale_data.param,
+             AIQE_AI_SCALER_PARAM_LEN * sizeof(ai_scaler_cfg->param[0]));
+    }
+
+    if ((std::memcmp(&ai_scaler_cache_[i].scaler_data, ai_scaler_cfg,
+                     sizeof(sde_ai_scaler_cfg_)))) {
+      needs_ai_scaler_update_ = true;
+    }
+  }
+
+  // Set Panel Feature for AI Scaler Config
+  if (needs_ai_scaler_update_) {
+    PanelFeaturePropertyInfo payload{};
+    int rc;
+    payload.prop_id = kPanelFeatureAIScalerCfg;
+
+    if (sde_ai_scaler_cfg_.flags &&
+        (ai_scaler_cache_[0].scaler_data.flags != sde_ai_scaler_cfg_.flags)) {
+      payload.prop_ptr = reinterpret_cast<uint64_t>(&sde_ai_scaler_cfg_);
+    } else {
+      // Disable AI Scaler case
+      payload.prop_ptr = reinterpret_cast<uint64_t>(nullptr);
+    }
+    payload.prop_size = sizeof(sde_ai_scaler_cfg_);
+    payload.version = 1;
+
+    rc = SetPanelFeature(payload);
+    if (rc) {
+      DLOGE("failed to set kPanelFeatureAIScalerCfg rc %d", rc);
+    }
+  }
+}
+
 void HWPeripheralDRM::CacheDestScalarData() {
-  if (needs_ds_update_) {
+  if ((dest_scaler_blocks_used_ > 0) && needs_ds_update_) {
     // Cache the destination scalar data during commit
     for (uint32_t i = 0; i < sde_dest_scalar_data_.num_dest_scaler; i++) {
       dest_scalar_cache_[i].flags = sde_dest_scalar_data_.ds_cfg[i].flags;
       dest_scalar_cache_[i].scalar_data = scalar_data_[i];
     }
     needs_ds_update_ = false;
+  }
+
+  if ((ai_scaler_blocks_used_ > 0) && needs_ai_scaler_update_) {
+    // Cache the AI Scaler data during commit
+    for (uint32_t i = 0; i < ai_scaler_cache_.size(); i++) {
+      ai_scaler_cache_[i].scaler_data = sde_ai_scaler_cfg_;
+    }
+    needs_ai_scaler_update_ = false;
   }
 }
 
@@ -613,6 +717,20 @@ DisplayError HWPeripheralDRM::PowerOn(const HWQosData &qos_data, SyncPoints *syn
     drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DEST_SCALER_CONFIG, token_.crtc_id,
                               reinterpret_cast<uint64_t>(&sde_dest_scalar_data_));
     needs_ds_update_ = true;
+  }
+
+  if (sde_ai_scaler_cfg_.flags) {
+    PanelFeaturePropertyInfo payload{};
+    int rc;
+    payload.prop_id = kPanelFeatureAIScalerCfg;
+    payload.prop_ptr = reinterpret_cast<uint64_t>(&sde_ai_scaler_cfg_);
+    payload.prop_size = sizeof(sde_ai_scaler_cfg_);
+
+    rc = SetPanelFeature(payload);
+    if (rc) {
+      DLOGE("failed to set kPanelFeatureAIScalerCfg rc %d", rc);
+    }
+    needs_ai_scaler_update_ = true;
   }
 
   DisplayError err = HWDeviceDRM::PowerOn(qos_data, sync_points);
@@ -956,6 +1074,10 @@ void HWPeripheralDRM::CreatePanelFeaturePropertyMap() {
   panel_feature_property_map_[kPanelFeatureSPRUDCCfg] = sde_drm::kDRMPanelFeatureSPRUDC;
   panel_feature_property_map_[kPanelFeatureDemuraCfg0Param2] =
       sde_drm::kDRMPanelFeatureDemuraCfg0Param2;
+  panel_feature_property_map_[kPanelFeatureAiqeSsrcConfig] =
+      sde_drm::kDRMPanelFeatureAiqeSSRCConfig;
+  panel_feature_property_map_[kPanelFeatureAiqeSsrcData] = sde_drm::kDRMPanelFeatureAiqeSSRCData;
+  panel_feature_property_map_[kPanelFeatureAIScalerCfg] = sde_drm::kDRMPanelFeatureAIScalerCfg;
 }
 
 int HWPeripheralDRM::GetPanelFeature(PanelFeaturePropertyInfo *feature_info) {
@@ -987,9 +1109,11 @@ int HWPeripheralDRM::GetPanelFeature(PanelFeaturePropertyInfo *feature_info) {
     case kPanelFeatureRCInitCfg:
     case kPanelFeatureSPRUDCCfg:
     case kPanelFeatureDemuraCfg0Param2:
-    drm_feature.obj_type = DRM_MODE_OBJECT_CRTC;
-    drm_feature.obj_id = token_.crtc_id;
-    break;
+    case kPanelFeatureAiqeSsrcConfig:
+    case kPanelFeatureAiqeSsrcData:
+      drm_feature.obj_type = DRM_MODE_OBJECT_CRTC;
+      drm_feature.obj_id = token_.crtc_id;
+      break;
     case kPanelFeatureSPRPackType:
     case kPanelFeatureDemuraPanelId:
       drm_feature.obj_type = DRM_MODE_OBJECT_CONNECTOR;
@@ -1022,9 +1146,12 @@ int HWPeripheralDRM::SetPanelFeature(const PanelFeaturePropertyInfo &feature_inf
     case kPanelFeatureDemuraInitCfg:
     case kPanelFeatureSPRUDCCfg:
     case kPanelFeatureDemuraCfg0Param2:
-     drm_feature.obj_type = DRM_MODE_OBJECT_CRTC;
-     drm_feature.obj_id = token_.crtc_id;
-     break;
+    case kPanelFeatureAiqeSsrcConfig:
+    case kPanelFeatureAiqeSsrcData:
+    case kPanelFeatureAIScalerCfg:
+      drm_feature.obj_type = DRM_MODE_OBJECT_CRTC;
+      drm_feature.obj_id = token_.crtc_id;
+      break;
     case kPanelFeatureSPRPackType:
       drm_feature.obj_type = DRM_MODE_OBJECT_CONNECTOR;
       drm_feature.obj_id =  token_.conn_id;

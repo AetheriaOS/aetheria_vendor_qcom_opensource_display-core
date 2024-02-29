@@ -38,7 +38,13 @@ DisplayError SDMDisplayResolutionExtn::GetExtendedDisplayResolutions(uint32_t pa
     return kErrorNotSupported;
   }
 
-  XMLElement* target_node = document.RootElement();
+  XMLElement *targets = document.RootElement();
+  if (targets == nullptr) {
+    DLOGE("No targets configuration specified");
+    return kErrorNotSupported;
+  }
+
+  XMLElement *target_node = targets->FirstChildElement("Target");
   if (target_node == nullptr) {
     DLOGE("No target configuration specified");
     return kErrorNotSupported;

@@ -594,7 +594,8 @@ DisplayError DisplayBase::InitRC() {
     rc_total_mem_size = std::min(rc_total_mem_size, val.rc_total_mem_size);
   }
 
-  if (!rc_core_ && !first_cycle_ && rc_enable_prop_ && pf_factory_ && prop_intf_) {
+  if (!ssrc_feature_enabled_ && !rc_core_ && !first_cycle_ && rc_enable_prop_ && pf_factory_ &&
+      prop_intf_) {
     RCInputConfig input_cfg = {};
     input_cfg.display_id = display_id_;
     input_cfg.display_type = display_type_;
@@ -4813,9 +4814,12 @@ DisplayError DisplayBase::DisableDestinationScalar() {
     DLOGW("Could not reconfigure mixer, err=%d", err);
     return err;
   }
-  DestScaleInfoMap dest_scale_info_map = {};
-  comp_manager_->GetDSConfig(display_comp_ctx_, &dest_scale_info_map);
-  hw_intf_->SetDestScalarData(dest_scale_info_map);
+
+  HWLayersInfo hw_layers_info;
+  hw_layers_info.dest_scale_info_map = {};
+  hw_layers_info.ai_scale_info_map = {};
+  comp_manager_->GetDSConfig(display_comp_ctx_, &hw_layers_info);
+  hw_intf_->SetDestScalarData(hw_layers_info);
 
   return kErrorNone;
 }

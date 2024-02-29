@@ -34,10 +34,15 @@
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 #include <sdm_display_virtual_dpu.h>
+#include <BufferDescriptor.h>
 
 #define __CLASS__ "SDMDisplayVirtualDPU"
 
 namespace sdm {
+
+using vendor::qti::hardware::display::snapalloc::BufferDescriptor;
+using BufferUsage = vendor_qti_hardware_display_common_BufferUsage;
+using KeyValuePair = vendor_qti_hardware_display_common_KeyValuePair;
 
 SDMDisplayVirtualDPU::SDMDisplayVirtualDPU(CoreInterface *core_intf,
                                            BufferAllocator *buffer_allocator,
@@ -106,8 +111,12 @@ SDMDisplayVirtualDPU::SetOutputBuffer(const SnapHandle *output_handle,
   }
 
   int output_handle_format;
+  uint64_t modifier;
   snapmapper_->GetMetadata(*output_handle, MetadataType::PIXEL_FORMAT_ALLOCATED,
                            &output_handle_format);
+  snapmapper_->GetMetadata(*output_handle, MetadataType::FORMAT_MODIFIER, &modifier);
+  KeyValuePair modifier_pair = {"pixel_format_modifier", modifier};
+
   int active_aligned_w, active_aligned_h;
   int new_width, new_height;
   int new_aligned_w = 0, new_aligned_h = 0;
@@ -118,11 +127,34 @@ SDMDisplayVirtualDPU::SetOutputBuffer(const SnapHandle *output_handle,
   snapmapper_->GetMetadata(*output_handle, MetadataType::CUSTOM_DIMENSIONS_STRIDE, &new_width);
   snapmapper_->GetMetadata(*output_handle, MetadataType::CUSTOM_DIMENSIONS_HEIGHT, &new_height);
 
-  buffer_allocator_->GetAlignedWidthAndHeight(new_width, new_height, output_handle_format, 0,
-                                              &new_aligned_w, &new_aligned_h);
+  BufferUsage usage;
+  snapmapper_->GetMetadata(*output_handle, MetadataType::USAGE, &usage);
 
-  buffer_allocator_->GetAlignedWidthAndHeight(active_width, active_height, output_handle_format, 0,
-                                              &active_aligned_w, &active_aligned_h);
+  // Get new aligned width/height
+  BufferDescriptor new_descriptor;
+  new_descriptor.width = new_width;
+  new_descriptor.height = new_height;
+  new_descriptor.format =
+      static_cast<vendor_qti_hardware_display_common_PixelFormat>(output_handle_format);
+  new_descriptor.usage = usage;
+  new_descriptor.additionalOptions.push_back(modifier_pair);
+  snapmapper_->GetFromBufferDescriptor(new_descriptor, MetadataType::ALIGNED_WIDTH_IN_PIXELS,
+                                       &new_aligned_w);
+  snapmapper_->GetFromBufferDescriptor(new_descriptor, MetadataType::ALIGNED_HEIGHT_IN_PIXELS,
+                                       &new_aligned_h);
+
+  // Get active aligned width/height
+  BufferDescriptor active_descriptor;
+  active_descriptor.width = active_width;
+  active_descriptor.height = active_height;
+  active_descriptor.format =
+      static_cast<vendor_qti_hardware_display_common_PixelFormat>(output_handle_format);
+  active_descriptor.usage = usage;
+  new_descriptor.additionalOptions.push_back(modifier_pair);
+  snapmapper_->GetFromBufferDescriptor(active_descriptor, MetadataType::ALIGNED_WIDTH_IN_PIXELS,
+                                       &active_aligned_w);
+  snapmapper_->GetFromBufferDescriptor(active_descriptor, MetadataType::ALIGNED_HEIGHT_IN_PIXELS,
+                                       &active_aligned_h);
 
   if (new_aligned_w != active_aligned_w || new_aligned_h != active_aligned_h) {
     auto status = SetConfig(UINT32(new_width), UINT32(new_height));

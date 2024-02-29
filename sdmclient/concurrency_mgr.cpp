@@ -280,7 +280,7 @@ DisplayError ConcurrencyMgr::InitSubModules() {
 
   DisplayError error = CoreInterface::CreateCore(
       buffer_allocator_, nullptr, socket_handler_, ipc_intf_, &core_intf_);
-      
+
   if (error != kErrorNone) {
     DLOGE("Failed to create CoreInterface");
     return error;
@@ -510,15 +510,12 @@ DisplayError ConcurrencyMgr::GetAllDisplayAttributes(
                              info);
 }
 
-DisplayError
-ConcurrencyMgr::GetDisplayAttributes(uint64_t display, int32_t index,
-                                     DisplayConfigVariableInfo *attributes,
-                                     uint32_t *group_id) {
+DisplayError ConcurrencyMgr::GetDisplayAttributes(uint64_t display, int32_t index,
+                                                  DisplayConfigVariableInfo *attributes) {
   if (!attributes) {
     return kErrorParameters;
   }
-  return CallDisplayFunction(display, &SDMDisplay::GetDisplayAttributes, index,
-                             attributes, group_id);
+  return CallDisplayFunction(display, &SDMDisplay::GetDisplayAttributes, index, attributes);
 }
 
 DisplayError
@@ -927,7 +924,7 @@ ConcurrencyMgr::SetOutputBuffer(uint64_t display, const SnapHandle *buffer,
   if (buffer == nullptr) {
     return kErrorParameters;
   }
-  
+
   bool found = false;
   for (auto disp : {qdutils::DISPLAY_VIRTUAL, qdutils::DISPLAY_VIRTUAL_2}) {
     if (INT32(display) == disp_->GetDisplayIndex(disp)) {
@@ -1160,7 +1157,7 @@ DisplayError ConcurrencyMgr::GetVsyncPeriod(Display disp,
 
   DisplayConfigVariableInfo attributes{};
   if (sdm_display_[disp]) {
-    sdm_display_[disp]->GetDisplayAttributes(0, &attributes, nullptr);
+    sdm_display_[disp]->GetDisplayAttributes(0, &attributes);
   }
 
   *vsync_period = INT32(attributes.vsync_period_ns);
@@ -2450,6 +2447,30 @@ DisplayError ConcurrencyMgr::SetPanelLuminanceAttributes(uint64_t display_id,
 
 void ConcurrencyMgr::RegisterSideBandCallback(SDMSideBandCompositorCbIntf *cb) {
   sideband_cb_ = cb;
+}
+
+DisplayError ConcurrencyMgr::SetSsrcMode(uint64_t display_id, const std::string &mode_name) {
+  int disp_idx = GetDisplayIndex(display_id);
+  if (disp_idx == -1) {
+    DLOGW("Invalid display = %d", display_id);
+    return kErrorResources;
+  }
+
+  SCOPE_LOCK(locker_[disp_idx]);
+  if (!sdm_display_[disp_idx]) {
+    DLOGW("Display %d is not connected.", display_id);
+    return kErrorResources;
+  }
+
+  return sdm_display_[disp_idx]->SetSsrcMode(mode_name);
+}
+
+DisplayError ConcurrencyMgr::EnableCopr(uint64_t display_id, bool enable) {
+  return kErrorNone;
+}
+
+DisplayError ConcurrencyMgr::GetCoprStatus(uint64_t display_id, std::vector<int32_t> *copr_status) {
+  return kErrorNone;
 }
 
 } // namespace sdm
