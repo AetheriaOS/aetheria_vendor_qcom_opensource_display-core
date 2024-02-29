@@ -46,13 +46,12 @@ using KeyValuePair = vendor_qti_hardware_display_common_KeyValuePair;
 
 SDMDisplayVirtualDPU::SDMDisplayVirtualDPU(CoreInterface *core_intf,
                                            BufferAllocator *buffer_allocator,
-                                           SDMCompositorCbIntf *callbacks,
-                                           Display id, int32_t sdm_id,
-                                           uint32_t width, uint32_t height,
+                                           SDMCompositorCallbacks *callbacks, Display id,
+                                           int32_t sdm_id, uint32_t width, uint32_t height,
                                            float min_lum, float max_lum)
-    : SDMDisplayVirtual(core_intf, buffer_allocator, callbacks, id, sdm_id,
-                        width, height),
-      min_lum_(min_lum), max_lum_(max_lum) {}
+    : SDMDisplayVirtual(core_intf, buffer_allocator, callbacks, id, sdm_id, width, height),
+      min_lum_(min_lum),
+      max_lum_(max_lum) {}
 
 DisplayError SDMDisplayVirtualDPU::Init() {
   DisplayError status = SDMDisplay::Init();

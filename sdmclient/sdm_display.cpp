@@ -529,14 +529,15 @@ void SDMColorModeMgr::Dump(std::ostringstream *os) {
   *os << std::endl;
 }
 
-SDMDisplay::SDMDisplay(CoreInterface *core_intf,
-                       BufferAllocator *buffer_allocator,
-                       SDMCompositorCbIntf *callbacks,
-                       SDMDisplayEventHandler *event_handler,
-                       SDMDisplayType type, Display id, int32_t sdm_id,
-                       DisplayClass display_class)
-    : core_intf_(core_intf), callbacks_(callbacks),
-      event_handler_(event_handler), type_(type), id_(id), sdm_id_(sdm_id),
+SDMDisplay::SDMDisplay(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
+                       SDMCompositorCallbacks *callbacks, SDMDisplayEventHandler *event_handler,
+                       SDMDisplayType type, Display id, int32_t sdm_id, DisplayClass display_class)
+    : core_intf_(core_intf),
+      callbacks_(callbacks),
+      event_handler_(event_handler),
+      type_(type),
+      id_(id),
+      sdm_id_(sdm_id),
       display_class_(display_class) {
   buffer_allocator_ = buffer_allocator;
 

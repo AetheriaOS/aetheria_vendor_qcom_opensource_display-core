@@ -53,14 +53,13 @@ void SDMDisplayVirtual::Destroy(SDMDisplay *sdm_display) {
   delete sdm_display;
 }
 
-SDMDisplayVirtual::SDMDisplayVirtual(CoreInterface *core_intf,
-                                     BufferAllocator *buffer_allocator,
-                                     SDMCompositorCbIntf *callbacks, Display id,
-                                     int32_t sdm_id, uint32_t width,
-                                     uint32_t height)
-    : SDMDisplay(core_intf, buffer_allocator, callbacks, nullptr, kVirtual, id,
-                 sdm_id, DISPLAY_CLASS_VIRTUAL),
-      width_(width), height_(height) {}
+SDMDisplayVirtual::SDMDisplayVirtual(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
+                                     SDMCompositorCallbacks *callbacks, Display id, int32_t sdm_id,
+                                     uint32_t width, uint32_t height)
+    : SDMDisplay(core_intf, buffer_allocator, callbacks, nullptr, kVirtual, id, sdm_id,
+                 DISPLAY_CLASS_VIRTUAL),
+      width_(width),
+      height_(height) {}
 
 DisplayError SDMDisplayVirtual::Init() {
   flush_on_error_ = true;
