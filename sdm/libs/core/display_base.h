@@ -270,6 +270,9 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   virtual uint32_t GetAvailableMixerCount();
   virtual DisplayError SetDemuraState(int state) { return kErrorNotSupported; }
   virtual DisplayError SetDemuraConfig(int demura_idx) { return kErrorNotSupported; }
+  virtual DisplayError SetABCState(bool state) { return kErrorNotSupported; }
+  virtual DisplayError SetABCReconfig() { return kErrorNotSupported; }
+  virtual DisplayError SetABCMode(const string &mode_name) { return kErrorNotSupported; }
   virtual void ResetDispLayerStack();
   virtual bool HasNoiseLayer();
   virtual bool HasConcurrentWriteback();

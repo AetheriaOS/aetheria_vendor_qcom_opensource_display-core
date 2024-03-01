@@ -236,6 +236,9 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError SetVRRState(bool state) override;
   DisplayError PanelBacklightInfo(const std::string &client_name, bool enable,
                                   SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) override;
+  DisplayError SetABCState(bool state) override;
+  DisplayError SetABCReconfig() override;
+  DisplayError SetABCMode(const string &mode_name) override;
 
   // Implement the HWEventHandlers
   DisplayError VSync(int64_t timestamp) override;

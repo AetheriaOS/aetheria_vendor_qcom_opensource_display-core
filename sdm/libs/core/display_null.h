@@ -154,6 +154,9 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(RetrieveDemuraTnFiles())
   MAKE_NO_OP(SetDemuraState(int state))
   MAKE_NO_OP(SetDemuraConfig(int demura_idx))
+  MAKE_NO_OP(SetABCState(bool state))
+  MAKE_NO_OP(SetABCReconfig())
+  MAKE_NO_OP(SetABCMode(const string &mode_name))
   MAKE_NO_OP(GetQSyncMode(QSyncMode *))
   MAKE_NO_OP(colorSamplingOn());
   MAKE_NO_OP(colorSamplingOff());

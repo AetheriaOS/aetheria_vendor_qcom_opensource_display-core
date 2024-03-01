@@ -4044,4 +4044,115 @@ DisplayError DisplayBuiltIn::SetVRRState(bool state) {
   return kErrorNone;
 }
 
+DisplayError DisplayBuiltIn::SetABCState(bool state) {
+  DLOGV("Setting the ABC State to %d", state);
+
+  int ret = 0;
+  bool current_abc_state = comp_manager_->GetDemuraStatusForDisplay(display_id_);
+
+  // Check if current ABC state and coming ABC state is same
+  if (state == current_abc_state) {
+    DLOGI("ABC Feature state already set to %s", state ? "true" : "false");
+    return kErrorNone;
+  }
+
+  // If current ABC state is disable and coming ABC state is enable
+  if (state && !current_abc_state) {
+    if (demura_->Init() != 0) {
+      DLOGE("Unable to initialize ABC on Display %d-%d", display_id_, display_type_);
+      return kErrorUndefined;
+    }
+  }
+
+  // Enable or Disable ABC
+  if (SetDemuraIntfStatus(state)) {
+    DLOGE("Failed to set demura status to %s on Display %d, ret = %d", ret,
+          state ? "true" : "false", display_id_);
+    return kErrorUndefined;
+  }
+
+  // Update dispay abc state for current display
+  comp_manager_->SetDemuraStatusForDisplay(display_id_, state);
+  abc_enabled_ = state;
+
+  // Disable Partial Update for one frame.
+  DisablePartialUpdateOneFrameInternal();
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetABCReconfig() {
+  if (!comp_manager_->GetDemuraStatusForDisplay(display_id_)) {
+    return kErrorUndefined;
+  }
+
+  int ret = 0;
+  GenericPayload pl;
+  bool *b = nullptr;
+  ret = pl.CreatePayload<bool>(b);
+  if (ret) {
+    DLOGE("Failed to create kDemuraFeatureParamPendingReconfig payload");
+    return kErrorUndefined;
+  }
+
+  // Setting reconfig as true
+  *b = true;
+  ret = demura_->SetParameter(kDemuraFeatureParamPendingReconfig, pl);
+  if (ret) {
+    DLOGE("Failed to set reconfig parameter for ABC %d", ret);
+    return kErrorUndefined;
+  }
+
+  if (SetDemuraIntfStatus(true)) {
+    DLOGE("Failed to set ABC Status on Display %d", display_id_);
+    return kErrorUndefined;
+  }
+
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetABCMode(const string &mode_name) {
+  if (mode_name.empty()) {
+    DLOGI("mode name is empty");
+    return kErrorUndefined;
+  }
+
+  int ret = 0;
+  GenericPayload config_pl;
+
+  DemuraFeatureParamConfigIdx<std::string> *config_mode_name = nullptr;
+  if ((ret = config_pl.CreatePayload(config_mode_name))) {
+    DLOGE("Failed to create payload for config_mode_name, error = %d", ret);
+    return kErrorUndefined;
+  }
+
+  // Setting the mode name
+  config_mode_name->modeinfo = mode_name;
+  if ((ret = demura_->SetParameter(kDemuraFeatureParamConfigIdx, config_pl))) {
+    DLOGE("Failed to set Config Idx, error = %d", ret);
+    return kErrorUndefined;
+  }
+
+  // Set up ABC correction layer for updated mode name
+  if (SetupCorrectionLayer() != kErrorNone) {
+    DLOGE("Unable to setup ABC layer on Display %d", display_id_);
+    return kErrorUndefined;
+  }
+
+  // Set the ABC feature with updated mode name
+  GenericPayload pl;
+  bool *enable_ptr = nullptr;
+  if ((ret = pl.CreatePayload<bool>(enable_ptr))) {
+    DLOGE("Failed to create payload for enable, error = %d", ret);
+    return kErrorUndefined;
+  } else {
+    *enable_ptr = true;
+    if ((ret = demura_->SetParameter(kDemuraFeatureParamActive, pl))) {
+      DLOGE("Failed to set Active, error = %d", ret);
+      return kErrorUndefined;
+    }
+  }
+
+  return kErrorNone;
+}
+
 }  // namespace sdm

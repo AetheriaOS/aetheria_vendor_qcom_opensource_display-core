@@ -534,6 +534,9 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   DisplayError SetSsrcMode(uint64_t display_id, const std::string &mode_name);
   DisplayError EnableCopr(uint64_t display_id, bool enable);
   DisplayError GetCoprStatus(uint64_t display_id, std::vector<int32_t> *copr_status);
+  DisplayError SetABCState(uint64_t display_id, bool state);
+  DisplayError SetABCReconfig(uint64_t display_id);
+  DisplayError SetABCMode(uint64_t display_id, string mode_name);
 
   static const int locker_count_ = pluggable_lock_index_ + 1;
   static Locker locker_[locker_count_];
