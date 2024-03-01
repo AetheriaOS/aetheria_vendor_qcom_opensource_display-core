@@ -1201,7 +1201,7 @@ DisplayError DisplayBuiltIn::PostCommit() {
     dpps_pu_nofiy_pending_ = false;
     dpps_pu_lock_.Broadcast();
   }
-  dpps_info_.Init(this, client_ctx_.hw_panel_info.panel_name, this);
+  dpps_info_.Init(this, client_ctx_.hw_panel_info.panel_name, this, prop_intf_);
 
   if (demuratn_)
     EnableDemuraTn(true);
@@ -2194,13 +2194,14 @@ std::string DisplayBuiltIn::Dump() {
 DppsInterface* DppsInfo::dpps_intf_ = NULL;
 std::vector<int32_t> DppsInfo::display_id_ = {};
 
-void DppsInfo::Init(DppsPropIntf *intf, const std::string &panel_name, DisplayInterface *display_intf) {
+void DppsInfo::Init(DppsPropIntf *intf, const std::string &panel_name,
+                    DisplayInterface *display_intf, PanelFeaturePropertyIntf *prop_intf) {
   std::lock_guard<std::mutex> guard(lock_);
   int error = 0;
   int disable_dpps_features = 0;
 
-  if (!intf || !display_intf) {
-    DLOGE("Invalid intf %pK display_intf %pK", intf, display_intf);
+  if (!intf || !display_intf || !prop_intf) {
+    DLOGE("Invalid intf %pK display_intf %pK prop_intf %pK", intf, display_intf, prop_intf);
     return;
   }
 
@@ -2242,7 +2243,7 @@ void DppsInfo::Init(DppsPropIntf *intf, const std::string &panel_name, DisplayIn
       goto exit;
     }
   }
-  error = dpps_intf_->Init(intf, panel_name, display_intf);
+  error = dpps_intf_->Init(intf, panel_name, display_intf, prop_intf);
   if (error) {
     DLOGE("DPPS Interface init failure with err %d", error);
     goto exit;
