@@ -120,9 +120,11 @@ DisplayError SDMDisplayVirtualGPU::Validate(uint32_t *out_num_types,
   }
 
   // Derive client target dataspace based on the color mode - bug/115482728
-  int32_t client_target_dataspace =
-      GetDataspaceFromColorMode(GetCurrentColorMode());
-  SetClientTargetDataSpace(client_target_dataspace);
+  uint32_t client_target_dataspace = 0;
+  Dataspace ds;
+  GetColorMetadataFromColorMode(GetCurrentColorMode(), ds);
+  buffer_allocator_->ColorMetadataToDataspace(ds, &client_target_dataspace);
+  SetClientTargetDataSpace(static_cast<int32_t>(client_target_dataspace));
 
   *out_num_types = UINT32(layer_changes_.size());
   *out_num_requests = UINT32(layer_requests_.size());

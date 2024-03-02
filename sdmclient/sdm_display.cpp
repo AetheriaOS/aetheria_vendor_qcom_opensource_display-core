@@ -957,9 +957,11 @@ void SDMDisplay::BuildLayerStack() {
   sdm_client_target->layer_name = client_target_->GetName();
 
   // Derive client target dataspace based on the color mode - bug/115482728
-  int32_t client_target_dataspace =
-      GetDataspaceFromColorMode(GetCurrentColorMode());
-  SetClientTargetDataSpace(client_target_dataspace);
+  uint32_t client_target_dataspace = 0;
+  Dataspace ds;
+  GetColorMetadataFromColorMode(GetCurrentColorMode(), ds);
+  buffer_allocator_->ColorMetadataToDataspace(ds, &client_target_dataspace);
+  SetClientTargetDataSpace(static_cast<int32_t>(client_target_dataspace));
   layer_stack_.layers.push_back(sdm_client_target);
 
   layer_stack_.elapse_timestamp = elapse_timestamp_;
