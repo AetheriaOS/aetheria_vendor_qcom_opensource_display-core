@@ -1078,6 +1078,9 @@ void HWPeripheralDRM::CreatePanelFeaturePropertyMap() {
       sde_drm::kDRMPanelFeatureAiqeSSRCConfig;
   panel_feature_property_map_[kPanelFeatureAiqeSsrcData] = sde_drm::kDRMPanelFeatureAiqeSSRCData;
   panel_feature_property_map_[kPanelFeatureAIScalerCfg] = sde_drm::kDRMPanelFeatureAIScalerCfg;
+  panel_feature_property_map_[kPanelFeatureAiqeMdnie] = sde_drm::kDRMPanelFeatureAiqeMdnie;
+  panel_feature_property_map_[kPanelFeatureAiqeMdnieArt] = sde_drm::kDRMPanelFeatureAiqeMdnieArt;
+  panel_feature_property_map_[kPanelFeatureAiqeCopr] = sde_drm::kDRMPanelFeatureAiqeCopr;
 }
 
 int HWPeripheralDRM::GetPanelFeature(PanelFeaturePropertyInfo *feature_info) {
@@ -1111,6 +1114,9 @@ int HWPeripheralDRM::GetPanelFeature(PanelFeaturePropertyInfo *feature_info) {
     case kPanelFeatureDemuraCfg0Param2:
     case kPanelFeatureAiqeSsrcConfig:
     case kPanelFeatureAiqeSsrcData:
+    case kPanelFeatureAiqeMdnie:
+    case kPanelFeatureAiqeMdnieArt:
+    case kPanelFeatureAiqeCopr:
       drm_feature.obj_type = DRM_MODE_OBJECT_CRTC;
       drm_feature.obj_id = token_.crtc_id;
       break;
@@ -1118,10 +1124,10 @@ int HWPeripheralDRM::GetPanelFeature(PanelFeaturePropertyInfo *feature_info) {
     case kPanelFeatureDemuraPanelId:
       drm_feature.obj_type = DRM_MODE_OBJECT_CONNECTOR;
       drm_feature.obj_id =  token_.conn_id;
-     break;
+      break;
     default:
-     DLOGE("obj id population for property %d not implemented", feature_info->prop_id);
-     return -EINVAL;
+      DLOGE("obj id population for property %d not implemented", feature_info->prop_id);
+      return -EINVAL;
   }
 
   drm_mgr_intf_->GetPanelFeature(&drm_feature);
@@ -1149,16 +1155,19 @@ int HWPeripheralDRM::SetPanelFeature(const PanelFeaturePropertyInfo &feature_inf
     case kPanelFeatureAiqeSsrcConfig:
     case kPanelFeatureAiqeSsrcData:
     case kPanelFeatureAIScalerCfg:
+    case kPanelFeatureAiqeMdnie:
+    case kPanelFeatureAiqeMdnieArt:
+    case kPanelFeatureAiqeCopr:
       drm_feature.obj_type = DRM_MODE_OBJECT_CRTC;
       drm_feature.obj_id = token_.crtc_id;
       break;
     case kPanelFeatureSPRPackType:
       drm_feature.obj_type = DRM_MODE_OBJECT_CONNECTOR;
       drm_feature.obj_id =  token_.conn_id;
-     break;
+      break;
     default:
-     DLOGE("Set Panel feature property %d not implemented", feature_info.prop_id);
-     return -EINVAL;
+      DLOGE("Set Panel feature property %d not implemented", feature_info.prop_id);
+      return -EINVAL;
   }
 
   DLOGI("Set Panel feature property %d", feature_info.prop_id);

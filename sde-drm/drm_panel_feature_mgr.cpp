@@ -144,6 +144,9 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
   drm_property_map_[kDRMPanelFeatureAiqeSSRCConfig] = DRMProperty::SDE_DSPP_AIQE_SSRC_CONFIG_V1;
   drm_property_map_[kDRMPanelFeatureAiqeSSRCData] = DRMProperty::SDE_DSPP_AIQE_SSRC_DATA_V1;
   drm_property_map_[kDRMPanelFeatureAIScalerCfg] = DRMProperty::AI_SCALER_CFG_V1;
+  drm_property_map_[kDRMPanelFeatureAiqeMdnie] = DRMProperty::SDE_DSPP_AIQE_MDNIE_V1;
+  drm_property_map_[kDRMPanelFeatureAiqeMdnieArt] = DRMProperty::SDE_DSPP_AIQE_MDNIE_ART_V1;
+  drm_property_map_[kDRMPanelFeatureAiqeCopr] = DRMProperty::SDE_DSPP_AIQE_COPR_V1;
 
   drm_prop_type_map_[kDRMPanelFeatureDemuraResources] = DRMPropType::kPropBitmask;
   drm_prop_type_map_[kDRMPanelFeatureDemuraInit] = DRMPropType::kPropBlob;
@@ -160,6 +163,9 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
   drm_prop_type_map_[kDRMPanelFeatureAiqeSSRCConfig] = DRMPropType::kPropBlob;
   drm_prop_type_map_[kDRMPanelFeatureAiqeSSRCData] = DRMPropType::kPropBlob;
   drm_prop_type_map_[kDRMPanelFeatureAIScalerCfg] = DRMPropType::kPropBlob;
+  drm_prop_type_map_[kDRMPanelFeatureAiqeMdnie] = DRMPropType::kPropRange;
+  drm_prop_type_map_[kDRMPanelFeatureAiqeMdnieArt] = DRMPropType::kPropRange;
+  drm_prop_type_map_[kDRMPanelFeatureAiqeCopr] = DRMPropType::kPropRange;
 
   feature_info_tbl_[kDRMPanelFeatureDemuraResources] = DRMPanelFeatureInfo {
     kDRMPanelFeatureDemuraResources, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, 0, 0};
@@ -206,6 +212,12 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
                                                                        1,
                                                                        sizeof(drm_msm_ai_scaler),
                                                                        0};
+  feature_info_tbl_[kDRMPanelFeatureAiqeMdnie] = DRMPanelFeatureInfo{
+      kDRMPanelFeatureAiqeMdnie, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, sizeof(uint64_t), 0};
+  feature_info_tbl_[kDRMPanelFeatureAiqeMdnieArt] = DRMPanelFeatureInfo{
+      kDRMPanelFeatureAiqeMdnieArt, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, sizeof(uint64_t), 0};
+  feature_info_tbl_[kDRMPanelFeatureAiqeCopr] = DRMPanelFeatureInfo{
+      kDRMPanelFeatureAiqeCopr, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, sizeof(uint64_t), 0};
 }
 
 void DRMPanelFeatureMgr::Deinit() {
@@ -665,8 +677,8 @@ void DRMPanelFeatureMgr::ApplyDirtyFeature(drmModeAtomicReq *req, const DRMDispl
     drm_prop_blob_ids_map_[info.prop_id] = blob_id;
 
     value = blob_id;
-  } else if (info.prop_size == sizeof(uint64_t)) {
-    value = (reinterpret_cast<uint64_t *> (info.prop_ptr))[0];
+  } else if (DRMPropType::kPropRange == drm_prop_type_map_[info.prop_id]) {
+    value = info.prop_ptr;
   } else {
     DRM_LOGE("Unsupported property type id = %d size:%d", info.prop_id, info.prop_size);
   }

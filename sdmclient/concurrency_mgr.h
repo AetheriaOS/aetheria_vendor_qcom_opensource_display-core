@@ -81,7 +81,7 @@
 
 namespace sdm {
 
-int32_t GetDataspaceFromColorMode(SDMColorMode mode);
+void GetColorMetadataFromColorMode(SDMColorMode mode, Dataspace &ds);
 
 class ConcurrencyMgr : public SDMDisplaySideBandIntf,
                        public SDMDisplayCapsIntf,

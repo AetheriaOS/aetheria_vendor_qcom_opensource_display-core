@@ -1693,10 +1693,10 @@ DisplayError SDMServices::QdcmCMDHandler(SDMParcel *input_parcel,
         usleep(kSolidFillDelay);
         break;
       case kSetPanelBrightness:
-        ret = kErrorNotSupported;
         brightness = reinterpret_cast<float *>(resp_payload.payload);
         if (brightness == NULL) {
           DLOGE("Brightness payload is Null");
+          ret = kErrorParameters;
         } else {
           auto err = cb_->SetDisplayBrightness(static_cast<Display>(display_id),
                                                *brightness);

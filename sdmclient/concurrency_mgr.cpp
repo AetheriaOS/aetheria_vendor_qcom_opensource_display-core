@@ -77,7 +77,47 @@ shared_ptr<Fence> ConcurrencyMgr::retire_fence_[kNumDisplays];
 int ConcurrencyMgr::commit_error_[kNumDisplays] = {0};
 Locker ConcurrencyMgr::display_config_locker_;
 
-int32_t GetDataspaceFromColorMode(SDMColorMode mode) { return 0; }
+void GetColorMetadataFromColorMode(SDMColorMode mode, Dataspace &ds) {
+  switch (mode) {
+    case SDMColorMode::COLOR_MODE_SRGB:
+    // dataspace is ignored in native mode
+    case SDMColorMode::COLOR_MODE_NATIVE:
+      ds.colorPrimaries = QtiColorPrimaries_BT709_5;
+      ds.transfer = QtiTransfer_sRGB;
+      ds.range = QtiRange_Full;
+      break;
+    case SDMColorMode::COLOR_MODE_DCI_P3:
+      ds.colorPrimaries = QtiColorPrimaries_DCIP3;
+      // gamma 2.6 transfer - not supported by HW
+      ds.transfer = static_cast<vendor_qti_hardware_display_common_QtiGammaTransfer>(5 << 22);
+      ds.range = QtiRange_Full;
+      break;
+    case SDMColorMode::COLOR_MODE_DISPLAY_P3:
+      ds.colorPrimaries = QtiColorPrimaries_DCIP3;
+      ds.transfer = QtiTransfer_sRGB;
+      ds.range = QtiRange_Full;
+      break;
+    case SDMColorMode::COLOR_MODE_BT2100_PQ:
+      ds.colorPrimaries = QtiColorPrimaries_BT2020;
+      ds.transfer = QtiTransfer_SMPTE_ST2084;
+      ds.range = QtiRange_Full;
+      break;
+    case SDMColorMode::COLOR_MODE_BT2100_HLG:
+      ds.colorPrimaries = QtiColorPrimaries_BT2020;
+      ds.transfer = QtiTransfer_HLG;
+      ds.range = QtiRange_Full;
+      break;
+    case SDMColorMode::COLOR_MODE_DISPLAY_BT2020:
+      ds.colorPrimaries = QtiColorPrimaries_BT2020;
+      ds.transfer = QtiTransfer_sRGB;
+      ds.range = QtiRange_Full;
+      break;
+    default:
+      ds.colorPrimaries = QtiColorPrimaries_Max;
+      ds.transfer = QtiTransfer_Max;
+      ds.range = QtiRange_Max;
+  }
+}
 
 ConcurrencyMgr::ConcurrencyMgr() {}
 
@@ -1489,7 +1529,11 @@ DisplayError ConcurrencyMgr::GetReadbackBufferAttributes(Display display,
   }
 
   *format = static_cast<int32_t>(SDMPixelFormat::PIXEL_FORMAT_RGB_888);
-  *dataspace = GetDataspaceFromColorMode(sdm_display->GetCurrentColorMode());
+  uint32_t cm_dataspace = 0;
+  Dataspace ds;
+  GetColorMetadataFromColorMode(sdm_display->GetCurrentColorMode(), ds);
+  buffer_allocator_->ColorMetadataToDataspace(ds, &cm_dataspace);
+  *dataspace = static_cast<int32_t>(cm_dataspace);
 
   return kErrorNone;
 }

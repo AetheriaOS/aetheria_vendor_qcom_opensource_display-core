@@ -56,6 +56,9 @@ enum PanelFeaturePropertyID {
   kPanelFeatureAiqeSsrcConfig,
   kPanelFeatureAiqeSsrcData,
   kPanelFeatureAIScalerCfg,
+  kPanelFeatureAiqeMdnie,
+  kPanelFeatureAiqeMdnieArt,
+  kPanelFeatureAiqeCopr,
   kPanelFeaturePropertyIDMax
 };
 
