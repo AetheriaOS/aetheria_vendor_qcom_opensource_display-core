@@ -481,6 +481,7 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   DisplayError SetCameraSmoothInfo(SDMCameraSmoothOp op, int32_t fps) override;
   DisplayError NotifyTUIDone(int ret, int disp_id,
                              SDMTUIEventType event_type) override;
+  DisplayError SetContentFps(const std::string &name, int32_t fps) override;
   int GetDisplayConfigGroup(uint64_t display, DisplayConfigGroupInfo variable_config);
 
   // SDMDisplayEventHandler
