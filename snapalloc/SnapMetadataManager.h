@@ -4,7 +4,6 @@
 #ifndef __SNAP_METADATA_MANAGER_H__
 #define __SNAP_METADATA_MANAGER_H__
 
-#include <display/drm/sde_drm.h>
 #include <drm/drm_fourcc.h>
 #include <sys/mman.h>
 
