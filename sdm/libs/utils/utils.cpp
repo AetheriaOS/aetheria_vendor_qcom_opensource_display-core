@@ -198,12 +198,18 @@ const char* GetSocName() {
       return kAnorakSocName;
     case kSunSocId:
       return kSunSocName;
+    case kNiobeSocId:
+      return kNiobeSocName;
     default:
       return "";
   }
 }
 
 bool IsXRVariant() {
-  return ((!strcmp(GetSocName(), "anorak")) ? true : false);
+  if (!strcmp(GetSocName(), kAnorakSocName) || !strcmp(GetSocName(), kNiobeSocName)) {
+    return true;
+  }
+
+  return false;
 }
 }  // namespace sdm
