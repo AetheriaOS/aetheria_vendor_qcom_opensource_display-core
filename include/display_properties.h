@@ -257,6 +257,11 @@
 // Enable AI Scaler
 #define ENABLE_AI_SCALER_PROP                DISPLAY_PROP("enable_ai_scaler")
 
+// Panel Feature AIQE ABC Properties
+#define ENABLE_ABC                        DISPLAY_PROP("enable_abc")
+#define DISABLE_ABC_PRIMARY               DISPLAY_PROP("disable_abc_primary")
+#define DISABLE_ABC_SECONDARY             DISPLAY_PROP("disable_abc_secondary")
+
 // Add all other.properties above
 // End of property
 // clang-format on
