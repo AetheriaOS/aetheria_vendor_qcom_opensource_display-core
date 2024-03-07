@@ -180,6 +180,9 @@ class MmmColorFormatMapper {
       }
       case vendor_qti_hardware_display_common_PixelFormat::YCbCr_420_SP: {
         if (ubwc_enabled) {
+          if (modifier == PIXEL_FORMAT_MODIFIER_4R) {
+            return mmm_color_fmts::MMM_COLOR_FMT_NV124R_UBWC;
+          }
           return mmm_color_fmts::MMM_COLOR_FMT_NV12_UBWC;
         } else if (usage & vendor_qti_hardware_display_common_BufferUsage::HW_IMAGE_ENCODER) {
           return mmm_color_fmts::MMM_COLOR_FMT_NV12_512;

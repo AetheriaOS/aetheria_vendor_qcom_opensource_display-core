@@ -84,12 +84,18 @@ void SnapConstraintManager::GetImplDefinedFormat(
   if (format == vendor_qti_hardware_display_common_PixelFormat::IMPLEMENTATION_DEFINED ||
       format == vendor_qti_hardware_display_common_PixelFormat::YCBCR_420_888) {
     if (((usage & vendor_qti_hardware_display_common_BufferUsage::QTI_ALLOC_UBWC ||
-          usage & vendor_qti_hardware_display_common_BufferUsage::QTI_PRIVATE_ALLOC_UBWC_PI) &&
+          usage & vendor_qti_hardware_display_common_BufferUsage::QTI_PRIVATE_ALLOC_UBWC_PI ||
+          usage & vendor_qti_hardware_display_common_BufferUsage::QTI_ALLOC_UBWC_4R) &&
          format != vendor_qti_hardware_display_common_PixelFormat::YCBCR_420_888) &&
         !(usage & vendor_qti_hardware_display_common_BufferUsage::QTI_PRIVATE_10BIT)) {
-      *out_format = vendor_qti_hardware_display_common_PixelFormat::YCbCr_420_SP;
-      // TODO: adding venus because gralloc adds venus here - re-evaluate if default should be something else
-      *out_modifier = PIXEL_FORMAT_MODIFIER_VENUS;
+      if (usage & vendor_qti_hardware_display_common_BufferUsage::QTI_ALLOC_UBWC_4R) {
+        *out_format = vendor_qti_hardware_display_common_PixelFormat::YCbCr_420_SP;
+        *out_modifier = PIXEL_FORMAT_MODIFIER_4R;
+      } else {
+        *out_format = vendor_qti_hardware_display_common_PixelFormat::YCbCr_420_SP;
+        // TODO: adding venus because gralloc adds venus here - re-evaluate if default should be something else
+        *out_modifier = PIXEL_FORMAT_MODIFIER_VENUS;
+      }
     } else if (usage & vendor_qti_hardware_display_common_BufferUsage::VIDEO_ENCODER) {
       if (usage & vendor_qti_hardware_display_common_BufferUsage::QTI_PRIVATE_VIDEO_NV21_ENCODER) {
         *out_format = vendor_qti_hardware_display_common_PixelFormat::YCrCb_420_SP;
