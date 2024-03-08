@@ -409,7 +409,6 @@ void HWPeripheralDRM::SetAIScalerData(const AIScalerInfoMap ai_scale_info_map) {
 
     HWAIScalerInfo *ai_scale_info = it->second;
     struct drm_msm_ai_scaler *ai_scaler_cfg = &sde_ai_scaler_cfg_;
-    ai_scaler_cfg->flags = 0;
 
     // Update UAPI structure for AI Scaler config
     ai_scaler_cfg->config = ai_scale_info->ai_scale_data.config;
@@ -417,16 +416,12 @@ void HWPeripheralDRM::SetAIScalerData(const AIScalerInfoMap ai_scale_info_map) {
     ai_scaler_cfg->src_h = ai_scale_info->ai_scale_data.src_h;
     ai_scaler_cfg->dst_w = ai_scale_info->ai_scale_data.dst_w;
     ai_scaler_cfg->dst_h = ai_scale_info->ai_scale_data.dst_h;
-    if (ai_scale_info->ai_scale_update) {
-      ai_scaler_cfg->flags = 1;
-    }
     if (ai_scale_info->ai_scale_data.is_param_valid) {
       memcpy(ai_scaler_cfg->param, ai_scale_info->ai_scale_data.param,
              AIQE_AI_SCALER_PARAM_LEN * sizeof(ai_scaler_cfg->param[0]));
     }
 
-    if ((std::memcmp(&ai_scaler_cache_[i].scaler_data, ai_scaler_cfg,
-                     sizeof(sde_ai_scaler_cfg_)))) {
+    if (ai_scaler_cache_[i].scaler_data.config != sde_ai_scaler_cfg_.config) {
       needs_ai_scaler_update_ = true;
     }
   }
@@ -437,8 +432,7 @@ void HWPeripheralDRM::SetAIScalerData(const AIScalerInfoMap ai_scale_info_map) {
     int rc;
     payload.prop_id = kPanelFeatureAIScalerCfg;
 
-    if (sde_ai_scaler_cfg_.flags &&
-        (ai_scaler_cache_[0].scaler_data.flags != sde_ai_scaler_cfg_.flags)) {
+    if (sde_ai_scaler_cfg_.config) {
       payload.prop_ptr = reinterpret_cast<uint64_t>(&sde_ai_scaler_cfg_);
     } else {
       // Disable AI Scaler case
