@@ -323,6 +323,8 @@ DisplayError DisplayBase::Init() {
 
   Debug::GetIdleTimeoutMs(&idle_active_ms_, &inactive_ms);
 
+  xr_variant_ = IsXRVariant();
+
   SetupPanelFeatureFactory();
 
   InitBorderLayers();
@@ -3243,15 +3245,14 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
   uint32_t fb_height = client_ctx_.fb_config.y_pixels;
   uint32_t display_width = client_ctx_.display_attributes.x_pixels;
   uint32_t display_height = client_ctx_.display_attributes.y_pixels;
-  bool xr_variant = IsXRVariant();
 
   bool valid_lm_tappoint = layer_stack->cwb_config
                                ? layer_stack->cwb_config->tap_point == CwbTapPoint::kLmTapPoint
                                : false;
   // Resize mixer attributes to fb config when client requests CWB at LM tap-point
   // TODO(user): remove below check when clients request buffer with mixer resolution
-  if (xr_variant || (HasConcurrentWriteback() && layer_stack->output_buffer &&
-      valid_lm_tappoint)) {
+  if ((HasConcurrentWriteback() && layer_stack->output_buffer && valid_lm_tappoint) ||
+      xr_variant_) {
     DLOGV_IF(kTagDisplay, "Found concurrent writeback, configure LM width:%d height:%d", fb_width,
              fb_height);
     *new_mixer_width = fb_width;
