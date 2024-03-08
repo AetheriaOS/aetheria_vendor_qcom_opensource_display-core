@@ -278,6 +278,11 @@ DisplayError HWPeripheralDRM::Commit(HWLayersInfo *hw_layers_info) {
   SetSelfRefreshState();
   SetVMReqState();
 
+  if (first_cycle_) {
+    SetDisplayMode(
+        static_cast<HWDisplayMode>(connector_info_.modes[current_mode_index_].cur_panel_mode));
+  }
+
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_EPT, token_.conn_id,
                             hw_layers_info->common_info->expected_present_time);
 
