@@ -633,7 +633,6 @@ private:
   bool is_composer_up_ = false;
   std::mutex mutex_lum_;
   static bool pending_power_mode_[kNumDisplays];
-  bool enable_aidl_idle_notification_ = false;
 
   int32_t idle_pc_ref_cnt_ = 0;
 

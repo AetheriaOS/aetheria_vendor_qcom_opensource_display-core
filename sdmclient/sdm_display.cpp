@@ -1519,6 +1519,9 @@ DisplayError SDMDisplay::HandleEvent(DisplayEvent event) {
   } break;
   case kPostIdleTimeout:
     display_idle_ = true;
+    if (NotifyIdleNow()) {
+      event_handler_->NotifyIdleStatus(true);
+    }
     break;
   case kVmReleaseDone: {
     if (event_handler_) {

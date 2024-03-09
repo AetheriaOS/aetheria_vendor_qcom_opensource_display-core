@@ -627,10 +627,6 @@ void ConcurrencyMgr::PerformIdleStatusCallback(Display display) {
 }
 
 int ConcurrencyMgr::NotifyIdleStatus(bool idle_status) {
-  if (!enable_aidl_idle_notification_) {
-    return -1;
-  }
-
   sideband_cb_->NotifyIdleStatus(true);
   return 0;
 }
