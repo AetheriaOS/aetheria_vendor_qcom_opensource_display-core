@@ -52,7 +52,7 @@
 #include <utility>
 #include <vector>
 
-#include "sdm_compositor_cb_intf.h"
+#include "sdm_compositor_callbacks.h"
 #include "sdm_layer_builder.h"
 
 namespace sdm {
@@ -522,9 +522,8 @@ public:
   static const uint32_t kMaxLayerCount = 32;
   static bool mmrm_restricted_;
   SDMDisplay(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
-             SDMCompositorCbIntf *callbacks,
-             SDMDisplayEventHandler *event_handler, SDMDisplayType type,
-             Display id, int32_t sdm_id, DisplayClass display_class);
+             SDMCompositorCallbacks *callbacks, SDMDisplayEventHandler *event_handler,
+             SDMDisplayType type, Display id, int32_t sdm_id, DisplayClass display_class);
 
   // DisplayEventHandler methods
   virtual DisplayError VSync(const DisplayEventVSync &vsync);
@@ -596,7 +595,7 @@ public:
   bool layer_stack_invalid_ = true;
   CoreInterface *core_intf_ = nullptr;
   BufferAllocator *buffer_allocator_ = NULL;
-  SDMCompositorCbIntf *callbacks_ = nullptr;
+  SDMCompositorCallbacks *callbacks_ = nullptr;
   SDMDisplayEventHandler *event_handler_ = nullptr;
   SDMDisplayType type_ = kDisplayTypeMax;
   Display id_ = UINT64_MAX;

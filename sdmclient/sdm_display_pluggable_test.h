@@ -45,17 +45,14 @@ namespace sdm {
 
 class SDMDisplayPluggableTest : public SDMDisplay {
 public:
-  static DisplayError Create(CoreInterface *core_intf,
-                             BufferAllocator *buffer_allocator,
-                             SDMCompositorCbIntf *callbacks,
-                             SDMDisplayEventHandler *event_handler, Display id,
-                             int32_t sdm_id, uint32_t panel_bpp,
-                             uint32_t pattern_type, SDMDisplay **sdm_display);
-  static void Destroy(SDMDisplay *sdm_display);
-  virtual DisplayError Validate(uint32_t *out_num_types,
-                                uint32_t *out_num_requests);
-  virtual DisplayError Present(shared_ptr<Fence> *out_retire_fence);
-  virtual DisplayError Perform(uint32_t operation, ...);
+ static DisplayError Create(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
+                            SDMCompositorCallbacks *callbacks,
+                            SDMDisplayEventHandler *event_handler, Display id, int32_t sdm_id,
+                            uint32_t panel_bpp, uint32_t pattern_type, SDMDisplay **sdm_display);
+ static void Destroy(SDMDisplay *sdm_display);
+ virtual DisplayError Validate(uint32_t *out_num_types, uint32_t *out_num_requests);
+ virtual DisplayError Present(shared_ptr<Fence> *out_retire_fence);
+ virtual DisplayError Perform(uint32_t operation, ...);
 
 protected:
   BufferInfo buffer_info_ = {};
@@ -88,31 +85,26 @@ protected:
   };
 
 private:
-  SDMDisplayPluggableTest(CoreInterface *core_intf,
-                          BufferAllocator *buffer_allocator,
-                          SDMCompositorCbIntf *callbacks,
-                          SDMDisplayEventHandler *event_handler, Display id,
-                          int32_t sdm_id, uint32_t panel_bpp,
-                          uint32_t pattern_type);
-  DisplayError Init();
-  DisplayError Deinit();
-  void DumpInputBuffer();
-  void CalcCRC(uint32_t color_value, std::bitset<16> *crc_data);
-  DisplayError FillBuffer();
-  DisplayError GetStride(LayerBufferFormat format, uint32_t width,
-                         uint32_t *stride);
-  void PixelCopy(uint32_t red, uint32_t green, uint32_t blue, uint32_t alpha,
-                 uint8_t **buffer);
-  void GenerateColorRamp(uint8_t *buffer);
-  void GenerateBWVertical(uint8_t *buffer);
-  void GenerateColorSquare(uint8_t *buffer);
-  DisplayError InitLayer(Layer *layer);
-  DisplayError DeinitLayer(Layer *layer);
-  DisplayError CreateLayerStack();
-  DisplayError DestroyLayerStack();
-  DisplayError PostCommit(shared_ptr<Fence> *out_retire_fence);
+ SDMDisplayPluggableTest(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
+                         SDMCompositorCallbacks *callbacks, SDMDisplayEventHandler *event_handler,
+                         Display id, int32_t sdm_id, uint32_t panel_bpp, uint32_t pattern_type);
+ DisplayError Init();
+ DisplayError Deinit();
+ void DumpInputBuffer();
+ void CalcCRC(uint32_t color_value, std::bitset<16> *crc_data);
+ DisplayError FillBuffer();
+ DisplayError GetStride(LayerBufferFormat format, uint32_t width, uint32_t *stride);
+ void PixelCopy(uint32_t red, uint32_t green, uint32_t blue, uint32_t alpha, uint8_t **buffer);
+ void GenerateColorRamp(uint8_t *buffer);
+ void GenerateBWVertical(uint8_t *buffer);
+ void GenerateColorSquare(uint8_t *buffer);
+ DisplayError InitLayer(Layer *layer);
+ DisplayError DeinitLayer(Layer *layer);
+ DisplayError CreateLayerStack();
+ DisplayError DestroyLayerStack();
+ DisplayError PostCommit(shared_ptr<Fence> *out_retire_fence);
 
-  static const uint32_t kTestLayerCnt = 1;
+ static const uint32_t kTestLayerCnt = 1;
 };
 
 } // namespace sdm

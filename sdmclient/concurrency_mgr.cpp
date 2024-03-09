@@ -200,8 +200,7 @@ void ConcurrencyMgr::GetHpdData(int *hpd_bpp, int *hpd_pattern,
   *hpd_connected = hpd_connected_;
 }
 
-DisplayError ConcurrencyMgr::Init(SDMCompositorCbIntf *callbacks,
-                                  BufferAllocator *buffer_allocator,
+DisplayError ConcurrencyMgr::Init(BufferAllocator *buffer_allocator,
                                   SocketHandler *socket_handler) {
   SCOPE_LOCK(locker_[SDM_DISPLAY_PRIMARY]);
 
@@ -212,7 +211,6 @@ DisplayError ConcurrencyMgr::Init(SDMCompositorCbIntf *callbacks,
 
   DLOGI("Initializing ConcurrencyMgr");
 
-  callbacks_ = callbacks;
   buffer_allocator_ = buffer_allocator;
   socket_handler_ = socket_handler;
 
@@ -351,8 +349,7 @@ DisplayError ConcurrencyMgr::InitSubModules() {
   cwb_ = new SDMConcurrentWriteBack(this, snapmapper_);
   cwb_->Init();
 
-  disp_ = new SDMDisplayBuilder(this, buffer_allocator_, core_intf_, callbacks_,
-                                this);
+  disp_ = new SDMDisplayBuilder(this, buffer_allocator_, core_intf_, &callbacks_, this);
   disp_->Init(locker_);
 
   tui_ = new SDMTrustedUI(this);
@@ -734,7 +731,7 @@ void ConcurrencyMgr::HandlePendingRefresh() {
 }
 
 void ConcurrencyMgr::SendHotplug(Display display, bool state) {
-  callbacks_->OnHotplug(display, state);
+  callbacks_.OnHotplug(display, state);
 }
 
 DisplayError ConcurrencyMgr::Hotplug(Display display, bool state) {
@@ -765,13 +762,14 @@ DisplayError ConcurrencyMgr::Hotplug(Display display, bool state) {
   if (display == SDM_DISPLAY_EXTERNAL || display == SDM_DISPLAY_EXTERNAL_2) {
     std::thread(&ConcurrencyMgr::SendHotplug, this, display, state).detach();
   } else {
-    callbacks_->OnHotplug(display, state);
+    callbacks_.OnHotplug(display, state);
   }
   return kErrorNone;
 }
 
-void ConcurrencyMgr::EnableCallback(bool enable) {
+void ConcurrencyMgr::RegisterCompositorCallback(SDMCompositorCbIntf *cb, bool enable) {
   SCOPE_LOCK(client_lock_);
+  callbacks_.RegisterCallback(cb, enable);
 
   // Detect if client died and now is back
   vector<Display> pending_hotplugs;
@@ -1207,7 +1205,7 @@ DisplayError ConcurrencyMgr::GetVsyncPeriod(Display disp,
 }
 
 void ConcurrencyMgr::SendRefresh(Display display) {
-  callbacks_->OnRefresh(display);
+  callbacks_.OnRefresh(display);
 }
 
 void ConcurrencyMgr::Refresh(uint64_t display) {

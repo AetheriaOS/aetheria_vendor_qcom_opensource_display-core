@@ -46,10 +46,9 @@
 namespace sdm {
 
 DisplayError SDMDisplayPluggable::Create(
-    CoreInterface *core_intf, BufferAllocator *buffer_allocator,
-    SDMCompositorCbIntf *callbacks, SDMDisplayEventHandler *event_handler,
-    Display id, int32_t sdm_id, uint32_t primary_width, uint32_t primary_height,
-    bool use_primary_res, SDMDisplay **sdm_display) {
+    CoreInterface *core_intf, BufferAllocator *buffer_allocator, SDMCompositorCallbacks *callbacks,
+    SDMDisplayEventHandler *event_handler, Display id, int32_t sdm_id, uint32_t primary_width,
+    uint32_t primary_height, bool use_primary_res, SDMDisplay **sdm_display) {
   uint32_t pluggable_width = 0;
   uint32_t pluggable_height = 0;
   DisplayError error = kErrorNone;
@@ -120,11 +119,11 @@ void SDMDisplayPluggable::Destroy(SDMDisplay *sdm_display) {
 
 SDMDisplayPluggable::SDMDisplayPluggable(CoreInterface *core_intf,
                                          BufferAllocator *buffer_allocator,
-                                         SDMCompositorCbIntf *callbacks,
-                                         SDMDisplayEventHandler *event_handler,
-                                         Display id, int32_t sdm_id)
-    : SDMDisplay(core_intf, buffer_allocator, callbacks, event_handler,
-                 kPluggable, id, sdm_id, DISPLAY_CLASS_PLUGGABLE) {}
+                                         SDMCompositorCallbacks *callbacks,
+                                         SDMDisplayEventHandler *event_handler, Display id,
+                                         int32_t sdm_id)
+    : SDMDisplay(core_intf, buffer_allocator, callbacks, event_handler, kPluggable, id, sdm_id,
+                 DISPLAY_CLASS_PLUGGABLE) {}
 
 DisplayError SDMDisplayPluggable::PreValidateDisplay(bool *exit_validate) {
   DTRACE_SCOPED();

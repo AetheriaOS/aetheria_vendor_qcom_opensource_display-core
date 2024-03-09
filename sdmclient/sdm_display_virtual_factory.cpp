@@ -41,13 +41,10 @@
 
 namespace sdm {
 
-int SDMVirtualDisplayFactory::Create(CoreInterface *core_intf,
-                                     BufferAllocator *buffer_allocator,
-                                     SDMCompositorCbIntf *callbacks, Display id,
-                                     int32_t sdm_id, uint32_t width,
-                                     uint32_t height, int32_t *format,
-                                     float min_lum, float max_lum,
-                                     SDMDisplay **sdm_display) {
+int SDMVirtualDisplayFactory::Create(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
+                                     SDMCompositorCallbacks *callbacks, Display id, int32_t sdm_id,
+                                     uint32_t width, uint32_t height, int32_t *format,
+                                     float min_lum, float max_lum, SDMDisplay **sdm_display) {
   int supported_virtual_displays = 0;
   DisplayError error =
       core_intf->GetMaxDisplaysSupported(kVirtual, &supported_virtual_displays);
