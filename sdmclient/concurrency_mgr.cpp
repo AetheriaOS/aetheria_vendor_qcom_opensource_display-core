@@ -1015,6 +1015,9 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
     return kErrorParameters;
   }
 
+  DTRACE_BEGIN(
+      ("Setting power mode " + to_string(int_mode) + " on display " + to_string(display)).c_str());
+
   auto mode = static_cast<SDMPowerMode>(int_mode);
   bool is_builtin = false;
   bool is_power_off = false;
@@ -1029,6 +1032,7 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
 
   if (mode == SDMPowerMode::POWER_MODE_ON &&
       !disp_->IsHWDisplayConnected(display)) {
+    DTRACE_END();
     return kErrorParameters;
   }
 
@@ -1050,12 +1054,14 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
       SCOPE_LOCK(locker_[display]);
       if (sdm_display_[display]) {
         sdm_display_[display]->SetPendingPowerMode(mode);
+        DTRACE_END();
         return kErrorNone;
       }
     }
   }
   if (pending_power_mode_[display]) {
     DLOGW("Set power mode is not allowed during secure display session");
+    DTRACE_END();
     return kErrorNotSupported;
   }
 
@@ -1066,23 +1072,27 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
     if (is_builtin) {
       DLOGE("Failed to get doze support Error = %d", status);
     }
+    DTRACE_END();
     return status;
   }
 
   if (!support && (mode == SDMPowerMode::POWER_MODE_DOZE ||
                    mode == SDMPowerMode::POWER_MODE_DOZE_SUSPEND)) {
+    DTRACE_END();
     return kErrorNotSupported;
   }
 
   SDMPowerMode last_power_mode = sdm_display_[display]->GetCurrentPowerMode();
 
   if (last_power_mode == mode) {
+    DTRACE_END();
     return kErrorNone;
   }
 
   auto error = CallDisplayFunction(display, &SDMDisplay::SetPowerMode, mode,
                                    false /* teardown */);
   if (error != kErrorNone) {
+    DTRACE_END();
     return error;
   }
   // Reset idle pc ref count on suspend, as we enable idle pc during suspend.
@@ -1097,6 +1107,7 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
     pending_refresh_.set(UINT32(display));
   }
 
+  DTRACE_END();
   return kErrorNone;
 }
 
