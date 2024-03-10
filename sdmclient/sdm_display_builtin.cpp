@@ -61,12 +61,10 @@ static void SetRect(LayerRect &src_rect, SDMRect *target) {
   target->bottom = src_rect.bottom;
 }
 
-DisplayError SDMDisplayBuiltIn::Create(CoreInterface *core_intf,
-                                       BufferAllocator *buffer_allocator,
-                                       SDMCompositorCbIntf *callbacks,
-                                       SDMDisplayEventHandler *event_handler,
-                                       Display id, int32_t sdm_id,
-                                       SDMDisplay **sdm_display) {
+DisplayError SDMDisplayBuiltIn::Create(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
+                                       SDMCompositorCallbacks *callbacks,
+                                       SDMDisplayEventHandler *event_handler, Display id,
+                                       int32_t sdm_id, SDMDisplay **sdm_display) {
   uint32_t builtin_width = 0;
   uint32_t builtin_height = 0;
 
@@ -104,14 +102,14 @@ void SDMDisplayBuiltIn::Destroy(SDMDisplay *sdm_display) {
   delete sdm_display;
 }
 
-SDMDisplayBuiltIn::SDMDisplayBuiltIn(CoreInterface *core_intf,
-                                     BufferAllocator *buffer_allocator,
-                                     SDMCompositorCbIntf *callbacks,
-                                     SDMDisplayEventHandler *event_handler,
-                                     Display id, int32_t sdm_id)
-    : SDMDisplay(core_intf, buffer_allocator, callbacks, event_handler,
-                 kBuiltIn, id, sdm_id, DISPLAY_CLASS_BUILTIN),
-      buffer_allocator_(buffer_allocator), cpu_hint_(NULL),
+SDMDisplayBuiltIn::SDMDisplayBuiltIn(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
+                                     SDMCompositorCallbacks *callbacks,
+                                     SDMDisplayEventHandler *event_handler, Display id,
+                                     int32_t sdm_id)
+    : SDMDisplay(core_intf, buffer_allocator, callbacks, event_handler, kBuiltIn, id, sdm_id,
+                 DISPLAY_CLASS_BUILTIN),
+      buffer_allocator_(buffer_allocator),
+      cpu_hint_(NULL),
       layer_stitch_task_(*this) {}
 
 DisplayError SDMDisplayBuiltIn::Init() {

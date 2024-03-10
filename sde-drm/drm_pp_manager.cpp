@@ -255,6 +255,16 @@ void DRMPPManager::Init(const DRMPropertyManager &pm , uint32_t object_type) {
       pp_prop_map_[kFeatureDimmingMinBl].prop_enum = (DRMProperty)i;
       pp_prop_map_[kFeatureDimmingMinBl].prop_id = pm.GetPropertyId((DRMProperty)i);
       pp_prop_map_[kFeatureDimmingMinBl].version = i - (uint32_t)DRMProperty::DIMMING_MIN_BL;
+    } else if (i >= (uint32_t)DRMProperty::SDE_DSPP_ABA_HIST_CTRL &&
+               i <= (uint32_t)DRMProperty::SDE_DSPP_ABA_HIST_CTRL) {
+      pp_prop_map_[kFeaturePaHistCtrl].prop_enum = (DRMProperty)i;
+      pp_prop_map_[kFeaturePaHistCtrl].prop_id = pm.GetPropertyId((DRMProperty)i);
+      pp_prop_map_[kFeaturePaHistCtrl].version = i - (uint32_t)DRMProperty::SDE_DSPP_ABA_HIST_CTRL;
+    } else if (i >= (uint32_t)DRMProperty::SDE_DSPP_ABA_HIST_IRQ &&
+               i <= (uint32_t)DRMProperty::SDE_DSPP_ABA_HIST_IRQ) {
+      pp_prop_map_[kFeaturePaHistIrq].prop_enum = (DRMProperty)i;
+      pp_prop_map_[kFeaturePaHistIrq].prop_id = pm.GetPropertyId((DRMProperty)i);
+      pp_prop_map_[kFeaturePaHistIrq].version = i - (uint32_t)DRMProperty::SDE_DSPP_ABA_HIST_IRQ;
     }
   }
   return;
@@ -289,7 +299,6 @@ void DRMPPManager::SetPPFeature(drmModeAtomicReq *req, uint32_t obj_id, DRMPPFea
 
   switch (feature.type) {
     case kPropEnum:
-      break;
     case kPropRange:
       SetPPRangeProperty(req, obj_id, &pp_prop_map_[feature.id], feature);
       break;

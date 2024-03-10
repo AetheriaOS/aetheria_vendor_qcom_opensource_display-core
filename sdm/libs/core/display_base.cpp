@@ -23,7 +23,7 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
@@ -51,6 +51,8 @@
 #define __CLASS__ "DisplayBase"
 
 namespace sdm {
+
+#define ABC_LIBRARY_NAME "libabc.so"
 
 std::atomic<uint32_t> DisplayBase::hw_rc_blocks_in_use_(0);
 bool DisplayBase::display_power_reset_pending_ = false;
@@ -321,6 +323,8 @@ DisplayError DisplayBase::Init() {
 
   Debug::GetIdleTimeoutMs(&idle_active_ms_, &inactive_ms);
 
+  xr_variant_ = IsXRVariant();
+
   SetupPanelFeatureFactory();
 
   InitBorderLayers();
@@ -533,6 +537,29 @@ DisplayError DisplayBase::SetupPanelFeatureFactory() {
     if (!demuratn_factory_) {
       DLOGE("Failed to create DemuraTnFactory");
       return kErrorResources;
+    }
+  }
+
+  int enable_abc = 0;
+  Debug::Get()->GetProperty(ENABLE_ABC, &enable_abc);
+  GetABCFactory get_abc_factory_ptr = nullptr;
+  if (enable_abc) {
+    if (abc_feature_impl_lib_.Open(ABC_LIBRARY_NAME)) {
+      if (!abc_feature_impl_lib_.Sym(GET_ABC_FACTORY,
+                                     reinterpret_cast<void **>(&get_abc_factory_ptr))) {
+        DLOGW("Unable to load ABC symbols, error = %s", abc_feature_impl_lib_.Error());
+        return kErrorNone;
+      }
+    } else {
+      DLOGW("Unable to load = %s, error = %s", ABC_LIBRARY_NAME, abc_feature_impl_lib_.Error());
+      DLOGW("ABC Library is not supported");
+      return kErrorNone;
+    }
+
+    abc_factory_ = get_abc_factory_ptr();
+    if (!abc_factory_) {
+      DLOGE("Failed to create ABC feature Factory");
+      return kErrorNone;
     }
   }
 
@@ -3218,15 +3245,14 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
   uint32_t fb_height = client_ctx_.fb_config.y_pixels;
   uint32_t display_width = client_ctx_.display_attributes.x_pixels;
   uint32_t display_height = client_ctx_.display_attributes.y_pixels;
-  bool xr_variant = IsXRVariant();
 
   bool valid_lm_tappoint = layer_stack->cwb_config
                                ? layer_stack->cwb_config->tap_point == CwbTapPoint::kLmTapPoint
                                : false;
   // Resize mixer attributes to fb config when client requests CWB at LM tap-point
   // TODO(user): remove below check when clients request buffer with mixer resolution
-  if (xr_variant || (HasConcurrentWriteback() && layer_stack->output_buffer &&
-      valid_lm_tappoint)) {
+  if ((HasConcurrentWriteback() && layer_stack->output_buffer && valid_lm_tappoint) ||
+      xr_variant_) {
     DLOGV_IF(kTagDisplay, "Found concurrent writeback, configure LM width:%d height:%d", fb_width,
              fb_height);
     *new_mixer_width = fb_width;
@@ -3271,7 +3297,7 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
 
   for (uint32_t i = 0; i < layer_count; i++) {
     Layer *layer = layers.at(i);
-    if (layer->flags.is_demura) {
+    if (layer->flags.is_demura || layer->flags.is_abc) {
       continue;
     }
 

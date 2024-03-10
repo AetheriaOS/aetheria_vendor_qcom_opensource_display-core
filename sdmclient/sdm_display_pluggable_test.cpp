@@ -55,11 +55,12 @@ namespace sdm {
 
 using std::array;
 
-DisplayError SDMDisplayPluggableTest::Create(
-    CoreInterface *core_intf, BufferAllocator *buffer_allocator,
-    SDMCompositorCbIntf *callbacks, SDMDisplayEventHandler *event_handler,
-    Display id, int32_t sdm_id, uint32_t panel_bpp, uint32_t pattern_type,
-    SDMDisplay **sdm_display) {
+DisplayError SDMDisplayPluggableTest::Create(CoreInterface *core_intf,
+                                             BufferAllocator *buffer_allocator,
+                                             SDMCompositorCallbacks *callbacks,
+                                             SDMDisplayEventHandler *event_handler, Display id,
+                                             int32_t sdm_id, uint32_t panel_bpp,
+                                             uint32_t pattern_type, SDMDisplay **sdm_display) {
   SDMDisplay *sdm_pluggable_test = new SDMDisplayPluggableTest(
       core_intf, buffer_allocator, callbacks, event_handler, id, sdm_id,
       panel_bpp, pattern_type);
@@ -85,13 +86,16 @@ void SDMDisplayPluggableTest::Destroy(SDMDisplay *sdm_display) {
   delete sdm_display;
 }
 
-SDMDisplayPluggableTest::SDMDisplayPluggableTest(
-    CoreInterface *core_intf, BufferAllocator *buffer_allocator,
-    SDMCompositorCbIntf *callbacks, SDMDisplayEventHandler *event_handler,
-    Display id, int32_t sdm_id, uint32_t panel_bpp, uint32_t pattern_type)
-    : SDMDisplay(core_intf, buffer_allocator, callbacks, event_handler,
-                 kPluggable, id, sdm_id, DISPLAY_CLASS_PLUGGABLE),
-      panel_bpp_(panel_bpp), pattern_type_(pattern_type) {}
+SDMDisplayPluggableTest::SDMDisplayPluggableTest(CoreInterface *core_intf,
+                                                 BufferAllocator *buffer_allocator,
+                                                 SDMCompositorCallbacks *callbacks,
+                                                 SDMDisplayEventHandler *event_handler, Display id,
+                                                 int32_t sdm_id, uint32_t panel_bpp,
+                                                 uint32_t pattern_type)
+    : SDMDisplay(core_intf, buffer_allocator, callbacks, event_handler, kPluggable, id, sdm_id,
+                 DISPLAY_CLASS_PLUGGABLE),
+      panel_bpp_(panel_bpp),
+      pattern_type_(pattern_type) {}
 
 DisplayError SDMDisplayPluggableTest::Init() {
   uint32_t pluggable_width = 0;

@@ -46,12 +46,12 @@ namespace sdm {
 
 class SDMVirtualDisplayFactory {
 public:
-  int Create(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
-             SDMCompositorCbIntf *callbacks, Display id, int32_t sdm_id,
-             uint32_t width, uint32_t height, int32_t *format, float min_lum,
-             float max_lum, SDMDisplay **sdm_display);
-  void Destroy(SDMDisplay *sdm_display);
-  bool IsGPUColorConvertSupported();
+ int Create(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
+            SDMCompositorCallbacks *callbacks, Display id, int32_t sdm_id, uint32_t width,
+            uint32_t height, int32_t *format, float min_lum, float max_lum,
+            SDMDisplay **sdm_display);
+ void Destroy(SDMDisplay *sdm_display);
+ bool IsGPUColorConvertSupported();
 };
 
 } // namespace sdm

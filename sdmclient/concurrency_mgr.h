@@ -122,10 +122,9 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   DisplayError CreatePrimaryDisplay();
 
   ConcurrencyMgr();
-  DisplayError Init(SDMCompositorCbIntf *callbacks,
-                    BufferAllocator *buffer_allocator,
-                    SocketHandler *socket_handler) override;
+  DisplayError Init(BufferAllocator *buffer_allocator, SocketHandler *socket_handler) override;
   DisplayError Deinit();
+  void RegisterCompositorCallback(SDMCompositorCbIntf *cb, bool enable);
 
   DisplayError AcceptDisplayChanges(Display display_id);
 
@@ -150,8 +149,6 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
     }
     return status;
   }
-
-  void EnableCallback(bool enable);
 
   void SetHpdData(int hpd_bpp, int hpd_pattern, int hpd_connected) override;
   void GetHpdData(int *hpd_bpp, int *hpd_pattern, int *hpd_connected) override;
@@ -622,7 +619,7 @@ private:
   DisplayError TUIEventHandler(uint64_t disp_id, SDMTUIEventType event_type);
 
   CoreInterface *core_intf_ = nullptr;
-  SDMCompositorCbIntf *callbacks_ = nullptr;
+  SDMCompositorCallbacks callbacks_{};
   BufferAllocator *buffer_allocator_ = nullptr;
 
   bool update_vsync_on_power_off_ = false;
@@ -636,7 +633,6 @@ private:
   bool is_composer_up_ = false;
   std::mutex mutex_lum_;
   static bool pending_power_mode_[kNumDisplays];
-  bool enable_aidl_idle_notification_ = false;
 
   int32_t idle_pc_ref_cnt_ = 0;
 

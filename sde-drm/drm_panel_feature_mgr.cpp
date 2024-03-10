@@ -28,7 +28,7 @@
 */
 
 /*
- * Changes from Qualcomm Innovation Center are provided under the following license:
+ * ​​​​​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
  *
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
@@ -44,9 +44,9 @@
  *      disclaimer in the documentation and/or other materials provided
  *      with the distribution.
  *
- *    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
- *      contributors may be used to endorse or promote products derived
- *      from this software without specific prior written permission.
+ *    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of
+ * its contributors may be used to endorse or promote products derived from this
+ * software without specific prior written permission.
  *
  * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
  * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
@@ -147,6 +147,7 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
   drm_property_map_[kDRMPanelFeatureAiqeMdnie] = DRMProperty::SDE_DSPP_AIQE_MDNIE_V1;
   drm_property_map_[kDRMPanelFeatureAiqeMdnieArt] = DRMProperty::SDE_DSPP_AIQE_MDNIE_ART_V1;
   drm_property_map_[kDRMPanelFeatureAiqeCopr] = DRMProperty::SDE_DSPP_AIQE_COPR_V1;
+  drm_property_map_[kDRMPanelFeatureABC] = DRMProperty::AIQE_ABC_V1;
 
   drm_prop_type_map_[kDRMPanelFeatureDemuraResources] = DRMPropType::kPropBitmask;
   drm_prop_type_map_[kDRMPanelFeatureDemuraInit] = DRMPropType::kPropBlob;
@@ -166,6 +167,7 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
   drm_prop_type_map_[kDRMPanelFeatureAiqeMdnie] = DRMPropType::kPropRange;
   drm_prop_type_map_[kDRMPanelFeatureAiqeMdnieArt] = DRMPropType::kPropRange;
   drm_prop_type_map_[kDRMPanelFeatureAiqeCopr] = DRMPropType::kPropRange;
+  drm_prop_type_map_[kDRMPanelFeatureABC] = DRMPropType::kPropRange;
 
   feature_info_tbl_[kDRMPanelFeatureDemuraResources] = DRMPanelFeatureInfo {
     kDRMPanelFeatureDemuraResources, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, 0, 0};
@@ -218,6 +220,8 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
       kDRMPanelFeatureAiqeMdnieArt, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, sizeof(uint64_t), 0};
   feature_info_tbl_[kDRMPanelFeatureAiqeCopr] = DRMPanelFeatureInfo{
       kDRMPanelFeatureAiqeCopr, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, sizeof(uint64_t), 0};
+  feature_info_tbl_[kDRMPanelFeatureABC] =
+      DRMPanelFeatureInfo{kDRMPanelFeatureABC, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, 64, 0};
 }
 
 void DRMPanelFeatureMgr::Deinit() {
@@ -598,6 +602,9 @@ void DRMPanelFeatureMgr::ResetPanelFeatures(drmModeAtomicReq *req,
   info.prop_id = kDRMPanelFeatureDemuraInit;
   ApplyDirtyFeature(req, token, info);
 
+  info.prop_id = kDRMPanelFeatureABC;
+  ApplyDirtyFeature(req, token, info);
+
   info.prop_id = kDRMPanelFeatureSPRUDC;
   uint32_t prop_id = prop_mgr_.GetPropertyId(drm_property_map_[info.prop_id]);
   if (prop_id) {
@@ -678,6 +685,19 @@ void DRMPanelFeatureMgr::ApplyDirtyFeature(drmModeAtomicReq *req, const DRMDispl
 
     value = blob_id;
   } else if (DRMPropType::kPropRange == drm_prop_type_map_[info.prop_id]) {
+    if (!info.prop_ptr) {
+      // TBD: will be verified as part of Dynamic disable/en AIDL
+      // Reset the feature.
+      ret = drmModeAtomicAddProperty(req, info.obj_id, prop_id, 0);
+      if (ret < 0) {
+        DRM_LOGE(
+            "failed to add property ret:%d, obj_id:%d prop_id:%u "
+            "value:%" PRIu64,
+            ret, info.obj_id, prop_id, value);
+      }
+      DLOGI("Commited panel feature [disabled]: %u-%u", info.prop_id, prop_id);
+      return;
+    }
     value = info.prop_ptr;
   } else {
     DRM_LOGE("Unsupported property type id = %d size:%d", info.prop_id, info.prop_size);

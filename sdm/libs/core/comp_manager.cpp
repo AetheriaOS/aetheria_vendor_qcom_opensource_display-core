@@ -23,7 +23,7 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -923,6 +923,12 @@ DisplayError CompManager::ReserveDemuraFetchResources(const uint32_t &display_id
                                                       const int8_t &preferred_rect) {
   std::lock_guard<std::recursive_mutex> obj(comp_mgr_mutex_);
   return resource_intf_->ReserveDemuraFetchResources(display_id, preferred_rect);
+}
+
+DisplayError CompManager::ReserveABCFetchResources(const uint32_t &display_id, bool is_primary,
+                                                   const int8_t &req_cnt) {
+  std::lock_guard<std::recursive_mutex> obj(comp_mgr_mutex_);
+  return resource_intf_->ReserveABCFetchResources(display_id, is_primary, req_cnt);
 }
 
 DisplayError CompManager::GetDemuraFetchResources(Handle display_ctx,

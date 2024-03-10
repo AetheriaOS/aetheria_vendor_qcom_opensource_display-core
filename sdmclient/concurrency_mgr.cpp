@@ -200,8 +200,7 @@ void ConcurrencyMgr::GetHpdData(int *hpd_bpp, int *hpd_pattern,
   *hpd_connected = hpd_connected_;
 }
 
-DisplayError ConcurrencyMgr::Init(SDMCompositorCbIntf *callbacks,
-                                  BufferAllocator *buffer_allocator,
+DisplayError ConcurrencyMgr::Init(BufferAllocator *buffer_allocator,
                                   SocketHandler *socket_handler) {
   SCOPE_LOCK(locker_[SDM_DISPLAY_PRIMARY]);
 
@@ -212,7 +211,6 @@ DisplayError ConcurrencyMgr::Init(SDMCompositorCbIntf *callbacks,
 
   DLOGI("Initializing ConcurrencyMgr");
 
-  callbacks_ = callbacks;
   buffer_allocator_ = buffer_allocator;
   socket_handler_ = socket_handler;
 
@@ -351,8 +349,7 @@ DisplayError ConcurrencyMgr::InitSubModules() {
   cwb_ = new SDMConcurrentWriteBack(this, snapmapper_);
   cwb_->Init();
 
-  disp_ = new SDMDisplayBuilder(this, buffer_allocator_, core_intf_, callbacks_,
-                                this);
+  disp_ = new SDMDisplayBuilder(this, buffer_allocator_, core_intf_, &callbacks_, this);
   disp_->Init(locker_);
 
   tui_ = new SDMTrustedUI(this);
@@ -630,10 +627,6 @@ void ConcurrencyMgr::PerformIdleStatusCallback(Display display) {
 }
 
 int ConcurrencyMgr::NotifyIdleStatus(bool idle_status) {
-  if (!enable_aidl_idle_notification_) {
-    return -1;
-  }
-
   sideband_cb_->NotifyIdleStatus(true);
   return 0;
 }
@@ -734,7 +727,7 @@ void ConcurrencyMgr::HandlePendingRefresh() {
 }
 
 void ConcurrencyMgr::SendHotplug(Display display, bool state) {
-  callbacks_->OnHotplug(display, state);
+  callbacks_.OnHotplug(display, state);
 }
 
 DisplayError ConcurrencyMgr::Hotplug(Display display, bool state) {
@@ -765,13 +758,14 @@ DisplayError ConcurrencyMgr::Hotplug(Display display, bool state) {
   if (display == SDM_DISPLAY_EXTERNAL || display == SDM_DISPLAY_EXTERNAL_2) {
     std::thread(&ConcurrencyMgr::SendHotplug, this, display, state).detach();
   } else {
-    callbacks_->OnHotplug(display, state);
+    callbacks_.OnHotplug(display, state);
   }
   return kErrorNone;
 }
 
-void ConcurrencyMgr::EnableCallback(bool enable) {
+void ConcurrencyMgr::RegisterCompositorCallback(SDMCompositorCbIntf *cb, bool enable) {
   SCOPE_LOCK(client_lock_);
+  callbacks_.RegisterCallback(cb, enable);
 
   // Detect if client died and now is back
   vector<Display> pending_hotplugs;
@@ -1021,6 +1015,9 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
     return kErrorParameters;
   }
 
+  DTRACE_BEGIN(
+      ("Setting power mode " + to_string(int_mode) + " on display " + to_string(display)).c_str());
+
   auto mode = static_cast<SDMPowerMode>(int_mode);
   bool is_builtin = false;
   bool is_power_off = false;
@@ -1035,6 +1032,7 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
 
   if (mode == SDMPowerMode::POWER_MODE_ON &&
       !disp_->IsHWDisplayConnected(display)) {
+    DTRACE_END();
     return kErrorParameters;
   }
 
@@ -1056,12 +1054,14 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
       SCOPE_LOCK(locker_[display]);
       if (sdm_display_[display]) {
         sdm_display_[display]->SetPendingPowerMode(mode);
+        DTRACE_END();
         return kErrorNone;
       }
     }
   }
   if (pending_power_mode_[display]) {
     DLOGW("Set power mode is not allowed during secure display session");
+    DTRACE_END();
     return kErrorNotSupported;
   }
 
@@ -1072,23 +1072,27 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
     if (is_builtin) {
       DLOGE("Failed to get doze support Error = %d", status);
     }
+    DTRACE_END();
     return status;
   }
 
   if (!support && (mode == SDMPowerMode::POWER_MODE_DOZE ||
                    mode == SDMPowerMode::POWER_MODE_DOZE_SUSPEND)) {
+    DTRACE_END();
     return kErrorNotSupported;
   }
 
   SDMPowerMode last_power_mode = sdm_display_[display]->GetCurrentPowerMode();
 
   if (last_power_mode == mode) {
+    DTRACE_END();
     return kErrorNone;
   }
 
   auto error = CallDisplayFunction(display, &SDMDisplay::SetPowerMode, mode,
                                    false /* teardown */);
   if (error != kErrorNone) {
+    DTRACE_END();
     return error;
   }
   // Reset idle pc ref count on suspend, as we enable idle pc during suspend.
@@ -1103,6 +1107,7 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
     pending_refresh_.set(UINT32(display));
   }
 
+  DTRACE_END();
   return kErrorNone;
 }
 
@@ -1207,7 +1212,7 @@ DisplayError ConcurrencyMgr::GetVsyncPeriod(Display disp,
 }
 
 void ConcurrencyMgr::SendRefresh(Display display) {
-  callbacks_->OnRefresh(display);
+  callbacks_.OnRefresh(display);
 }
 
 void ConcurrencyMgr::Refresh(uint64_t display) {

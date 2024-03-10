@@ -28,45 +28,9 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 /*
- * Changes from Qualcomm Innovation Center are provided under the following license:
- *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted (subject to the limitations in the
- * disclaimer below) provided that the following conditions are met:
- *
- *    * Redistributions of source code must retain the above copyright
- *      notice, this list of conditions and the following disclaimer.
- *
- *    * Redistributions in binary form must reproduce the above
- *      copyright notice, this list of conditions and the following
- *      disclaimer in the documentation and/or other materials provided
- *      with the distribution.
- *
- *    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
- *      contributors may be used to endorse or promote products derived
- *      from this software without specific prior written permission.
- *
- * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
- * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
- * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
- * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
- * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
-/*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
-* Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -314,6 +278,11 @@ DisplayError HWPeripheralDRM::Commit(HWLayersInfo *hw_layers_info) {
   SetSelfRefreshState();
   SetVMReqState();
 
+  if (first_cycle_) {
+    SetDisplayMode(
+        static_cast<HWDisplayMode>(connector_info_.modes[current_mode_index_].cur_panel_mode));
+  }
+
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_EPT, token_.conn_id,
                             hw_layers_info->common_info->expected_present_time);
 
@@ -440,7 +409,6 @@ void HWPeripheralDRM::SetAIScalerData(const AIScalerInfoMap ai_scale_info_map) {
 
     HWAIScalerInfo *ai_scale_info = it->second;
     struct drm_msm_ai_scaler *ai_scaler_cfg = &sde_ai_scaler_cfg_;
-    ai_scaler_cfg->flags = 0;
 
     // Update UAPI structure for AI Scaler config
     ai_scaler_cfg->config = ai_scale_info->ai_scale_data.config;
@@ -448,16 +416,12 @@ void HWPeripheralDRM::SetAIScalerData(const AIScalerInfoMap ai_scale_info_map) {
     ai_scaler_cfg->src_h = ai_scale_info->ai_scale_data.src_h;
     ai_scaler_cfg->dst_w = ai_scale_info->ai_scale_data.dst_w;
     ai_scaler_cfg->dst_h = ai_scale_info->ai_scale_data.dst_h;
-    if (ai_scale_info->ai_scale_update) {
-      ai_scaler_cfg->flags = 1;
-    }
     if (ai_scale_info->ai_scale_data.is_param_valid) {
       memcpy(ai_scaler_cfg->param, ai_scale_info->ai_scale_data.param,
              AIQE_AI_SCALER_PARAM_LEN * sizeof(ai_scaler_cfg->param[0]));
     }
 
-    if ((std::memcmp(&ai_scaler_cache_[i].scaler_data, ai_scaler_cfg,
-                     sizeof(sde_ai_scaler_cfg_)))) {
+    if (ai_scaler_cache_[i].scaler_data.config != sde_ai_scaler_cfg_.config) {
       needs_ai_scaler_update_ = true;
     }
   }
@@ -468,8 +432,7 @@ void HWPeripheralDRM::SetAIScalerData(const AIScalerInfoMap ai_scale_info_map) {
     int rc;
     payload.prop_id = kPanelFeatureAIScalerCfg;
 
-    if (sde_ai_scaler_cfg_.flags &&
-        (ai_scaler_cache_[0].scaler_data.flags != sde_ai_scaler_cfg_.flags)) {
+    if (sde_ai_scaler_cfg_.config) {
       payload.prop_ptr = reinterpret_cast<uint64_t>(&sde_ai_scaler_cfg_);
     } else {
       // Disable AI Scaler case
@@ -759,6 +722,8 @@ DisplayError HWPeripheralDRM::PowerOff(bool teardown, SyncPoints *sync_points) {
   if (!first_cycle_) {
     drm_mgr_intf_->MarkPanelFeatureForNullCommit(token_,
                                            panel_feature_property_map_[kPanelFeatureDemuraInitCfg]);
+    drm_mgr_intf_->MarkPanelFeatureForNullCommit(token_,
+                                                 panel_feature_property_map_[kPanelFeatureABCCfg]);
   }
   SetVMReqState();
   DisplayError err = kErrorNone;
@@ -1081,6 +1046,7 @@ void HWPeripheralDRM::CreatePanelFeaturePropertyMap() {
   panel_feature_property_map_[kPanelFeatureAiqeMdnie] = sde_drm::kDRMPanelFeatureAiqeMdnie;
   panel_feature_property_map_[kPanelFeatureAiqeMdnieArt] = sde_drm::kDRMPanelFeatureAiqeMdnieArt;
   panel_feature_property_map_[kPanelFeatureAiqeCopr] = sde_drm::kDRMPanelFeatureAiqeCopr;
+  panel_feature_property_map_[kPanelFeatureABCCfg] = sde_drm::kDRMPanelFeatureABC;
 }
 
 int HWPeripheralDRM::GetPanelFeature(PanelFeaturePropertyInfo *feature_info) {
@@ -1117,6 +1083,7 @@ int HWPeripheralDRM::GetPanelFeature(PanelFeaturePropertyInfo *feature_info) {
     case kPanelFeatureAiqeMdnie:
     case kPanelFeatureAiqeMdnieArt:
     case kPanelFeatureAiqeCopr:
+    case kPanelFeatureABCCfg:
       drm_feature.obj_type = DRM_MODE_OBJECT_CRTC;
       drm_feature.obj_id = token_.crtc_id;
       break;
@@ -1158,6 +1125,7 @@ int HWPeripheralDRM::SetPanelFeature(const PanelFeaturePropertyInfo &feature_inf
     case kPanelFeatureAiqeMdnie:
     case kPanelFeatureAiqeMdnieArt:
     case kPanelFeatureAiqeCopr:
+    case kPanelFeatureABCCfg:
       drm_feature.obj_type = DRM_MODE_OBJECT_CRTC;
       drm_feature.obj_id = token_.crtc_id;
       break;

@@ -23,7 +23,7 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -87,6 +87,10 @@ class ResourceDefault : public ResourceInterface {
   }
   virtual DisplayError ReserveDemuraFetchResources(const int32_t &display_id,
                                                    const int8_t &preferred_rect) {
+    return kErrorNone;
+  }
+  virtual DisplayError ReserveABCFetchResources(const uint32_t &display_id, bool is_primary,
+                                                const int8_t &req_cnt) {
     return kErrorNone;
   }
   virtual DisplayError GetDemuraFetchResources(Handle display_ctx, vector<FetchResourceList> *frl) {
