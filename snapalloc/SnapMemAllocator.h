@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <mutex>
 
+#include "ISnapMemAllocBackend.h"
 #include "SnapMemAllocDefs.h"
 #include "SnapTypes.h"
 #include "SnapUtils.h"
@@ -30,10 +31,12 @@ class SnapMemAllocator {
 
  private:
   ~SnapMemAllocator();
-  SnapMemAllocator(){};
-  static std::mutex mem_allocator_mutex_;
+  SnapMemAllocator();
+  static std::mutex mem_allocator_instance_mutex_;
+  std::mutex mem_allocator_mutex_;
   static SnapMemAllocator *instance_;
   bool use_system_heap_for_sensors_ = true;
+  ISnapMemAllocBackend *alloc_intf_ = nullptr;
 };
 
 }  // namespace snapalloc
