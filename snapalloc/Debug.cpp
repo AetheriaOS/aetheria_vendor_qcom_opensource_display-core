@@ -3,34 +3,47 @@
 
 #include "Debug.h"
 
+#include <cstdarg>
 #include <log/log.h>
 
 namespace snapalloc {
+
+Debug *Debug::GetInstance() {
+  static Debug *debug_ = new Debug();
+  return debug_;
+}
+
+void Debug::RegisterDebugCallback(DebugCallbackIntf *dbg) {
+  // Check that debug intf isn't registered already
+  if (!debug_callback_ && dbg) {
+    debug_callback_ = dbg;
+  }
+}
 int Debug::GetProperty(const char *property_name, int *value) {
-  if (DebugHandler::Get()->GetProperty(property_name, value)) {
+  if (!debug_callback_ || debug_callback_->GetProperty(property_name, value)) {
     return -ENOTSUP;
   }
   return 0;
 }
 int Debug::GetProperty(const char *property_name, char *value) {
-  if (DebugHandler::Get()->GetProperty(property_name, value)) {
+  if (!debug_callback_ || debug_callback_->GetProperty(property_name, value)) {
     return -ENOTSUP;
   }
   return 0;
 }
 bool Debug::IsAhardwareBufferDisabled() {
   int value = 0;
-  DebugHandler::Get()->GetProperty(DISABLE_AHARDWARE_BUFFER_PROP, &value);
+  GetProperty(DISABLE_AHARDWARE_BUFFER_PROP, &value);
   return (value == 1);
 }
 bool Debug::IsUBWCDisabled() {
   int value = 0;
-  DebugHandler::Get()->GetProperty(DISABLE_UBWC_PROP, &value);
+  GetProperty(DISABLE_UBWC_PROP, &value);
   return (value == 1);
 }
 bool Debug::IsSecurePreviewBufferFormatEnabled(std::string *secure_preview_buffer_format) {
   char value[PROPERTY_VALUE_MAX] = "0";
-  int error = DebugHandler::Get()->GetProperty(SECURE_PREVIEW_BUFFER_FORMAT_PROP, value);
+  int error = GetProperty(SECURE_PREVIEW_BUFFER_FORMAT_PROP, value);
   if (error != 0) {
     return -ENOTSUP;
   }
@@ -39,17 +52,26 @@ bool Debug::IsSecurePreviewBufferFormatEnabled(std::string *secure_preview_buffe
 }
 bool Debug::IsSecurePreviewOnlyEnabled() {
   int value = 0;
-  DebugHandler::Get()->GetProperty(SECURE_PREVIEW_ONLY_PROP, &value);
+  GetProperty(SECURE_PREVIEW_ONLY_PROP, &value);
   return (value == 1);
 }
 bool Debug::UseDMABufHeaps() {
   int value = 0;
-  DebugHandler::Get()->GetProperty(USE_DMA_BUF_HEAPS_PROP, &value);
+  GetProperty(USE_DMA_BUF_HEAPS_PROP, &value);
   return (value == 1);
 }
 bool Debug::HwSupportsUBWCP() {
   int value = 0;
-  DebugHandler::Get()->GetProperty(HW_SUPPORTS_UBWCP, &value);
+  GetProperty(HW_SUPPORTS_UBWCP, &value);
   return (value == 1);
 }
+
+void Debug::Log(sdm::DebugLogType type, const char *fmt, ...) {
+  if (debug_callback_) {
+    std::va_list args;
+    va_start(args, fmt);
+    debug_callback_->Log(type, LOG_TAG, fmt, args);
+  }
+}
+
 }  // namespace snapalloc

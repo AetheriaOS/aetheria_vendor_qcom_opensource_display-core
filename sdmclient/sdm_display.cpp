@@ -598,15 +598,15 @@ DisplayError SDMDisplay::Init() {
   const std::string snapalloc_lib_name = "vendor.qti.hardware.display.snapalloc-impl.so";
   void *snap_impl_lib_ = ::dlopen(snapalloc_lib_name.c_str(), RTLD_NOW);
   if (!snap_impl_lib_) {
-    ALOGE("Dlopen error for snapalloc impl: %s", dlerror());
+    DLOGE("Dlopen error for snapalloc impl: %s", dlerror());
     return kErrorPermission;
   }
-  
-  std::shared_ptr<ISnapMapper> (*LINK_FETCH_ISnapMapper)() = nullptr;
+
+  std::shared_ptr<ISnapMapper> (*LINK_FETCH_ISnapMapper)(DebugCallbackIntf *) = nullptr;
   *reinterpret_cast<void **>(&LINK_FETCH_ISnapMapper) =
       ::dlsym(snap_impl_lib_, "FETCH_ISnapMapper");
   if (LINK_FETCH_ISnapMapper) {
-    snapmapper_ = LINK_FETCH_ISnapMapper();
+    snapmapper_ = LINK_FETCH_ISnapMapper(nullptr);
   } else {
     DLOGE("Failed to get snapalloc instance");
   }
@@ -972,9 +972,9 @@ void SDMDisplay::BuildLayerStack() {
       dump_frame_count_ && (dump_output_to_file_ || dump_input_layers_);
   DLOGV_IF(kTagClient, "layer_stack_.client_incompatible : %d",
            layer_stack_.client_incompatible);
-  ATRACE_INT("HDRPresent ", layer_stack_.flags.hdr_present ? 1 : 0);
-  ATRACE_INT("FrontBufferPresent ",
-             layer_stack_.flags.front_buffer_layer_present ? 1 : 0);
+  SDMDebugHandler::ATRACE_INT("HDRPresent ", layer_stack_.flags.hdr_present ? 1 : 0);
+  SDMDebugHandler::ATRACE_INT("FrontBufferPresent ",
+                              layer_stack_.flags.front_buffer_layer_present ? 1 : 0);
 }
 
 void SDMDisplay::BuildSolidFillStack() {
@@ -1008,7 +1008,7 @@ DisplayError SDMDisplay::SetLayerType(LayerId layer_id, SDMLayerTypes type) {
 
 DisplayError SDMDisplay::SetVsyncEnabled(bool enabled) {
   DLOGV("Display ID: %" PRId64 " enabled: %d", id_, enabled);
-  ATRACE_INT("SetVsyncState ", enabled);
+  SDMDebugHandler::ATRACE_INT("SetVsyncState ", enabled);
   DisplayError error = kErrorNone;
 
   if (shutdown_pending_ || !event_handler_->VsyncCallbackRegistered()) {
@@ -1081,7 +1081,7 @@ DisplayError SDMDisplay::SetPowerMode(SDMPowerMode mode, bool teardown) {
   }
   shared_ptr<Fence> release_fence = nullptr;
 
-  ATRACE_INT("SetPowerMode ", state);
+  SDMDebugHandler::ATRACE_INT("SetPowerMode ", state);
   DisplayError error =
       display_intf_->SetDisplayState(state, teardown, &release_fence);
 
@@ -1477,7 +1477,7 @@ DisplayError SDMDisplay::VSync(const DisplayEventVSync &vsync) {
   if (GetDisplayVsyncPeriod(false, &vsync_period) != kErrorNone) {
     vsync_period = 0;
   }
-  ATRACE_INT("VsyncPeriod", INT32(vsync_period));
+  SDMDebugHandler::ATRACE_INT("VsyncPeriod", INT32(vsync_period));
   callbacks_->OnVsync(id_, vsync.timestamp, vsync_period);
 
   return kErrorNone;
