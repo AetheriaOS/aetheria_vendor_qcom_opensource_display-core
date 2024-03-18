@@ -23,8 +23,7 @@
 */
 
 /*
- * Changes from Qualcomm Innovation Center are provided under the following
- * license:
+ * ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
  *
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -33,11 +32,10 @@
 #ifndef __DISPLAY_BUILTIN_H__
 #define __DISPLAY_BUILTIN_H__
 
-#include <sys/time.h>
-#include <sys/stat.h>
-
 #include <core/dpps_interface.h>
 #include <core/ipc_interface.h>
+#include <private/aiqe_ssrc_feature_interface.h>
+#include <private/abc_feature_fact_intf.h>
 #include <private/demuratn_core_uvm_fact_intf.h>
 #include <private/display_event_proxy_intf.h>
 #include <private/extension_interface.h>
@@ -46,6 +44,9 @@
 #include <private/panel_feature_factory_intf.h>
 #include <private/panel_feature_property_intf.h>
 #include <private/spr_intf.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+
 #include <string>
 #include <vector>
 
@@ -96,7 +97,8 @@ struct DeferFpsConfig {
 
 class DppsInfo {
  public:
-  void Init(DppsPropIntf *intf, const std::string &panel_name, DisplayInterface *display_intf);
+  void Init(DppsPropIntf *intf, const std::string &panel_name, DisplayInterface *display_intf,
+            PanelFeaturePropertyIntf *prop_intf);
   void Deinit();
   void DppsNotifyOps(enum DppsNotifyOps op, void *payload, size_t size);
   bool disable_pu_ = false;
@@ -196,7 +198,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError GetStcColorModes(snapdragoncolor::ColorModeList *mode_list) override;
   DisplayError SetStcColorMode(const snapdragoncolor::ColorMode &color_mode) override;
   DisplayError NotifyDisplayCalibrationMode(bool in_calibration) override;
-  bool HasDemura() override { return demura_intended_; }
+  bool HasDemura() override { return (demura_intended_ || abc_enabled_); }
   std::string Dump() override;
   DisplayError GetConfig(DisplayConfigFixedInfo *fixed_info) override;
   DisplayError PrePrepare(LayerStack *layer_stack) override;
@@ -221,6 +223,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError
   PanelOprInfo(const std::string &client_name, bool enable,
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) override;
+  DisplayError SetSsrcMode(const std::string &mode) override;
 
   // Implement the HWEventHandlers
   DisplayError VSync(int64_t timestamp) override;
@@ -261,10 +264,14 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   PrimariesTransfer GetBlendSpaceFromStcColorMode(const snapdragoncolor::ColorMode &color_mode);
   DisplayError SetupSPR();
   DisplayError SetupDemura();
+  DisplayError SetupCorrectionLayer();
   DisplayError SetupDemuraLayer();
+  DisplayError SetupABCLayer();
   DisplayError SetupDemuraTn();
   DisplayError EnableDemuraTn(bool enable);
   DisplayError SetupDemuraT0AndTn();
+  DisplayError SetupABCFeature();
+  DisplayError SetupABC();
   DisplayError SetDisplayStateForDemuraTn(DisplayState state);
   DisplayError BuildLayerStackStats(LayerStack *layer_stack) override;
   void UpdateDisplayModeParams();
@@ -284,6 +291,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   void NotifyDppsHdrPresent(LayerStack *layer_stack);
   bool IdleFallbackLowerFps(bool idle_screen);
   void HandleUpdateTransferTime(QSyncMode mode);
+  DisplayError SetupAiqe();
 
   const uint32_t kPuTimeOutMs = 1000;
   std::vector<HWEvent> event_list_;
@@ -328,10 +336,12 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   bool demuratn_enabled_ = false;
   std::shared_ptr<DemuraTnCoreUvmIntf> demuratn_ = nullptr;
   uint64_t panel_id_;
-  Layer demura_layer_ = {};
+  std::vector<Layer> demura_layer_ = {};
   bool demura_intended_ = false;
   bool demura_dynamic_enabled_ = true;
   int demura_current_idx_ = -1;
+  bool abc_enabled_ = false;
+  bool abc_prop_ = false;
   bool enable_dpps_dyn_fps_ = false;
   HWDisplayMode last_panel_mode_ = kModeDefault;
   bool hdr_present_ = false;
@@ -348,6 +358,9 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   CacConfig cac_config_ = {};
   BufferInfo output_buffer_info_ = {};
   EventProxyInfo event_proxy_info_ = {};
+
+  DynLib ssrc_lib_;
+  std::shared_ptr<aiqe::SsrcFeatureInterface> ssrc_feature_interface_;
 };
 
 }  // namespace sdm

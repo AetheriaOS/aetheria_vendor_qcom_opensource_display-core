@@ -52,7 +52,7 @@
 #include <utility>
 #include <vector>
 
-#include "sdm_compositor_cb_intf.h"
+#include "sdm_compositor_callbacks.h"
 #include "sdm_layer_builder.h"
 
 namespace sdm {
@@ -376,9 +376,7 @@ public:
   virtual DisplayError GetDisplayConfigs(std::vector<int32_t> *out_configs);
   DisplayError
   GetAllDisplayAttributes(std::map<uint32_t, DisplayConfigVariableInfo> *info);
-  virtual DisplayError GetDisplayAttributes(int32_t config,
-                                            DisplayConfigVariableInfo *info,
-                                            uint32_t *group_id);
+  virtual DisplayError GetDisplayAttributes(int32_t config, DisplayConfigVariableInfo *info);
   virtual DisplayError GetClientTargetSupport(int32_t in_width,
                                               int32_t in_height,
                                               LayerBufferFormat format,
@@ -516,15 +514,16 @@ public:
     display_intf_->DestroyLayer();
   }
 
-protected:
+  virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
+
+ protected:
   static uint32_t throttling_refresh_rate_;
   // Maximum number of layers supported by display manager.
   static const uint32_t kMaxLayerCount = 32;
   static bool mmrm_restricted_;
   SDMDisplay(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
-             SDMCompositorCbIntf *callbacks,
-             SDMDisplayEventHandler *event_handler, SDMDisplayType type,
-             Display id, int32_t sdm_id, DisplayClass display_class);
+             SDMCompositorCallbacks *callbacks, SDMDisplayEventHandler *event_handler,
+             SDMDisplayType type, Display id, int32_t sdm_id, DisplayClass display_class);
 
   // DisplayEventHandler methods
   virtual DisplayError VSync(const DisplayEventVSync &vsync);
@@ -596,7 +595,7 @@ protected:
   bool layer_stack_invalid_ = true;
   CoreInterface *core_intf_ = nullptr;
   BufferAllocator *buffer_allocator_ = NULL;
-  SDMCompositorCbIntf *callbacks_ = nullptr;
+  SDMCompositorCallbacks *callbacks_ = nullptr;
   SDMDisplayEventHandler *event_handler_ = nullptr;
   SDMDisplayType type_ = kDisplayTypeMax;
   Display id_ = UINT64_MAX;

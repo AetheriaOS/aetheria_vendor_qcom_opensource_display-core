@@ -23,7 +23,7 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -89,6 +89,10 @@ class ResourceDefault : public ResourceInterface {
                                                    const int8_t &preferred_rect) {
     return kErrorNone;
   }
+  virtual DisplayError ReserveABCFetchResources(const uint32_t &display_id, bool is_primary,
+                                                const int8_t &req_cnt) {
+    return kErrorNone;
+  }
   virtual DisplayError GetDemuraFetchResources(Handle display_ctx, vector<FetchResourceList> *frl) {
     return kErrorNone;
   }
@@ -121,7 +125,7 @@ class ResourceDefault : public ResourceInterface {
   virtual uint32_t GetMixerCount(DisplayId display_id);
   virtual DisplayError SetBlendSpace(Handle display_ctx, const PrimariesTransfer &blend_space);
   virtual void HandleTUITransition(Handle display_ctx, bool tui_active);
-  virtual void GetDSConfig(Handle display_ctx, DestScaleInfoMap *dest_scale_info_map) { return; }
+  virtual void GetDSConfig(Handle display_ctx, HWLayersInfo *hw_layers_info) { return; }
   virtual bool IsDisplayHWAvailable() { return true; }
   virtual DisplayError GetDefaultQoSData(Handle display_ctx,
                                          std::map<uint32_t, HWQosData> *default_qos_data) {

@@ -1012,6 +1012,14 @@ DisplayError SDMServices::SetDemuraConfig(SDMParcel *input_parcel,
   return kErrorNone;
 }
 
+DisplayError SDMServices::GetDisplayPortId(SDMParcel *input_parcel, SDMParcel *output_parcel) {
+  int disp_id = input_parcel->readInt32();
+  int port_id = 0;
+  auto err = cb_->GetDisplayPortId(UINT32(disp_id), &port_id);
+  output_parcel->writeInt32(port_id);
+  return err;
+}
+
 DisplayError SDMServices::PerformCacConfig(SDMParcel *input_parcel) {
   int display = INT(input_parcel->readInt32());
   int disp_idx = disp_->GetDisplayIndex(display);
@@ -1685,10 +1693,10 @@ DisplayError SDMServices::QdcmCMDHandler(SDMParcel *input_parcel,
         usleep(kSolidFillDelay);
         break;
       case kSetPanelBrightness:
-        ret = kErrorNotSupported;
         brightness = reinterpret_cast<float *>(resp_payload.payload);
         if (brightness == NULL) {
           DLOGE("Brightness payload is Null");
+          ret = kErrorParameters;
         } else {
           auto err = cb_->SetDisplayBrightness(static_cast<Display>(display_id),
                                                *brightness);

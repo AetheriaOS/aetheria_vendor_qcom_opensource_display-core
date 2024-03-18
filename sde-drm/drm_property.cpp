@@ -221,11 +221,13 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "panel_mode") { return DRMProperty::PANEL_MODE; }
   if (name == "bpp_mode") { return DRMProperty::BPP_MODE; }
   if (name == "SDE_DEMURA_INIT_CFG_V1") { return DRMProperty::DEMURA_INIT_CFG_V1; }
+  if (name == "SDE_DEMURA_INIT_CFG_V3") { return DRMProperty::DEMURA_INIT_CFG_V3; }
   if (name == "SDE_DEMURA_CFG0_PARAM2") {
     return DRMProperty::DEMURA_CFG0_PARAM2;
   }
   if (name == "DEMURA_PANEL_ID") { return DRMProperty::DEMURA_PANEL_ID; }
   if (name == "SDE_DEMURA_BOOT_PLANE_V1") { return DRMProperty::DEMURA_BOOT_PLANE_V1; }
+  if (name == "SDE_DSPP_AIQE_ABC_V1") { return DRMProperty::AIQE_ABC_V1; }
   if (name == "dyn_bit_clk") { return DRMProperty::DYN_BIT_CLK; }
   if (name == "SDE_PP_CWB_DITHER_V2") { return DRMProperty::SDE_PP_CWB_DITHER_V2; }
   if (name == "noise_layer_v1") { return DRMProperty::NOISE_LAYER_V1; }
@@ -255,6 +257,12 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "bg_alpha") { return DRMProperty::BG_ALPHA; }
   if (name == "src_img_size") { return DRMProperty::IMG_SIZE_RECT; }
   if (name == "ubwc_clk") { return DRMProperty::UBWC_CLK; }
+  if (name == "SDE_DSPP_AIQE_SSRC_CONFIG_V1") { return DRMProperty::SDE_DSPP_AIQE_SSRC_CONFIG_V1; }
+  if (name == "SDE_DSPP_AIQE_SSRC_DATA_V1") { return DRMProperty::SDE_DSPP_AIQE_SSRC_DATA_V1; }
+  if (name == "SDE_DSPP_AIQE_AI_SCALER_V1") { return DRMProperty::AI_SCALER_CFG_V1; }
+  if (name == "SDE_DSPP_AIQE_MDNIE_V1") { return DRMProperty::SDE_DSPP_AIQE_MDNIE_V1; }
+  if (name == "SDE_DSPP_AIQE_MDNIE_ART_V1") { return DRMProperty::SDE_DSPP_AIQE_MDNIE_ART_V1; }
+  if (name == "SDE_DSPP_AIQE_COPR_V1") { return DRMProperty::SDE_DSPP_AIQE_COPR_V1; }
 
   return DRMProperty::INVALID;
 }

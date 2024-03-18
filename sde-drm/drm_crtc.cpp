@@ -1,41 +1,4 @@
 /*
- * Changes from Qualcomm Innovation Center are provided under the following
- * license:
- *
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted (subject to the limitations in the
- * disclaimer below) provided that the following conditions are met:
- *
- *    * Redistributions of source code must retain the above copyright
- *      notice, this list of conditions and the following disclaimer.
- *
- *    * Redistributions in binary form must reproduce the above
- *      copyright notice, this list of conditions and the following
- *      disclaimer in the documentation and/or other materials provided
- *      with the distribution.
- *
- *    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of
- * its contributors may be used to endorse or promote products derived from this
- * software without specific prior written permission.
- *
- * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
- * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
- * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
- * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
- * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
-/*
 * Copyright (c) 2019-2021 The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
@@ -65,7 +28,7 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* ​​​​​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
 * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -500,11 +463,13 @@ void DRMCrtc::ParseCapabilities(uint64_t blob_id) {
   string rc_count = "rc_count=";
   string rc_total_mem_size = "rc_mem_size=";
   string demura_count = "demura_count=";
+  string abc_count = "abc_count=";
   string dspp_count = "dspp_count=";
   string skip_inline_rot_threshold="skip_inline_rot_threshold=";
   string dsc_block_count = "dsc_block_count=";
   string cac_version = "cac_version=";
   string ddr_version = "DDR version=";
+  string ai_scaler_count = "ai_scaler_count=";
 
   while (std::getline(stream, line)) {
     if (line.find(max_blendstages) != string::npos) {
@@ -630,6 +595,8 @@ void DRMCrtc::ParseCapabilities(uint64_t blob_id) {
       crtc_info_.rc_total_mem_size = std::stoi(string(line, rc_total_mem_size.length()));
     } else if (line.find(demura_count) != string::npos) {
       crtc_info_.demura_count = std::stoi(string(line, demura_count.length()));
+    } else if (line.find(abc_count) != string::npos) {
+      crtc_info_.abc_count = std::stoi(string(line, abc_count.length()));
     } else if (line.find(dspp_count) != string::npos) {
       crtc_info_.dspp_count = std::stoi(string(line, dspp_count.length()));
     } else if (line.find(skip_inline_rot_threshold) != string::npos) {
@@ -651,6 +618,8 @@ void DRMCrtc::ParseCapabilities(uint64_t blob_id) {
       } else if(string(line, ddr_version.length()) == "DDR5X") {
         crtc_info_.ddr_version = DDRVersion::kDDRVersion5x;
       }
+    } else if (line.find(ai_scaler_count) != string::npos) {
+      crtc_info_.ai_scaler_count = std::stoi(string(line, ai_scaler_count.length()));
     }
   }
   drmModeFreePropertyBlob(blob);

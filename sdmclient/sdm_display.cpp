@@ -529,14 +529,15 @@ void SDMColorModeMgr::Dump(std::ostringstream *os) {
   *os << std::endl;
 }
 
-SDMDisplay::SDMDisplay(CoreInterface *core_intf,
-                       BufferAllocator *buffer_allocator,
-                       SDMCompositorCbIntf *callbacks,
-                       SDMDisplayEventHandler *event_handler,
-                       SDMDisplayType type, Display id, int32_t sdm_id,
-                       DisplayClass display_class)
-    : core_intf_(core_intf), callbacks_(callbacks),
-      event_handler_(event_handler), type_(type), id_(id), sdm_id_(sdm_id),
+SDMDisplay::SDMDisplay(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
+                       SDMCompositorCallbacks *callbacks, SDMDisplayEventHandler *event_handler,
+                       SDMDisplayType type, Display id, int32_t sdm_id, DisplayClass display_class)
+    : core_intf_(core_intf),
+      callbacks_(callbacks),
+      event_handler_(event_handler),
+      type_(type),
+      id_(id),
+      sdm_id_(sdm_id),
       display_class_(display_class) {
   buffer_allocator_ = buffer_allocator;
 
@@ -676,7 +677,7 @@ void SDMDisplay::PopulateSDMExtendedDisplayResolution() {
     return;
   }
 
-  uint32_t config_index = num_configs_;
+  uint32_t config_index = variable_config_map_.size();
   for (uint32_t res_index = 0; res_index < extended_display_resolutions.size(); res_index++) {
     if (IsPanelConfig(extended_display_resolutions.at(res_index).first,
                       extended_display_resolutions.at(res_index).second)) {
@@ -810,7 +811,8 @@ void SDMDisplay::BuildLayerStack() {
     bool is_video = false;
     SnapHandle *hdl = (SnapHandle *) layer->input_buffer.buffer_id;
     if (hdl) {
-      int buffer_type = snapmapper_->GetMetadata(*hdl, MetadataType::BUFFER_TYPE, &buffer_type);
+      uint32_t buffer_type;
+      snapmapper_->GetMetadata(*hdl, MetadataType::BUFFER_TYPE, &buffer_type);
       if (buffer_type == BUFFER_TYPE_VIDEO) {
         layer_stack_.flags.video_present = true;
         is_video = true;
@@ -956,9 +958,11 @@ void SDMDisplay::BuildLayerStack() {
   sdm_client_target->layer_name = client_target_->GetName();
 
   // Derive client target dataspace based on the color mode - bug/115482728
-  int32_t client_target_dataspace =
-      GetDataspaceFromColorMode(GetCurrentColorMode());
-  SetClientTargetDataSpace(client_target_dataspace);
+  uint32_t client_target_dataspace = 0;
+  Dataspace ds;
+  GetColorMetadataFromColorMode(GetCurrentColorMode(), ds);
+  buffer_allocator_->ColorMetadataToDataspace(ds, &client_target_dataspace);
+  SetClientTargetDataSpace(static_cast<int32_t>(client_target_dataspace));
   layer_stack_.layers.push_back(sdm_client_target);
 
   layer_stack_.elapse_timestamp = elapse_timestamp_;
@@ -1515,6 +1519,9 @@ DisplayError SDMDisplay::HandleEvent(DisplayEvent event) {
   } break;
   case kPostIdleTimeout:
     display_idle_ = true;
+    if (NotifyIdleNow()) {
+      event_handler_->NotifyIdleStatus(true);
+    }
     break;
   case kVmReleaseDone: {
     if (event_handler_) {
@@ -2628,16 +2635,13 @@ DisplayError SDMDisplay::GetAllDisplayAttributes(
 
   for (auto &config : variable_config_map_) {
     info->insert(std::make_pair(index, config.second));
-    info->at(index).group_id = config.first;
     index++;
   }
 
   return kErrorNone;
 }
 
-DisplayError SDMDisplay::GetDisplayAttributes(int32_t config,
-                                              DisplayConfigVariableInfo *info,
-                                              uint32_t *group_id) {
+DisplayError SDMDisplay::GetDisplayAttributes(int32_t config, DisplayConfigVariableInfo *info) {
   if (variable_config_map_.find(config) == variable_config_map_.end()) {
     DLOGE("Get variable config failed");
     return kErrorNotSupported;
@@ -2650,10 +2654,6 @@ DisplayError SDMDisplay::GetDisplayAttributes(int32_t config,
   if (variable_config.x_pixels <= 0 || variable_config.y_pixels <= 0) {
     DLOGE("window rects are not within the supported range");
     return kErrorNotSupported;
-  }
-
-  if (group_id) {
-    *group_id = GetDisplayConfigGroup(*info);
   }
 
   *info = variable_config;
@@ -2679,20 +2679,16 @@ DisplayError SDMDisplay::GetSupportedDisplayRefreshRates(
   Config active_config = 0;
   GetActiveConfig(false, &active_config);
 
-  uint32_t config_group = -1, active_config_group = -1;
-  DisplayConfigVariableInfo attributes{};
-  auto error =
-      GetDisplayAttributes(active_config, &attributes, &active_config_group);
-  if (error != kErrorNone) {
+  uint32_t active_config_group = GetDisplayConfigGroup(variable_config_map_[active_config]);
+  if (active_config_group == -1) {
     DLOGE("Failed to get config group of active config");
     return kErrorNotSupported;
   }
 
   supported_refresh_rates->resize(0);
   for (auto &config : variable_config_map_) {
-    attributes = {};
-    error = GetDisplayAttributes(config.first, &attributes, &config_group);
-    if (error != kErrorNone) {
+    uint32_t config_group = GetDisplayConfigGroup(config.second);
+    if (config_group == -1) {
       DLOGE("Failed to get config group for config index: %u", config.first);
       return kErrorNotSupported;
     }
@@ -3071,7 +3067,7 @@ SDMDisplay::GetVsyncPeriodByActiveConfig(bool get_real_config,
   }
 
   DisplayConfigVariableInfo attributes{};
-  error = GetDisplayAttributes(active_config, &attributes, nullptr);
+  error = GetDisplayAttributes(active_config, &attributes);
   if (error != kErrorNone) {
     DLOGE("Failed to get VsyncPeriod of config: %d", active_config);
     return error;
@@ -3568,17 +3564,26 @@ DisplayError SDMDisplay::SetReadbackBuffer(void *buffer,
   if (err) {
     DLOGE("Failed to retrieve format");
   }
-  BufferUsage flag;
-  err = snapmapper_->GetMetadata(*hdl, MetadataType::USAGE, &flag);
+  BufferUsage usage_flag;
+  err = snapmapper_->GetMetadata(*hdl, MetadataType::USAGE, &usage_flag);
   if (err) {
     DLOGE("Failed to retrieve flag");
   }
+  output_buffer.usage = static_cast<uint64_t>(usage_flag);
 
   int64_t compression_type;
   err = snapmapper_->GetMetadata(*hdl, MetadataType::COMPRESSION, &compression_type);
   if (err) {
     DLOGE("Failed to retrieve compression type");
   }
+
+  int64_t is_ubwc = 0, flag = 0;
+  err = snapmapper_->GetMetadata(*hdl, MetadataType::IS_UBWC, &is_ubwc);
+  if (err) {
+    DLOGE("Failed to retrieve is_ubwc");
+    return kErrorNotSupported;
+  }
+  flag = is_ubwc ? INT32(MetadataType::IS_UBWC) : 0;
 
   output_buffer.format = buffer_allocator_->GetSDMFormat(format, flag, compression_type);
   err = snapmapper_->GetMetadata(*hdl, MetadataType::FD, &output_buffer.planes[0].fd);

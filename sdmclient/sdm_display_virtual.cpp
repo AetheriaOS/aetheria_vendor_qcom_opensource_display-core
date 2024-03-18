@@ -53,14 +53,13 @@ void SDMDisplayVirtual::Destroy(SDMDisplay *sdm_display) {
   delete sdm_display;
 }
 
-SDMDisplayVirtual::SDMDisplayVirtual(CoreInterface *core_intf,
-                                     BufferAllocator *buffer_allocator,
-                                     SDMCompositorCbIntf *callbacks, Display id,
-                                     int32_t sdm_id, uint32_t width,
-                                     uint32_t height)
-    : SDMDisplay(core_intf, buffer_allocator, callbacks, nullptr, kVirtual, id,
-                 sdm_id, DISPLAY_CLASS_VIRTUAL),
-      width_(width), height_(height) {}
+SDMDisplayVirtual::SDMDisplayVirtual(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
+                                     SDMCompositorCallbacks *callbacks, Display id, int32_t sdm_id,
+                                     uint32_t width, uint32_t height)
+    : SDMDisplay(core_intf, buffer_allocator, callbacks, nullptr, kVirtual, id, sdm_id,
+                 DISPLAY_CLASS_VIRTUAL),
+      width_(width),
+      height_(height) {}
 
 DisplayError SDMDisplayVirtual::Init() {
   flush_on_error_ = true;
@@ -152,6 +151,7 @@ SDMDisplayVirtual::SetOutputBuffer(const SnapHandle *output_handle,
   snapmapper_->GetMetadata(*output_handle, MetadataType::PIXEL_FORMAT_ALLOCATED, &output_handle_format);
   snapmapper_->GetMetadata(*output_handle, MetadataType::COMPRESSION, &output_compression_type);
   ColorMetadata color_metadata = {};
+  int ubwc_flag = output_handle_flags ? INT32(MetadataType::IS_UBWC) : 0;
 
   if (output_handle_format ==
       static_cast<int>(SDMPixelFormat::PIXEL_FORMAT_RGBA_8888)) {
@@ -160,7 +160,7 @@ SDMDisplayVirtual::SetOutputBuffer(const SnapHandle *output_handle,
   }
 
   LayerBufferFormat new_sdm_format =
-      buffer_allocator_->GetSDMFormat(output_handle_format, output_handle_flags, output_compression_type);
+      buffer_allocator_->GetSDMFormat(output_handle_format, ubwc_flag, output_compression_type);
   if (new_sdm_format == kFormatInvalid) {
     return kErrorParameters;
   }

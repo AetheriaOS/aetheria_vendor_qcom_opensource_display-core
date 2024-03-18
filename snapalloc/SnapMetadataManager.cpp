@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #include "SnapMetadataManager.h"
@@ -332,13 +332,44 @@ Error SnapMetadataManager::PlaneLayoutsHelper(SnapMetadata *metadata, SnapHandle
       ALOGE("Invalid allocation - unable to create plane layout");
       return err;
     }
-    ALOGD_IF(DEBUG, "get plane layout from buffer descriptor - out_desc.format %d",
-             out_desc.format);
+    ALOGD_IF(DEBUG,
+             "get plane layout from buffer descriptor - out_desc.format %d - "
+             "size %d",
+             out_desc.format, layout.size_in_bytes);
     *static_cast<vendor_qti_hardware_display_common_BufferLayout *>(out_get) = layout;
     return Error::NONE;
   } else if (out_get != nullptr) {
-    *static_cast<vendor_qti_hardware_display_common_BufferLayout *>(out_get) =
-        metadata->buffer_layout;
+    if (metadata->interlaced) {
+      // Recalculate plane layouts for interlaced
+      AllocData ad;
+      vendor_qti_hardware_display_common_BufferLayout layout;
+      BufferDescriptor desc = {.format = handle->format,
+                               .usage = handle->usage,
+                               .width = handle->unaligned_width,
+                               .height = handle->unaligned_height,
+                               .layerCount =
+                                   static_cast<int32_t>(handle->layer_count),
+                               .reservedSize = handle->reserved_size};
+      static vendor_qti_hardware_display_common_KeyValuePair modifier = {
+          .key = "interlaced", .value = static_cast<uint64_t>(1)};
+      desc.additionalOptions.emplace_back(modifier);
+      BufferDescriptor out_desc;
+      int out_priv_flags = 0;
+      auto err = constraint_mgr_->GetAllocationData(desc, &ad, &layout,
+                                                    &out_desc, &out_priv_flags);
+
+      if (err != Error::NONE) {
+        ALOGE("Invalid allocation - unable to create plane layout");
+        return err;
+      }
+
+      *static_cast<vendor_qti_hardware_display_common_BufferLayout *>(out_get) =
+          layout;
+    } else {
+      *static_cast<vendor_qti_hardware_display_common_BufferLayout *>(out_get) =
+          metadata->buffer_layout;
+    }
+
     return Error::NONE;
   } else if (in_set != nullptr) {
     return Error::UNSUPPORTED;
@@ -394,6 +425,19 @@ Error SnapMetadataManager::VTTimestampHelper(SnapMetadata *metadata, SnapHandleI
     return Error::NONE;
   } else if (in_set != nullptr) {
     metadata->vtTimeStamp = *static_cast<uint64_t *>(in_set);
+    return Error::NONE;
+  }
+  return Error::BAD_VALUE;
+}
+
+Error SnapMetadataManager::BufferDequeueDurationHelper(SnapMetadata *metadata,
+                                                       SnapHandleInternal *handle, void *in_set,
+                                                       void *out_get, BufferDescriptor *buf_des) {
+  if (out_get != nullptr) {
+    *static_cast<int64_t *>(out_get) = metadata->bufferDequeueDuration;
+    return Error::NONE;
+  } else if (in_set != nullptr) {
+    metadata->bufferDequeueDuration = *static_cast<int64_t *>(in_set);
     return Error::NONE;
   }
   return Error::BAD_VALUE;

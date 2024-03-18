@@ -23,11 +23,11 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
-*
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
-* SPDX-License-Identifier: BSD-3-Clause-Clear
-*/
+ * ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
+ *
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #ifndef __DEMURA_INTF_H__
 #define __DEMURA_INTF_H__
@@ -39,9 +39,10 @@
 #include <private/generic_intf.h>
 #include <private/generic_payload.h>
 
+#include <array>
+#include <bitset>
 #include <string>
 #include <vector>
-#include <bitset>
 
 #define RESOURCE_BITSET 8
 
@@ -50,6 +51,24 @@ namespace sdm {
 static const uint32_t kMaxPanelConfigSupported = 4;
 static const int kDemuraDefaultIdx = 0;
 
+template <typename T>
+struct DemuraFeatureParamConfigIdx {
+  T modeinfo;
+};
+
+typedef DemuraFeatureParamConfigIdx<uint64_t> uConfigIdx;
+
+enum CorrectionSurface {
+  kDemuraCorrSurfaceMain = 0,
+  kDemuraCorrSurfaceUdc,
+  kDemuraBuffMax,
+};
+
+struct DemuraCorrectionSurfaces {
+  std::array<BufferInfo, kDemuraBuffMax> surfaces;
+  std::array<bool, kDemuraBuffMax> valid;
+};
+
 struct DemuraInputConfig {
   bool secure_session = false;
   std::string brightness_path;
@@ -57,6 +76,9 @@ struct DemuraInputConfig {
   int secure_hfc_fd = -1;
   size_t secure_hfc_size = 0;
   uint64_t panel_id = 0;
+  uint64_t panel_width = 0;
+  uint64_t panel_height = 0;
+  std::string panel_name;
 };
 
 // Demura specific param as strings

@@ -329,6 +329,7 @@ private:
                                SDMParcel *output_parcel);
   DisplayError DisplayBWTransactionPending(SDMParcel *input_parcel,
                                            SDMParcel *output_parcel);
+  DisplayError GetDisplayPortId(SDMParcel *input_parcel, SDMParcel *output_parcel);
 
   typedef DisplayError (SDMServices::*VndCmdSetHandler)(
       SDMParcel *input_parcel);
@@ -375,23 +376,18 @@ private:
   };
 
   std::unordered_map<uint32_t, VndCmdGetHandler> vnd_handlers_get_ = {
-      {SDM_SERVICE_SET_SECONDARY_DISPLAY_STATUS,
-       &SDMServices::SetDisplayStatus},
+      {SDM_SERVICE_SET_SECONDARY_DISPLAY_STATUS, &SDMServices::SetDisplayStatus},
       {SDM_SERVICE_TOGGLE_SCREEN_UPDATES, &SDMServices::ToggleScreenUpdate},
       {SDM_SERVICE_QDCM_SVC_CMDS, &SDMServices::QdcmCMDHandler},
-      {SDM_SERVICE_MIN_HDCP_ENCRYPTION_LEVEL_CHANGED,
-       &SDMServices::MinHdcpEncryptionLevelChanged},
+      {SDM_SERVICE_MIN_HDCP_ENCRYPTION_LEVEL_CHANGED, &SDMServices::MinHdcpEncryptionLevelChanged},
       {SDM_SERVICE_CONTROL_PARTIAL_UPDATE, &SDMServices::ControlPartialUpdate},
       {SDM_SERVICE_GET_ACTIVE_CONFIG, &SDMServices::GetActiveConfigIndex},
       {SDM_SERVICE_GET_CONFIG_COUNT, &SDMServices::GetConfigCount},
-      {SDM_SERVICE_GET_DISPLAY_ATTRIBUTES_FOR_CONFIG,
-       &SDMServices::GetDisplayAttributesForConfig},
+      {SDM_SERVICE_GET_DISPLAY_ATTRIBUTES_FOR_CONFIG, &SDMServices::GetDisplayAttributesForConfig},
       {SDM_SERVICE_GET_PANEL_BRIGHTNESS, &SDMServices::GetDisplayBrightness},
       {SDM_SERVICE_SET_PANEL_BRIGHTNESS, &SDMServices::SetDisplayBrightness},
-      {SDM_SERVICE_GET_DISPLAY_VISIBLE_REGION,
-       &SDMServices::GetVisibleDisplayRect},
-      {SDM_SERVICE_GET_BW_TRANSACTION_STATUS,
-       &SDMServices::DisplayBWTransactionPending},
+      {SDM_SERVICE_GET_DISPLAY_VISIBLE_REGION, &SDMServices::GetVisibleDisplayRect},
+      {SDM_SERVICE_GET_BW_TRANSACTION_STATUS, &SDMServices::DisplayBWTransactionPending},
       {SDM_SERVICE_GET_COMPOSER_STATUS, &SDMServices::GetComposerStatus},
       {SDM_SERVICE_GET_DSI_CLK, &SDMServices::GetDsiClk},
       {SDM_SERVICE_GET_SUPPORTED_DSI_CLK, &SDMServices::GetSupportedDsiClk},
@@ -399,10 +395,10 @@ private:
       {SDM_SERVICE_NOTIFY_TUI_TRANSITION, &SDMServices::HandleTUITransition},
       {SDM_SERVICE_SET_DIMMING_ENABLE, &SDMServices::SetDimmingEnable},
       {SDM_SERVICE_SET_DIMMING_MIN_BL, &SDMServices::SetDimmingMinBl},
-      {SDM_SERVICE_RETRIEVE_DEMURATN_FILES,
-       &SDMServices::RetrieveDemuraTnFiles},
+      {SDM_SERVICE_RETRIEVE_DEMURATN_FILES, &SDMServices::RetrieveDemuraTnFiles},
       {SDM_SERVICE_SET_DEMURA_STATE, &SDMServices::SetDemuraState},
       {SDM_SERVICE_SET_DEMURA_CONFIG, &SDMServices::SetDemuraConfig},
+      {SDM_SERVICE_GET_DISPLAY_PORT_ID, &SDMServices::GetDisplayPortId},
   };
 
   int bw_mode_release_fd_ = -1;

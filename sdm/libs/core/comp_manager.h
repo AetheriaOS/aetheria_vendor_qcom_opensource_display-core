@@ -22,16 +22,10 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/* Changes from Qualcomm Innovation Center are provided under the following license:
- *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
- * SPDX-License-Identifier: BSD-3-Clause-Clear
- */
-
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
-* Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -120,6 +114,8 @@ class CompManager : public CwbCallback {
   DisplayError ReserveDemuraFetchResources(const uint32_t &display_id,
                                            const int8_t &preferred_rect);
   DisplayError GetDemuraFetchResources(Handle display_ctx, std::vector<FetchResourceList> *frl);
+  DisplayError ReserveABCFetchResources(const uint32_t &display_id, bool is_primary,
+                                        const int8_t &req_cnt);
   void SetDemuraStatus(bool status);
   bool GetDemuraStatus();
   void SetDemuraStatusForDisplay(const int32_t &display_id, bool status);
@@ -146,7 +142,7 @@ class CompManager : public CwbCallback {
   uint32_t GetMixerCount(DisplayId display_id);
   uint32_t GetActiveDisplayCount();
   void SetDisplayLayerStack(Handle display_ctx, DispLayerStack *disp_layer_stack);
-  void GetDSConfig(Handle display_ctx, DestScaleInfoMap *dest_scale_info_map);
+  void GetDSConfig(Handle display_ctx, HWLayersInfo *hw_layers_info);
   bool IsDisplayHWAvailable();
   DisplayError SetSprIntf(Handle display_ctx, std::shared_ptr<SPRIntf> intf);
 

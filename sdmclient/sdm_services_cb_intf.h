@@ -60,6 +60,7 @@ public:
   virtual DisplayError SetDimmingMinBl(Display display, int32_t min_bl) = 0;
   virtual DisplayError SetDisplayBrightness(Display display,
                                             float brightness) = 0;
+  virtual DisplayError GetDisplayPortId(uint32_t disp_id, int *port_id) = 0;
 };
 
 } // namespace sdm

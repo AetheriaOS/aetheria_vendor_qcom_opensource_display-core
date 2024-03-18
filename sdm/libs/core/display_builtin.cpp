@@ -23,31 +23,34 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
+#include "display_builtin.h"
+
+#include <core/buffer_allocator.h>
+#include <display_properties.h>
+#include <private/aiqe_ssrc_feature_factory.h>
+#include <private/hw_info_interface.h>
+#include <private/hw_interface.h>
+#include <sys/mman.h>
 #include <utils/constants.h>
 #include <utils/debug.h>
+#include <utils/formats.h>
 #include <utils/rect.h>
 #include <utils/utils.h>
-#include <utils/formats.h>
-#include <core/buffer_allocator.h>
-#include <sys/mman.h>
-#include <private/hw_interface.h>
-#include <private/hw_info_interface.h>
-#include <display_properties.h>
-#include <iomanip>
+
 #include <algorithm>
 #include <functional>
+#include <iomanip>
 #include <map>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
-#include "display_builtin.h"
 #include "drm_interface.h"
 #include "drm_master.h"
 
@@ -76,6 +79,118 @@ DisplayBuiltIn::~DisplayBuiltIn() {
 
 static uint64_t GetTimeInMs(struct timespec ts) {
   return (ts.tv_sec * 1000 + (ts.tv_nsec + 500000) / 1000000);
+}
+
+DisplayError DisplayBuiltIn::SetupAiqe() {
+  int value = 0;
+  char value_str[200] = {0};
+  aiqe::GetSsrcFeatureFactoryFp get_ssrc_feature_factory = nullptr;
+
+  if (!prop_intf_) {
+    DLOGI("Skipping AIQE setup. No panel feature property interface");
+    return kErrorNone;
+  }
+
+  DebugHandler::Get()->GetProperty(AIQE_SSRC_ENABLE, &value);
+  if (value == 1) {
+    aiqe::SsrcFeatureFactory *ssrc_feature_factory;
+    aiqe::SsrcFeatureDisplayDetails *display_details;
+    std::string *default_mode;
+    bool *force_commit;
+    GenericPayload payload;
+
+    if (!ssrc_lib_.Open(SSRC_LIBRARY_NAME)) {
+      DLOGE("Unable to open library %s", SSRC_LIBRARY_NAME);
+      return kErrorNotSupported;
+    } else if (!ssrc_lib_.Sym(GET_SSRC_FF_INTF_NAME,
+                              reinterpret_cast<void **>(&get_ssrc_feature_factory))) {
+      DLOGE("Unable to get function pointer to retrieve AIQE feature factory");
+      return kErrorNotSupported;
+    }
+
+    ssrc_feature_factory = get_ssrc_feature_factory();
+    if (!ssrc_feature_factory) {
+      DLOGE("Unable to retrieve SSRC feature factory");
+      return kErrorNotSupported;
+    }
+
+    ssrc_feature_interface_ = ssrc_feature_factory->GetSsrcFeatureInterface(prop_intf_);
+    if (!ssrc_feature_interface_) {
+      DLOGE("Unable to retrieve SSRC feature interface");
+      return kErrorNotSupported;
+    }
+
+    if (ssrc_feature_interface_->Init() != 0) {
+      DLOGE("Unable to initalize SSRC feature interface");
+      return kErrorNotSupported;
+    }
+
+    if (payload.CreatePayload(display_details) != 0) {
+      DLOGE("Unable to create display details payload");
+      return kErrorMemory;
+    }
+
+    display_details->panel_name = client_ctx_.hw_panel_info.panel_name;
+    display_details->primary_panel = client_ctx_.hw_panel_info.is_primary_panel;
+    switch (client_ctx_.mixer_attributes.split_type) {
+      case kQuadSplit:
+        display_details->ppc = 4;
+        break;
+      case kDualSplit:
+        display_details->ppc = 2;
+        break;
+      case kNoSplit:
+        display_details->ppc = 1;
+        break;
+      default:
+        DLOGW("Unsupported mixer split - %d. Skipping AIQE Feature enablement",
+              client_ctx_.mixer_attributes.split_type);
+        return kErrorNotSupported;
+    }
+
+    if (ssrc_feature_interface_->SetParameter(aiqe::kSsrcFeatureDisplayDetails, payload) != 0) {
+      DLOGE("Unable to set display details on SSRC feature interface");
+      return kErrorNotSupported;
+    }
+
+    payload.DeletePayload();
+    if (payload.CreatePayload(default_mode) != 0) {
+      DLOGE("Unable to create mode payload");
+      return kErrorMemory;
+    }
+
+    DebugHandler::Get()->GetProperty(AIQE_SSRC_DEFAULT_MODE, value_str);
+    if (strcmp(value_str, "") == 0) {
+      DLOGI("Using default SSRC mode");
+      *default_mode = "NORMAL/ON";
+    } else {
+      DLOGI("Using SSRC mode from vendor property - %s", value_str);
+      *default_mode = value_str;
+    }
+
+    if (ssrc_feature_interface_->SetParameter(aiqe::kSsrcFeatureModeId, payload) != 0) {
+      DLOGE("Unable to set mode on AIQE SSRC feature interface");
+      return kErrorNotSupported;
+    }
+
+    payload.DeletePayload();
+    if (payload.CreatePayload(force_commit) != 0) {
+      DLOGE("Unable to create commit payload");
+      return kErrorMemory;
+    }
+
+    *force_commit = true;
+    if (ssrc_feature_interface_->SetParameter(aiqe::kSsrcFeatureCommitFeature, payload) != 0) {
+      DLOGE("Unable to set commit on AIQE SSRC feature interface");
+      return kErrorNotSupported;
+    }
+
+    ssrc_feature_enabled_ = true;
+  } else {
+    DLOGI("AIQE SSRC Enable property not set. Skipping SSRC enablement");
+  }
+
+  return kErrorNone;
 }
 
 DisplayError DisplayBuiltIn::Init() {
@@ -182,7 +297,15 @@ DisplayError DisplayBuiltIn::Init() {
       return error;
     }
 
-    SetupDemuraT0AndTn();
+    int enable_abc = 0;
+    Debug::Get()->GetProperty(ENABLE_ABC, &enable_abc);
+    abc_prop_ = enable_abc;
+
+    if (abc_prop_) {
+      SetupABC();
+    } else {
+      SetupDemuraT0AndTn();
+    }
   } else {
     DLOGW("Skipping Panel Feature Setups!");
   }
@@ -232,6 +355,7 @@ DisplayError DisplayBuiltIn::Init() {
 
   NoiseInit();
   InitCWBBuffer();
+  SetupAiqe();
 
   left_frame_roi_.resize(core_count_);
   right_frame_roi_.resize(core_count_);
@@ -283,6 +407,8 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
   uint32_t new_mixer_height = 0;
   uint32_t display_width = client_ctx_.display_attributes.x_pixels;
   uint32_t display_height = client_ctx_.display_attributes.y_pixels;
+  GenericPayload bool_payload;
+  bool *force_update;
 
   DisplayError error = HandleDemuraLayer(layer_stack);
   if (error != kErrorNone) {
@@ -323,6 +449,19 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
   if (color_mgr_ && client_ctx_.hw_panel_info.mode == kModeVideo && idle_fallback_on_dspp_) {
     color_mgr_->ColorMgrIdleFallback(lower_fps_);
     needs_validate_ |= color_mgr_->IsValidateNeeded();
+  }
+
+  if (ssrc_feature_enabled_) {
+    if (bool_payload.CreatePayload(force_update) != 0) {
+      DLOGE("Unable to create force update payload");
+      return kErrorMemory;
+    }
+
+    *force_update = false;
+    if (ssrc_feature_interface_->SetParameter(aiqe::kSsrcFeatureCommitFeature, bool_payload) != 0) {
+      DLOGE("Unable to set commit on SSRC feature interface");
+      return kErrorNotSupported;
+    }
   }
 
   return kErrorNotValidated;
@@ -615,7 +754,7 @@ DisplayError DisplayBuiltIn::SetupDemura() {
     return kErrorUndefined;
   }
 
-  if (SetupDemuraLayer() != kErrorNone) {
+  if (SetupCorrectionLayer() != kErrorNone) {
     DLOGE("Unable to setup Demura layer on Display %d-%d", display_id_, display_type_);
     return kErrorUndefined;
   }
@@ -645,62 +784,140 @@ DisplayError DisplayBuiltIn::SetupDemura() {
   return kErrorNone;
 }
 
+DisplayError DisplayBuiltIn::SetupCorrectionLayer() {
+  if (abc_prop_) {
+    return SetupABCLayer();
+  } else {
+    return SetupDemuraLayer();
+  }
+}
+
 DisplayError DisplayBuiltIn::SetupDemuraLayer() {
   int ret = 0;
   GenericPayload pl;
-  BufferInfo* buffer = nullptr;
-  if ((ret = pl.CreatePayload<BufferInfo>(buffer))) {
+
+  DemuraCorrectionSurfaces *corrdata = nullptr;
+  if ((ret = pl.CreatePayload<DemuraCorrectionSurfaces>(corrdata))) {
     DLOGE("Failed to create payload for BufferInfo, error = %d", ret);
     return kErrorResources;
   }
+
   if ((ret = demura_->GetParameter(kDemuraFeatureParamCorrectionBuffer, &pl))) {
     DLOGE("Failed to get BufferInfo, error = %d", ret);
     return kErrorResources;
   }
+  demura_layer_.clear();  // This will clear the old demura layers
+
+  for (int buf_idx = 0; buf_idx < corrdata->surfaces.size(); buf_idx++) {
+    if (!corrdata->valid[buf_idx])
+      continue;
+    Layer demura_layer = {};
 #ifndef TRUSTED_VM
-  demura_layer_.input_buffer.size = buffer->alloc_buffer_info.size;
-  demura_layer_.input_buffer.buffer_id = reinterpret_cast<uint64_t>(buffer->private_data);
-  demura_layer_.input_buffer.handle_id = buffer->alloc_buffer_info.id;
-  demura_layer_.input_buffer.format = buffer->alloc_buffer_info.format;
-  demura_layer_.input_buffer.width = buffer->alloc_buffer_info.aligned_width;
-  demura_layer_.input_buffer.unaligned_width = buffer->alloc_buffer_info.aligned_width;
-  demura_layer_.input_buffer.height = buffer->alloc_buffer_info.aligned_height;
-  demura_layer_.input_buffer.unaligned_height = buffer->alloc_buffer_info.aligned_height;
-  demura_layer_.input_buffer.planes[0].fd = buffer->alloc_buffer_info.fd;
-  demura_layer_.input_buffer.planes[0].stride = buffer->alloc_buffer_info.stride;
-  hfc_buffer_width_ = buffer->alloc_buffer_info.aligned_width;
-  hfc_buffer_height_ = buffer->alloc_buffer_info.aligned_height;
+    demura_layer.input_buffer.size = corrdata->surfaces[buf_idx].alloc_buffer_info.size;
+    demura_layer.input_buffer.buffer_id = corrdata->surfaces[buf_idx].alloc_buffer_info.id;
+    demura_layer.input_buffer.format = corrdata->surfaces[buf_idx].alloc_buffer_info.format;
+    demura_layer.input_buffer.width = corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_width;
+    demura_layer.input_buffer.unaligned_width =
+        corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_width;
+    demura_layer.input_buffer.height = corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_height;
+    demura_layer.input_buffer.unaligned_height =
+        corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_height;
+    demura_layer.input_buffer.planes[0].fd = corrdata->surfaces[buf_idx].alloc_buffer_info.fd;
+    demura_layer.input_buffer.planes[0].stride =
+        corrdata->surfaces[buf_idx].alloc_buffer_info.stride;
+    hfc_buffer_width_ = corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_width;
+    hfc_buffer_height_ = corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_height;
 #else
-  uint32_t aligned_width = ALIGN(static_cast<int>(buffer->buffer_config.width), 32);
-  uint32_t aligned_height = ALIGN(static_cast<int>(buffer->buffer_config.height), 32);
-  demura_layer_.input_buffer.format = buffer->buffer_config.format;
-  float bpp = GetBufferFormatBpp(kFormatBGRA8888);
-  uint32_t stride = static_cast<uint32_t>(aligned_width * bpp);
-  demura_layer_.input_buffer.size = hfc_buffer_size_;
-  demura_layer_.input_buffer.width = aligned_width;
-  demura_layer_.input_buffer.unaligned_width = aligned_width;
-  demura_layer_.input_buffer.height = aligned_height;
-  demura_layer_.input_buffer.unaligned_height = aligned_height;
-  demura_layer_.input_buffer.planes[0].fd = hfc_buffer_fd_;
-  demura_layer_.input_buffer.planes[0].stride = stride;
+    uint32_t aligned_width =
+        ALIGN(static_cast<int>(corrdata->surfaces[buf_idx].buffer_config.width), 32);
+    uint32_t aligned_height =
+        ALIGN(static_cast<int>(corrdata->surfaces[buf_idx].buffer_config.height), 32);
+    demura_layer.input_buffer.format = corrdata->surfaces[buf_idx].buffer_config.format;
+    float bpp = GetBufferFormatBpp(kFormatBGRA8888);
+    uint32_t stride = static_cast<uint32_t>(aligned_width * bpp);
+    demura_layer.input_buffer.size = hfc_buffer_size_;
+    demura_layer.input_buffer.width = aligned_width;
+    demura_layer.input_buffer.unaligned_width = aligned_width;
+    demura_layer.input_buffer.height = aligned_height;
+    demura_layer.input_buffer.unaligned_height = aligned_height;
+    demura_layer.input_buffer.planes[0].fd = hfc_buffer_fd_;
+    demura_layer.input_buffer.planes[0].stride = stride;
 #endif
-  demura_layer_.input_buffer.planes[0].offset = 0;
-  demura_layer_.input_buffer.flags.demura = 1;
-  demura_layer_.composition = kCompositionDemura;
-  demura_layer_.blending = kBlendingSkip;
-  demura_layer_.flags.is_demura = 1;
-  // ROI must match input dimensions
-  demura_layer_.src_rect.top = 0;
-  demura_layer_.src_rect.left = 0;
-  demura_layer_.src_rect.right = buffer->buffer_config.width;
-  demura_layer_.src_rect.bottom = buffer->buffer_config.height;
-  LogI(kTagNone, "Demura src: ", demura_layer_.src_rect);
-  demura_layer_.dst_rect.top = 0;
-  demura_layer_.dst_rect.left = 0;
-  demura_layer_.dst_rect.right = buffer->buffer_config.width;
-  demura_layer_.dst_rect.bottom = buffer->buffer_config.height;
-  LogI(kTagNone, "Demura dst: ", demura_layer_.dst_rect);
-  demura_layer_.buffer_map = std::make_shared<LayerBufferMap>();
+    demura_layer.input_buffer.planes[0].offset = 0;
+    demura_layer.input_buffer.flags.demura = 1;
+    demura_layer.composition = kCompositionDemura;
+    demura_layer.blending = kBlendingSkip;
+    demura_layer.flags.is_demura = 1;
+    // ROI must match input dimensions
+    demura_layer.src_rect.top = 0;
+    demura_layer.src_rect.left = 0;
+    demura_layer.src_rect.right = corrdata->surfaces[buf_idx].buffer_config.width;
+    demura_layer.src_rect.bottom = corrdata->surfaces[buf_idx].buffer_config.height;
+    LogI(kTagNone, "Demura src: ", demura_layer.src_rect);
+    demura_layer.dst_rect.top = 0;
+    demura_layer.dst_rect.left = 0;
+    demura_layer.dst_rect.right = corrdata->surfaces[buf_idx].buffer_config.width;
+    demura_layer.dst_rect.bottom = corrdata->surfaces[buf_idx].buffer_config.height;
+    LogI(kTagNone, "Demura dst: ", demura_layer.dst_rect);
+    demura_layer.buffer_map = std::make_shared<LayerBufferMap>();
+    demura_layer_.push_back(demura_layer);
+  }
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetupABCLayer() {
+  int ret = 0;
+  GenericPayload pl;
+
+  DemuraCorrectionSurfaces *corrdata = nullptr;
+  if ((ret = pl.CreatePayload<DemuraCorrectionSurfaces>(corrdata))) {
+    DLOGE("Failed to create payload for BufferInfo, error = %d", ret);
+    return kErrorResources;
+  }
+
+  if ((ret = demura_->GetParameter(kDemuraFeatureParamCorrectionBuffer, &pl))) {
+    DLOGE("Failed to get BufferInfo, error = %d", ret);
+    return kErrorResources;
+  }
+  demura_layer_.clear();  // This will clear the old abc layers
+
+  for (int buf_idx = 0; buf_idx < corrdata->surfaces.size(); buf_idx++) {
+    if (!corrdata->valid[buf_idx])
+      continue;
+    Layer demura_layer = {};
+    demura_layer.input_buffer.size = corrdata->surfaces[buf_idx].alloc_buffer_info.size;
+    demura_layer.input_buffer.buffer_id = corrdata->surfaces[buf_idx].alloc_buffer_info.id;
+    demura_layer.input_buffer.format = corrdata->surfaces[buf_idx].alloc_buffer_info.format;
+    demura_layer.input_buffer.width = corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_width;
+    demura_layer.input_buffer.unaligned_width =
+        corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_width;
+    demura_layer.input_buffer.height = corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_height;
+    demura_layer.input_buffer.unaligned_height =
+        corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_height;
+    demura_layer.input_buffer.planes[0].fd = corrdata->surfaces[buf_idx].alloc_buffer_info.fd;
+    demura_layer.input_buffer.planes[0].stride =
+        corrdata->surfaces[buf_idx].alloc_buffer_info.stride;
+    hfc_buffer_width_ = corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_width;
+    hfc_buffer_height_ = corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_height;
+    demura_layer.input_buffer.planes[0].offset = 0;
+    demura_layer.input_buffer.flags.demura = 1;
+    demura_layer.composition = kCompositionDemura;
+    demura_layer.blending = kBlendingSkip;
+    demura_layer.flags.is_abc = 1;
+    // ROI must match input dimensions
+    demura_layer.src_rect.top = 0;
+    demura_layer.src_rect.left = 0;
+    demura_layer.src_rect.right = corrdata->surfaces[buf_idx].buffer_config.width;
+    demura_layer.src_rect.bottom = corrdata->surfaces[buf_idx].buffer_config.height;
+    LogI(kTagNone, "Demura src: ", demura_layer.src_rect);
+    demura_layer.dst_rect.top = 0;
+    demura_layer.dst_rect.left = 0;
+    demura_layer.dst_rect.right = corrdata->surfaces[buf_idx].buffer_config.width;
+    demura_layer.dst_rect.bottom = corrdata->surfaces[buf_idx].buffer_config.height;
+    LogI(kTagNone, "Demura dst: ", demura_layer.dst_rect);
+    demura_layer.buffer_map = std::make_shared<LayerBufferMap>();
+    demura_layer_.push_back(demura_layer);
+  }
   return kErrorNone;
 }
 
@@ -742,6 +959,118 @@ void DisplayBuiltIn::PreCommit(LayerStack *layer_stack) {
   if (histogramSetup) {
     SetDppsFeatureLocked(&histogramIRQ, sizeof(histogramIRQ));
   }
+}
+
+DisplayError DisplayBuiltIn::SetupABCFeature() {
+  DemuraInputConfig input_cfg;
+  input_cfg.secure_session = false;  // TODO(user): Integrate with secure solution
+  std::string brightness_base;
+  hw_intf_->GetPanelBrightnessBasePath(&brightness_base);
+  input_cfg.brightness_path = brightness_base + "brightness";
+
+  std::vector<FetchResourceList> frlv;
+  frlv.resize(core_count_);
+  comp_manager_->GetDemuraFetchResources(display_comp_ctx_, &frlv);
+  // handled for DPU 0
+  auto frl = frlv[0];
+  for (auto &fr : frl) {
+    int i = std::get<1>(fr);  // fetch resource index
+    input_cfg.resources.set(i);
+  }
+
+#ifdef TRUSTED_VM
+  // TBD: TUI path
+#endif
+  input_cfg.panel_id = panel_id_;
+  input_cfg.panel_width = client_ctx_.display_attributes.x_pixels;
+  input_cfg.panel_height = client_ctx_.display_attributes.y_pixels;
+  input_cfg.panel_name = std::string(client_ctx_.hw_panel_info.panel_name);
+  for (auto it = input_cfg.panel_name.begin(); it != input_cfg.panel_name.end(); ++it) {
+    if (*it == ' ') {
+      *it = '_';
+    }
+  }
+  DLOGI("ABC panel id %lx actual panel-name %s\n", input_cfg.panel_id,
+        input_cfg.panel_name.c_str());
+  if (!abc_factory_) {
+    DLOGE("Failed to get ABC feature Factory");
+    return kErrorResources;
+  }
+
+  std::unique_ptr<DemuraIntf> abc_intf =
+      abc_factory_->CreateABCIntf(input_cfg, prop_intf_, buffer_allocator_);
+  if (!abc_intf) {
+    DLOGE("Unable to create abc_intf on Display %d-%d", display_id_, display_type_);
+    return kErrorMemory;
+  }
+
+  demura_ = std::move(abc_intf);
+  if (demura_->Init() != 0) {
+    DLOGE("Unable to initialize abc_intf on Display %d-%d", display_id_, display_type_);
+    return kErrorUndefined;
+  }
+
+  if (SetDemuraIntfStatus(true)) {
+    DLOGE("Failed to set ABC Status on Display %d", display_id_);
+    return kErrorUndefined;
+  }
+
+  comp_manager_->SetDemuraStatusForDisplay(display_id_, true);
+  abc_enabled_ = true;
+  DLOGI("Enabled ABC Core!");
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetupABC() {
+  DisplayError error = kErrorNone;
+  uint64_t ret = 0, panel_id = 0;
+  int value = 0;
+
+  // if ABC is not set during resourse reservation
+  if (!comp_manager_->GetDemuraStatus()) {
+    comp_manager_->SetDemuraStatusForDisplay(display_id_, false);
+    return kErrorNone;
+  }
+
+  if (IsPrimaryDisplay()) {
+    Debug::Get()->GetProperty(DISABLE_ABC_PRIMARY, &value);
+    DLOGI("primary panel id value %lx\n", panel_id);
+  } else {
+    Debug::Get()->GetProperty(DISABLE_ABC_SECONDARY, &value);
+    DLOGI("secondary panel id value %lx\n", panel_id);
+  }
+
+  if (value > 0) {
+    comp_manager_->SetDemuraStatusForDisplay(display_id_, false);
+    return kErrorNone;
+  } else if (value < 0) {
+    return kErrorUndefined;
+  }
+
+  PanelFeaturePropertyInfo info;
+  if (!panel_id) {
+    info.prop_ptr = reinterpret_cast<uint64_t>(&panel_id);
+    info.prop_id = kPanelFeatureDemuraPanelId;
+    ret = prop_intf_->GetPanelFeature(&info);
+    if (ret) {
+      DLOGE("Failed to get panel id, error = %d", ret);
+      return kErrorUndefined;
+    }
+  }
+  panel_id_ = panel_id;
+
+  error = SetupABCFeature();
+  if (error != kErrorNone) {
+    // Non-fatal but not expected, log error
+    DLOGE("Mdnie B failed to initialize on display %d-%d, Error = %d", display_id_, display_type_,
+          error);
+    comp_manager_->SetDemuraStatusForDisplay(display_id_, false);
+    if (demura_) {
+      SetDemuraIntfStatus(false);
+    }
+  }
+
+  return kErrorNone;
 }
 
 DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
@@ -1070,7 +1399,7 @@ DisplayError DisplayBuiltIn::PostCommit() {
     dpps_pu_nofiy_pending_ = false;
     dpps_pu_lock_.Broadcast();
   }
-  dpps_info_.Init(this, client_ctx_.hw_panel_info.panel_name, this);
+  dpps_info_.Init(this, client_ctx_.hw_panel_info.panel_name, this, prop_intf_);
 
   if (demuratn_)
     EnableDemuraTn(true);
@@ -1147,7 +1476,7 @@ DisplayError DisplayBuiltIn::SetDisplayState(DisplayState state, bool teardown,
   }
 
   // Must go in NullCommit
-  if (demura_intended_ && demura_dynamic_enabled_ &&
+  if (((demura_intended_ && demura_dynamic_enabled_) || abc_enabled_) &&
       comp_manager_->GetDemuraStatusForDisplay(display_id_) && (state == kStateOff)) {
     comp_manager_->SetDemuraStatusForDisplay(display_id_, false);
     SetDemuraIntfStatus(false);
@@ -1180,7 +1509,7 @@ DisplayError DisplayBuiltIn::SetDisplayState(DisplayState state, bool teardown,
   }
 
   // Must only happen after NullCommit and get applied in next frame
-  if (demura_intended_ && demura_dynamic_enabled_ &&
+  if (((demura_intended_ && demura_dynamic_enabled_) || abc_enabled_) &&
       !comp_manager_->GetDemuraStatusForDisplay(display_id_) &&
       (state == kStateOn || state == kStateDoze)) {
     comp_manager_->SetDemuraStatusForDisplay(display_id_, true);
@@ -2063,13 +2392,14 @@ std::string DisplayBuiltIn::Dump() {
 DppsInterface* DppsInfo::dpps_intf_ = NULL;
 std::vector<int32_t> DppsInfo::display_id_ = {};
 
-void DppsInfo::Init(DppsPropIntf *intf, const std::string &panel_name, DisplayInterface *display_intf) {
+void DppsInfo::Init(DppsPropIntf *intf, const std::string &panel_name,
+                    DisplayInterface *display_intf, PanelFeaturePropertyIntf *prop_intf) {
   std::lock_guard<std::mutex> guard(lock_);
   int error = 0;
   int disable_dpps_features = 0;
 
-  if (!intf || !display_intf) {
-    DLOGE("Invalid intf %pK display_intf %pK", intf, display_intf);
+  if (!intf || !display_intf || !prop_intf) {
+    DLOGE("Invalid intf %pK display_intf %pK prop_intf %pK", intf, display_intf, prop_intf);
     return;
   }
 
@@ -2111,7 +2441,7 @@ void DppsInfo::Init(DppsPropIntf *intf, const std::string &panel_name, DisplayIn
       goto exit;
     }
   }
-  error = dpps_intf_->Init(intf, panel_name, display_intf);
+  error = dpps_intf_->Init(intf, panel_name, display_intf, prop_intf);
   if (error) {
     DLOGE("DPPS Interface init failure with err %d", error);
     goto exit;
@@ -2395,14 +2725,17 @@ DisplayError DisplayBuiltIn::HandleDemuraLayer(LayerStack *layer_stack) {
     return kErrorParameters;
   }
   std::vector<Layer *> &layers = layer_stack->layers;
-  if (comp_manager_->GetDemuraStatus() &&
-      comp_manager_->GetDemuraStatusForDisplay(display_id_) &&
-      demura_layer_.input_buffer.planes[0].fd > 0) {
+  if (comp_manager_->GetDemuraStatus() && comp_manager_->GetDemuraStatusForDisplay(display_id_) &&
+      demura_layer_[0].input_buffer.planes[0].fd > 0) {
     if (disp_layer_stack_->stack_info.demura_target_index == -1) {
       // If demura layer added for first time, do not skip validate
       needs_validate_ = true;
     }
-    layers.push_back(&demura_layer_);
+
+    for (int buf_idx = 0; buf_idx < demura_layer_.size(); buf_idx++) {
+      layers.push_back(&demura_layer_.at(buf_idx));
+    }
+
     DLOGI_IF(kTagDisplay, "Demura layer added to layer stack on display %d-%d", display_id_,
              display_type_);
   } else if (disp_layer_stack_->stack_info.demura_target_index != -1) {
@@ -2484,12 +2817,14 @@ DisplayError DisplayBuiltIn::BuildLayerStackStats(LayerStack *layer_stack) {
       stack_info.stitch_target_index = index;
       disp_layer_stack_->stack->flags.stitch_present = true;
       stack_info.stitch_present = true;
-    } else if (layer->composition == kCompositionDemura) {
+    } else if (layer->composition == kCompositionDemura && stack_info.demura_target_index == -1) {
       stack_info.demura_target_index = index;
       disp_layer_stack_->stack->flags.demura_present = true;
       stack_info.demura_present = true;
       DLOGD_IF(kTagDisplay, "Display %d-%d shall request Demura in this frame", display_id_,
                display_type_);
+    } else if (layer->composition == kCompositionDemura) {
+      DLOGV_IF(kTagDisplay, "Adding Aiqe ABC feature - UDC layer");
     } else if (layer->flags.is_noise) {
       stack_info.common_info.flags.noise_present = true;
       stack_info.noise_layer_index = index;
@@ -2794,9 +3129,11 @@ int DisplayBuiltIn::SetDemuraIntfStatus(bool enable, int current_idx) {
       DLOGE("Failed to get reconfig, error %d", ret);
       return ret;
     }
+
     if (*reconfig) {
-      DLOGI("SetDemuraLayer for DemuraTn reconfig");
-      ret = SetupDemuraLayer();
+      DLOGI("SetDemuraLayer for Anti-Aging reconfig");
+      // TBD: handle for ABC during reconfig verification
+      ret = SetupCorrectionLayer();
       if (ret) {
         DLOGE("Failed to setup Demura layer, error %d", ret);
         return ret;
@@ -2805,12 +3142,32 @@ int DisplayBuiltIn::SetDemuraIntfStatus(bool enable, int current_idx) {
   }
 
   GenericPayload config_pl;
-  uint64_t *config_idx = nullptr;
-  if ((ret = config_pl.CreatePayload<uint64_t>(config_idx))) {
-    DLOGE("Failed to create payload for config_idx, error = %d", ret);
-    return ret;
+  if (abc_prop_) {
+    DemuraFeatureParamConfigIdx<std::string> *config_mode_name = nullptr;
+    if ((ret = config_pl.CreatePayload(config_mode_name))) {
+      DLOGE("Failed to create payload for config_mode_name, error = %d", ret);
+      return ret;
+    }
+
+    config_mode_name->modeinfo = "normal_on_udc_off";
+    if ((ret = demura_->SetParameter(kDemuraFeatureParamConfigIdx, config_pl))) {
+      DLOGE("Failed to set Config Idx, error = %d", ret);
+      return ret;
+    }
+
+    if (SetupCorrectionLayer() != kErrorNone) {
+      DLOGE("Unable to setup abc_intf layer on Display %d-%d", display_id_, display_type_);
+      return kErrorUndefined;
+    }
+
   } else {
-    *config_idx = current_idx;
+    uConfigIdx *config_idx = nullptr;
+    if ((ret = config_pl.CreatePayload<uConfigIdx>(config_idx))) {
+      DLOGE("Failed to create payload for config_idx, error = %d", ret);
+      return ret;
+    }
+
+    config_idx->modeinfo = current_idx;
     if ((ret = demura_->SetParameter(kDemuraFeatureParamConfigIdx, config_pl))) {
       DLOGE("Failed to set Config Idx, error = %d", ret);
       return ret;
@@ -3328,7 +3685,7 @@ DisplayError DisplayBuiltIn::SetDemuraState(int state) {
 DisplayError DisplayBuiltIn::SetDemuraConfig(int demura_idx) {
   int ret = 0;
   GenericPayload pl;
-  uint64_t *idx = nullptr;
+  uConfigIdx *idx = nullptr;
 
   if (!demura_intended_ || !demura_dynamic_enabled_) {
     DLOGW("Demura is not enabled");
@@ -3347,18 +3704,18 @@ DisplayError DisplayBuiltIn::SetDemuraConfig(int demura_idx) {
   }
 
   // Update demura config
-  if ((ret = pl.CreatePayload<uint64_t>(idx))) {
+  if ((ret = pl.CreatePayload<uConfigIdx>(idx))) {
     DLOGE("Failed to create payload for enable, error = %d", ret);
     return kErrorUndefined;
   }
 
-  *idx = demura_idx;
+  idx->modeinfo = demura_idx;
   if ((ret = demura_->SetParameter(kDemuraFeatureParamConfigIdx, pl))) {
     DLOGE("Failed to update demura config, error = %d", ret);
     return kErrorUndefined;
   }
 
-  if (SetupDemuraLayer() != kErrorNone) {
+  if (SetupCorrectionLayer() != kErrorNone) {
     DLOGE("Unable to setup Demura layer on Display %d", display_id_);
     return kErrorUndefined;
   }
@@ -3505,6 +3862,29 @@ EventProxyInfo::PanelOprInfo(const std::string &client_name, bool enable,
   }
 
   return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetSsrcMode(const std::string &mode) {
+  DisplayError ret = kErrorNotSupported;
+
+  if (ssrc_feature_enabled_ && ssrc_feature_interface_) {
+    std::string *mode_str;
+    GenericPayload payload;
+    int rc = payload.CreatePayload(mode_str);
+    if (rc) {
+      DLOGE("Unable to create mode string payload! RC - %d", rc);
+    } else {
+      *mode_str = mode;
+      rc = ssrc_feature_interface_->SetParameter(aiqe::kSsrcFeatureModeId, payload);
+      if (rc) {
+        DLOGE("Mode rejected by SSRC feature interface. RC - %d", rc);
+      } else {
+        ret = kErrorNone;
+      }
+    }
+  }
+
+  return ret;
 }
 
 }  // namespace sdm

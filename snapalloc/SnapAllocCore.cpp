@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #include <log/log.h>
@@ -279,6 +279,7 @@ Error SnapAllocCore::Lock(SnapHandle *hnd, vendor_qti_hardware_display_common_Bu
       buf->flush = true;
     }
   }
+  buf->lock_count++;
 
   return err;
 }
@@ -288,22 +289,29 @@ Error SnapAllocCore::Unlock(SnapHandle *hnd) {
   auto status = Error::NONE;
 
   auto buf = GetBufferFromHandleLocked(hnd);
-  if (buf == nullptr) {
+  if (buf == nullptr || buf->lock_count <= 0) {
+    ALOGW("%s: A bad or an already unlocked buffer.", __FUNCTION__);
     return Error::BAD_BUFFER;
   }
 
-  if (buf->flush) {
-    if (mem_alloc_intf_->CleanBuffer(reinterpret_cast<void *>(buf->base), buf->size, CACHE_CLEAN,
-                                     buf->fd) != 0) {
-      status = Error::BAD_BUFFER;
-    }
-    buf->flush = false;
-  } else {
-    if (mem_alloc_intf_->CleanBuffer(reinterpret_cast<void *>(buf->base), buf->size,
-                                     CACHE_READ_DONE, buf->fd) != 0) {
-      status = Error::BAD_BUFFER;
+  // Avoid unlocking early for nested lock case
+  if (buf->lock_count == 1) {
+    if (buf->flush) {
+      if (mem_alloc_intf_->CleanBuffer(reinterpret_cast<void *>(buf->base),
+                                       buf->size, CACHE_CLEAN, buf->fd) != 0) {
+        status = Error::BAD_BUFFER;
+      }
+      buf->flush = false;
+    } else {
+      if (mem_alloc_intf_->CleanBuffer(reinterpret_cast<void *>(buf->base),
+                                       buf->size, CACHE_READ_DONE,
+                                       buf->fd) != 0) {
+        status = Error::BAD_BUFFER;
+      }
     }
   }
+
+  buf->lock_count = (status == Error::NONE) ? buf->lock_count - 1 : buf->lock_count;
 
   return status;
 }
@@ -361,7 +369,8 @@ Error SnapAllocCore::FlushLockedBuffer(SnapHandle *hnd) {
   auto status = Error::NONE;
 
   auto buf = GetBufferFromHandleLocked(hnd);
-  if (buf == nullptr) {
+  if (buf == nullptr || buf->lock_count <= 0) {
+    ALOGW("%s: A bad or an unlocked buffer.", __FUNCTION__);
     return Error::BAD_BUFFER;
   }
   if (mem_alloc_intf_->CleanBuffer(reinterpret_cast<void *>(buf->base), buf->size, CACHE_CLEAN,
@@ -377,7 +386,8 @@ Error SnapAllocCore::RereadLockedBuffer(SnapHandle *hnd) {
   auto status = Error::NONE;
 
   auto buf = GetBufferFromHandleLocked(hnd);
-  if (buf == nullptr) {
+  if (buf == nullptr || buf->lock_count <= 0) {
+    ALOGW("%s: A bad or an unlocked buffer.", __FUNCTION__);
     return Error::BAD_BUFFER;
   }
   if (mem_alloc_intf_->CleanBuffer(reinterpret_cast<void *>(buf->base), buf->size, CACHE_INVALIDATE,

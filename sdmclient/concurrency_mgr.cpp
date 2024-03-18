@@ -77,7 +77,47 @@ shared_ptr<Fence> ConcurrencyMgr::retire_fence_[kNumDisplays];
 int ConcurrencyMgr::commit_error_[kNumDisplays] = {0};
 Locker ConcurrencyMgr::display_config_locker_;
 
-int32_t GetDataspaceFromColorMode(SDMColorMode mode) { return 0; }
+void GetColorMetadataFromColorMode(SDMColorMode mode, Dataspace &ds) {
+  switch (mode) {
+    case SDMColorMode::COLOR_MODE_SRGB:
+    // dataspace is ignored in native mode
+    case SDMColorMode::COLOR_MODE_NATIVE:
+      ds.colorPrimaries = QtiColorPrimaries_BT709_5;
+      ds.transfer = QtiTransfer_sRGB;
+      ds.range = QtiRange_Full;
+      break;
+    case SDMColorMode::COLOR_MODE_DCI_P3:
+      ds.colorPrimaries = QtiColorPrimaries_DCIP3;
+      // gamma 2.6 transfer - not supported by HW
+      ds.transfer = static_cast<vendor_qti_hardware_display_common_QtiGammaTransfer>(5 << 22);
+      ds.range = QtiRange_Full;
+      break;
+    case SDMColorMode::COLOR_MODE_DISPLAY_P3:
+      ds.colorPrimaries = QtiColorPrimaries_DCIP3;
+      ds.transfer = QtiTransfer_sRGB;
+      ds.range = QtiRange_Full;
+      break;
+    case SDMColorMode::COLOR_MODE_BT2100_PQ:
+      ds.colorPrimaries = QtiColorPrimaries_BT2020;
+      ds.transfer = QtiTransfer_SMPTE_ST2084;
+      ds.range = QtiRange_Full;
+      break;
+    case SDMColorMode::COLOR_MODE_BT2100_HLG:
+      ds.colorPrimaries = QtiColorPrimaries_BT2020;
+      ds.transfer = QtiTransfer_HLG;
+      ds.range = QtiRange_Full;
+      break;
+    case SDMColorMode::COLOR_MODE_DISPLAY_BT2020:
+      ds.colorPrimaries = QtiColorPrimaries_BT2020;
+      ds.transfer = QtiTransfer_sRGB;
+      ds.range = QtiRange_Full;
+      break;
+    default:
+      ds.colorPrimaries = QtiColorPrimaries_Max;
+      ds.transfer = QtiTransfer_Max;
+      ds.range = QtiRange_Max;
+  }
+}
 
 ConcurrencyMgr::ConcurrencyMgr() {}
 
@@ -160,8 +200,8 @@ void ConcurrencyMgr::GetHpdData(int *hpd_bpp, int *hpd_pattern,
   *hpd_connected = hpd_connected_;
 }
 
-DisplayError ConcurrencyMgr::Init(SDMCompositorCbIntf *callbacks,
-                                  BufferAllocator *buffer_allocator) {
+DisplayError ConcurrencyMgr::Init(BufferAllocator *buffer_allocator,
+                                  SocketHandler *socket_handler) {
   SCOPE_LOCK(locker_[SDM_DISPLAY_PRIMARY]);
 
   if (is_composer_up_) {
@@ -171,8 +211,8 @@ DisplayError ConcurrencyMgr::Init(SDMCompositorCbIntf *callbacks,
 
   DLOGI("Initializing ConcurrencyMgr");
 
-  callbacks_ = callbacks;
   buffer_allocator_ = buffer_allocator;
+  socket_handler_ = socket_handler;
 
   DisplayError status = kErrorNotSupported;
 
@@ -278,7 +318,7 @@ DisplayError ConcurrencyMgr::InitSubModules() {
 
   DisplayError error = CoreInterface::CreateCore(
       buffer_allocator_, nullptr, socket_handler_, ipc_intf_, &core_intf_);
-      
+
   if (error != kErrorNone) {
     DLOGE("Failed to create CoreInterface");
     return error;
@@ -309,8 +349,7 @@ DisplayError ConcurrencyMgr::InitSubModules() {
   cwb_ = new SDMConcurrentWriteBack(this, snapmapper_);
   cwb_->Init();
 
-  disp_ = new SDMDisplayBuilder(this, buffer_allocator_, core_intf_, callbacks_,
-                                this);
+  disp_ = new SDMDisplayBuilder(this, buffer_allocator_, core_intf_, &callbacks_, this);
   disp_->Init(locker_);
 
   tui_ = new SDMTrustedUI(this);
@@ -508,15 +547,12 @@ DisplayError ConcurrencyMgr::GetAllDisplayAttributes(
                              info);
 }
 
-DisplayError
-ConcurrencyMgr::GetDisplayAttributes(uint64_t display, int32_t index,
-                                     DisplayConfigVariableInfo *attributes,
-                                     uint32_t *group_id) {
+DisplayError ConcurrencyMgr::GetDisplayAttributes(uint64_t display, int32_t index,
+                                                  DisplayConfigVariableInfo *attributes) {
   if (!attributes) {
     return kErrorParameters;
   }
-  return CallDisplayFunction(display, &SDMDisplay::GetDisplayAttributes, index,
-                             attributes, group_id);
+  return CallDisplayFunction(display, &SDMDisplay::GetDisplayAttributes, index, attributes);
 }
 
 DisplayError
@@ -591,10 +627,6 @@ void ConcurrencyMgr::PerformIdleStatusCallback(Display display) {
 }
 
 int ConcurrencyMgr::NotifyIdleStatus(bool idle_status) {
-  if (!enable_aidl_idle_notification_) {
-    return -1;
-  }
-
   sideband_cb_->NotifyIdleStatus(true);
   return 0;
 }
@@ -695,7 +727,7 @@ void ConcurrencyMgr::HandlePendingRefresh() {
 }
 
 void ConcurrencyMgr::SendHotplug(Display display, bool state) {
-  callbacks_->OnHotplug(display, state);
+  callbacks_.OnHotplug(display, state);
 }
 
 DisplayError ConcurrencyMgr::Hotplug(Display display, bool state) {
@@ -726,13 +758,14 @@ DisplayError ConcurrencyMgr::Hotplug(Display display, bool state) {
   if (display == SDM_DISPLAY_EXTERNAL || display == SDM_DISPLAY_EXTERNAL_2) {
     std::thread(&ConcurrencyMgr::SendHotplug, this, display, state).detach();
   } else {
-    callbacks_->OnHotplug(display, state);
+    callbacks_.OnHotplug(display, state);
   }
   return kErrorNone;
 }
 
-void ConcurrencyMgr::EnableCallback(bool enable) {
+void ConcurrencyMgr::RegisterCompositorCallback(SDMCompositorCbIntf *cb, bool enable) {
   SCOPE_LOCK(client_lock_);
+  callbacks_.RegisterCallback(cb, enable);
 
   // Detect if client died and now is back
   vector<Display> pending_hotplugs;
@@ -925,7 +958,7 @@ ConcurrencyMgr::SetOutputBuffer(uint64_t display, const SnapHandle *buffer,
   if (buffer == nullptr) {
     return kErrorParameters;
   }
-  
+
   bool found = false;
   for (auto disp : {qdutils::DISPLAY_VIRTUAL, qdutils::DISPLAY_VIRTUAL_2}) {
     if (INT32(display) == disp_->GetDisplayIndex(disp)) {
@@ -982,6 +1015,9 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
     return kErrorParameters;
   }
 
+  DTRACE_BEGIN(
+      ("Setting power mode " + to_string(int_mode) + " on display " + to_string(display)).c_str());
+
   auto mode = static_cast<SDMPowerMode>(int_mode);
   bool is_builtin = false;
   bool is_power_off = false;
@@ -996,6 +1032,7 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
 
   if (mode == SDMPowerMode::POWER_MODE_ON &&
       !disp_->IsHWDisplayConnected(display)) {
+    DTRACE_END();
     return kErrorParameters;
   }
 
@@ -1017,12 +1054,14 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
       SCOPE_LOCK(locker_[display]);
       if (sdm_display_[display]) {
         sdm_display_[display]->SetPendingPowerMode(mode);
+        DTRACE_END();
         return kErrorNone;
       }
     }
   }
   if (pending_power_mode_[display]) {
     DLOGW("Set power mode is not allowed during secure display session");
+    DTRACE_END();
     return kErrorNotSupported;
   }
 
@@ -1033,23 +1072,27 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
     if (is_builtin) {
       DLOGE("Failed to get doze support Error = %d", status);
     }
+    DTRACE_END();
     return status;
   }
 
   if (!support && (mode == SDMPowerMode::POWER_MODE_DOZE ||
                    mode == SDMPowerMode::POWER_MODE_DOZE_SUSPEND)) {
+    DTRACE_END();
     return kErrorNotSupported;
   }
 
   SDMPowerMode last_power_mode = sdm_display_[display]->GetCurrentPowerMode();
 
   if (last_power_mode == mode) {
+    DTRACE_END();
     return kErrorNone;
   }
 
   auto error = CallDisplayFunction(display, &SDMDisplay::SetPowerMode, mode,
                                    false /* teardown */);
   if (error != kErrorNone) {
+    DTRACE_END();
     return error;
   }
   // Reset idle pc ref count on suspend, as we enable idle pc during suspend.
@@ -1064,6 +1107,7 @@ DisplayError ConcurrencyMgr::SetPowerMode(uint64_t display, int32_t int_mode) {
     pending_refresh_.set(UINT32(display));
   }
 
+  DTRACE_END();
   return kErrorNone;
 }
 
@@ -1158,7 +1202,7 @@ DisplayError ConcurrencyMgr::GetVsyncPeriod(Display disp,
 
   DisplayConfigVariableInfo attributes{};
   if (sdm_display_[disp]) {
-    sdm_display_[disp]->GetDisplayAttributes(0, &attributes, nullptr);
+    sdm_display_[disp]->GetDisplayAttributes(0, &attributes);
   }
 
   *vsync_period = INT32(attributes.vsync_period_ns);
@@ -1168,7 +1212,7 @@ DisplayError ConcurrencyMgr::GetVsyncPeriod(Display disp,
 }
 
 void ConcurrencyMgr::SendRefresh(Display display) {
-  callbacks_->OnRefresh(display);
+  callbacks_.OnRefresh(display);
 }
 
 void ConcurrencyMgr::Refresh(uint64_t display) {
@@ -1490,7 +1534,11 @@ DisplayError ConcurrencyMgr::GetReadbackBufferAttributes(Display display,
   }
 
   *format = static_cast<int32_t>(SDMPixelFormat::PIXEL_FORMAT_RGB_888);
-  *dataspace = GetDataspaceFromColorMode(sdm_display->GetCurrentColorMode());
+  uint32_t cm_dataspace = 0;
+  Dataspace ds;
+  GetColorMetadataFromColorMode(sdm_display->GetCurrentColorMode(), ds);
+  buffer_allocator_->ColorMetadataToDataspace(ds, &cm_dataspace);
+  *dataspace = static_cast<int32_t>(cm_dataspace);
 
   return kErrorNone;
 }
@@ -2281,6 +2329,11 @@ void ConcurrencyMgr::SetClientUp() {
   is_client_up_ = true;
 
   auto display = sdm_display_[SDM_DISPLAY_PRIMARY];
+  if (!display) {
+    DLOGW("display is null");
+    return;
+  }
+
   display->MarkClientActive(true);
 }
 
@@ -2443,6 +2496,30 @@ DisplayError ConcurrencyMgr::SetPanelLuminanceAttributes(uint64_t display_id,
 
 void ConcurrencyMgr::RegisterSideBandCallback(SDMSideBandCompositorCbIntf *cb) {
   sideband_cb_ = cb;
+}
+
+DisplayError ConcurrencyMgr::SetSsrcMode(uint64_t display_id, const std::string &mode_name) {
+  int disp_idx = GetDisplayIndex(display_id);
+  if (disp_idx == -1) {
+    DLOGW("Invalid display = %d", display_id);
+    return kErrorResources;
+  }
+
+  SCOPE_LOCK(locker_[disp_idx]);
+  if (!sdm_display_[disp_idx]) {
+    DLOGW("Display %d is not connected.", display_id);
+    return kErrorResources;
+  }
+
+  return sdm_display_[disp_idx]->SetSsrcMode(mode_name);
+}
+
+DisplayError ConcurrencyMgr::EnableCopr(uint64_t display_id, bool enable) {
+  return kErrorNone;
+}
+
+DisplayError ConcurrencyMgr::GetCoprStatus(uint64_t display_id, std::vector<int32_t> *copr_status) {
+  return kErrorNone;
 }
 
 } // namespace sdm

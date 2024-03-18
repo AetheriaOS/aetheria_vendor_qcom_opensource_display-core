@@ -209,6 +209,9 @@
 // Property to set desired libscale optimization mode on destination
 #define SCALING_DEST_OPT_MODE                DISPLAY_PROP("scaling_dest_opt_mode")
 
+//AIQE Properties
+#define AIQE_SSRC_ENABLE               DISPLAY_PROP("enable_aiqe_ssrc")
+#define AIQE_SSRC_DEFAULT_MODE         DISPLAY_PROP("default_aiqe_ssrc_mode")
 
 // Add all vendor.display properties above
 
@@ -248,7 +251,16 @@
 #define ENABLE_ROUNDED_CORNER_CONFIG_DUMP    DISPLAY_PROP("enable_rounded_corner_config_dump")
 #define DISABLE_ROUNDED_CORNER_DEST_SCALER   DISPLAY_PROP("disable_rounded_corner_dest_scaler")
 #define DISABLE_ROUNDED_CORNER_TUI           DISPLAY_PROP("disable_rounded_corner_tui")
+#define DISABLE_RCMASK_SIMD_OPT              DISPLAY_PROP("disable_rcmask_simd_opt")
 #define IDLE_FALLBACK_ON_DSPP                DISPLAY_PROP("idle_fallback_on_dspp")
+
+// Enable AI Scaler
+#define ENABLE_AI_SCALER_PROP                DISPLAY_PROP("enable_ai_scaler")
+
+// Panel Feature AIQE ABC Properties
+#define ENABLE_ABC                        DISPLAY_PROP("enable_abc")
+#define DISABLE_ABC_PRIMARY               DISPLAY_PROP("disable_abc_primary")
+#define DISABLE_ABC_SECONDARY             DISPLAY_PROP("disable_abc_secondary")
 
 // Add all other.properties above
 // End of property

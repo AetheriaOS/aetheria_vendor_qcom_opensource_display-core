@@ -43,49 +43,37 @@ namespace sdm {
 
 class SDMDisplayPluggable : public SDMDisplay {
 public:
-  static DisplayError Create(CoreInterface *core_intf,
-                             BufferAllocator *buffer_allocator,
-                             SDMCompositorCbIntf *callbacks,
-                             SDMDisplayEventHandler *event_handler, Display id,
-                             int32_t sdm_id, uint32_t primary_width,
-                             uint32_t primary_height, bool use_primary_res,
-                             SDMDisplay **sdm_display);
-  static void Destroy(SDMDisplay *sdm_display);
-  virtual DisplayError Init();
-  virtual DisplayError Validate(uint32_t *out_num_types,
-                                uint32_t *out_num_requests);
-  virtual DisplayError Present(shared_ptr<Fence> *out_retire_fence);
-  virtual DisplayError Flush();
-  virtual DisplayError GetColorModes(uint32_t *out_num_modes,
-                                     SDMColorMode *out_modes);
-  virtual DisplayError GetRenderIntents(SDMColorMode mode,
-                                        uint32_t *out_num_intents,
-                                        SDMRenderIntent *out_intents);
-  virtual DisplayError SetColorMode(SDMColorMode mode);
-  virtual DisplayError SetColorModeWithRenderIntent(SDMColorMode mode,
-                                                    SDMRenderIntent intent);
-  virtual DisplayError SetColorTransform(const float *matrix,
-                                         android_color_transform_t hint);
-  virtual DisplayError PreValidateDisplay(bool *exit_validate);
-  virtual DisplayError
-  PostCommitLayerStack(shared_ptr<Fence> *out_retire_fence);
+ static DisplayError Create(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
+                            SDMCompositorCallbacks *callbacks,
+                            SDMDisplayEventHandler *event_handler, Display id, int32_t sdm_id,
+                            uint32_t primary_width, uint32_t primary_height, bool use_primary_res,
+                            SDMDisplay **sdm_display);
+ static void Destroy(SDMDisplay *sdm_display);
+ virtual DisplayError Init();
+ virtual DisplayError Validate(uint32_t *out_num_types, uint32_t *out_num_requests);
+ virtual DisplayError Present(shared_ptr<Fence> *out_retire_fence);
+ virtual DisplayError Flush();
+ virtual DisplayError GetColorModes(uint32_t *out_num_modes, SDMColorMode *out_modes);
+ virtual DisplayError GetRenderIntents(SDMColorMode mode, uint32_t *out_num_intents,
+                                       SDMRenderIntent *out_intents);
+ virtual DisplayError SetColorMode(SDMColorMode mode);
+ virtual DisplayError SetColorModeWithRenderIntent(SDMColorMode mode, SDMRenderIntent intent);
+ virtual DisplayError SetColorTransform(const float *matrix, android_color_transform_t hint);
+ virtual DisplayError PreValidateDisplay(bool *exit_validate);
+ virtual DisplayError PostCommitLayerStack(shared_ptr<Fence> *out_retire_fence);
 
 private:
-  SDMDisplayPluggable(CoreInterface *core_intf,
-                      BufferAllocator *buffer_allocator,
-                      SDMCompositorCbIntf *callbacks,
-                      SDMDisplayEventHandler *event_handler, Display id,
-                      int32_t sdm_id);
-  void ApplyScanAdjustment(SDMRect *display_frame);
-  void GetUnderScanConfig();
-  static void GetDownscaleResolution(uint32_t primary_width,
-                                     uint32_t primary_height,
-                                     uint32_t *virtual_width,
-                                     uint32_t *virtual_height);
+ SDMDisplayPluggable(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
+                     SDMCompositorCallbacks *callbacks, SDMDisplayEventHandler *event_handler,
+                     Display id, int32_t sdm_id);
+ void ApplyScanAdjustment(SDMRect *display_frame);
+ void GetUnderScanConfig();
+ static void GetDownscaleResolution(uint32_t primary_width, uint32_t primary_height,
+                                    uint32_t *virtual_width, uint32_t *virtual_height);
 
-  int underscan_width_ = 0;
-  int underscan_height_ = 0;
-  bool has_color_tranform_ = false;
+ int underscan_width_ = 0;
+ int underscan_height_ = 0;
+ bool has_color_tranform_ = false;
 };
 
 } // namespace sdm

@@ -34,22 +34,23 @@
 #ifndef __CONCURRENCY_MGR_H__
 #define __CONCURRENCY_MGR_H__
 
-#include <atomic>
 #include <core/buffer_sync_handler.h>
 #include <core/core_interface.h>
 #include <core/display_interface.h>
 #include <core/ipc_interface.h>
 #include <core/socket_handler.h>
 #include <display_config.h>
-#include <future> // NOLINT
+#include <utils/constants.h>
+#include <utils/locker.h>
+
+#include <atomic>
+#include <future>  // NOLINT
 #include <map>
 #include <memory>
 #include <queue>
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include <utils/constants.h>
-#include <utils/locker.h>
 #include <vector>
 
 #include "display_event_handler.h"
@@ -59,6 +60,13 @@
 #include "sdm_display_builder.h"
 #include "sdm_display_builder_cb_intf.h"
 #include "sdm_display_builtin.h"
+#include "sdm_display_intf_aiqe.h"
+#include "sdm_display_intf_caps.h"
+#include "sdm_display_intf_drawcycle.h"
+#include "sdm_display_intf_lifecycle.h"
+#include "sdm_display_intf_parcel.h"
+#include "sdm_display_intf_settings.h"
+#include "sdm_display_intf_sideband.h"
 #include "sdm_display_pluggable.h"
 #include "sdm_display_pluggable_test.h"
 #include "sdm_display_virtual.h"
@@ -71,16 +79,9 @@
 #include "sdm_tui.h"
 #include "sdm_tui_cb_intf.h"
 
-#include "sdm_display_intf_caps.h"
-#include "sdm_display_intf_drawcycle.h"
-#include "sdm_display_intf_lifecycle.h"
-#include "sdm_display_intf_parcel.h"
-#include "sdm_display_intf_settings.h"
-#include "sdm_display_intf_sideband.h"
-
 namespace sdm {
 
-int32_t GetDataspaceFromColorMode(SDMColorMode mode);
+void GetColorMetadataFromColorMode(SDMColorMode mode, Dataspace &ds);
 
 class ConcurrencyMgr : public SDMDisplaySideBandIntf,
                        public SDMDisplayCapsIntf,
@@ -92,8 +93,9 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
                        public SDMHotPlugCbIntf,
                        public SDMConcurrentWriteBackCbIntf,
                        public SDMDisplayBuilderCbIntf,
-                       public SDMDisplayEventHandler {
-public:
+                       public SDMDisplayEventHandler,
+                       public SDMDisplayAiqeIntf {
+ public:
   std::unordered_map<Display, SDMDisplay *> sdm_display_{};
 
   DisplayError GetDisplaysStatus(HWDisplaysInfo *info);
@@ -120,9 +122,9 @@ public:
   DisplayError CreatePrimaryDisplay();
 
   ConcurrencyMgr();
-  DisplayError Init(SDMCompositorCbIntf *callbacks,
-                    BufferAllocator *buffer_allocator) override;
+  DisplayError Init(BufferAllocator *buffer_allocator, SocketHandler *socket_handler) override;
   DisplayError Deinit();
+  void RegisterCompositorCallback(SDMCompositorCbIntf *cb, bool enable);
 
   DisplayError AcceptDisplayChanges(Display display_id);
 
@@ -148,8 +150,6 @@ public:
     return status;
   }
 
-  void EnableCallback(bool enable);
-
   void SetHpdData(int hpd_bpp, int hpd_pattern, int hpd_connected) override;
   void GetHpdData(int *hpd_bpp, int *hpd_pattern, int *hpd_connected) override;
 
@@ -161,8 +161,7 @@ public:
                           std::map<uint32_t, DisplayConfigVariableInfo> *info);
 
   DisplayError GetDisplayAttributes(uint64_t in_display_id, int32_t in_index,
-                                    DisplayConfigVariableInfo *ret,
-                                    uint32_t *group_id);
+                                    DisplayConfigVariableInfo *ret);
 
   DisplayError GetPanelBlMaxLvl(uint64_t in_display_id, int32_t *ret) {
     return kErrorNone; // TODO(user)
@@ -290,9 +289,7 @@ public:
   DisplayError CreateDisplay(SDMDisplayType type, int32_t width, int32_t height,
                              int32_t *format, uint64_t *display_id);
 
-  DisplayError DestroyDisplay(uint64_t display_id) {
-    return kErrorNone; // TODO(user)
-  }
+  DisplayError DestroyDisplay(uint64_t display_id) { return DestroyVirtualDisplay(display_id); }
 
   DisplayError GetDisplayList(std::vector<SDMDisplayInfo> *display_info_list) {
     return kErrorNone; // TODO(user)
@@ -525,6 +522,10 @@ public:
   Display GetVsyncSource() override { return vsync_source_; }
   bool VsyncCallbackRegistered() override { return client_connected_; }
 
+  DisplayError SetSsrcMode(uint64_t display_id, const std::string &mode_name);
+  DisplayError EnableCopr(uint64_t display_id, bool enable);
+  DisplayError GetCoprStatus(uint64_t display_id, std::vector<int32_t> *copr_status);
+
   static const int pluggable_lock_index_ = kNumDisplays;
   static const int locker_count_ = pluggable_lock_index_ + 1;
   static Locker locker_[locker_count_];
@@ -618,7 +619,7 @@ private:
   DisplayError TUIEventHandler(uint64_t disp_id, SDMTUIEventType event_type);
 
   CoreInterface *core_intf_ = nullptr;
-  SDMCompositorCbIntf *callbacks_ = nullptr;
+  SDMCompositorCallbacks callbacks_{};
   BufferAllocator *buffer_allocator_ = nullptr;
 
   bool update_vsync_on_power_off_ = false;
@@ -632,7 +633,6 @@ private:
   bool is_composer_up_ = false;
   std::mutex mutex_lum_;
   static bool pending_power_mode_[kNumDisplays];
-  bool enable_aidl_idle_notification_ = false;
 
   int32_t idle_pc_ref_cnt_ = 0;
 
@@ -681,7 +681,6 @@ private:
   SDMSideBandCompositorCbIntf *sideband_cb_ = nullptr;
   std::shared_ptr<ISnapMapper> snapmapper_ = nullptr;
 };
-
 } // namespace sdm
 
 #endif // __SDM_SESSION_H__

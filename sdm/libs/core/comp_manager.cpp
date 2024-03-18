@@ -23,7 +23,7 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -925,6 +925,12 @@ DisplayError CompManager::ReserveDemuraFetchResources(const uint32_t &display_id
   return resource_intf_->ReserveDemuraFetchResources(display_id, preferred_rect);
 }
 
+DisplayError CompManager::ReserveABCFetchResources(const uint32_t &display_id, bool is_primary,
+                                                   const int8_t &req_cnt) {
+  std::lock_guard<std::recursive_mutex> obj(comp_mgr_mutex_);
+  return resource_intf_->ReserveABCFetchResources(display_id, is_primary, req_cnt);
+}
+
 DisplayError CompManager::GetDemuraFetchResources(Handle display_ctx,
                                                   vector<FetchResourceList> *frl) {
   std::lock_guard<std::recursive_mutex> obj(comp_mgr_mutex_);
@@ -1119,12 +1125,12 @@ void CompManager::SetDisplayLayerStack(Handle display_ctx, DispLayerStack *disp_
   disp_comp_ctx->strategy->SetDisplayLayerStack(disp_layer_stack);
 }
 
-void CompManager::GetDSConfig(Handle display_ctx, DestScaleInfoMap *dest_scale_info_map) {
+void CompManager::GetDSConfig(Handle display_ctx, HWLayersInfo *hw_layers_info) {
   std::lock_guard<std::recursive_mutex> obj(comp_mgr_mutex_);
   if (resource_intf_) {
     DisplayCompositionContext *display_comp_ctx =
         reinterpret_cast<DisplayCompositionContext *>(display_ctx);
-    resource_intf_->GetDSConfig(display_comp_ctx->display_resource_ctx, dest_scale_info_map);
+    resource_intf_->GetDSConfig(display_comp_ctx->display_resource_ctx, hw_layers_info);
   }
 }
 

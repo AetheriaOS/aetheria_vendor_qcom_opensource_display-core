@@ -28,45 +28,9 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 /*
- * Changes from Qualcomm Innovation Center are provided under the following license:
- *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted (subject to the limitations in the
- * disclaimer below) provided that the following conditions are met:
- *
- *    * Redistributions of source code must retain the above copyright
- *      notice, this list of conditions and the following disclaimer.
- *
- *    * Redistributions in binary form must reproduce the above
- *      copyright notice, this list of conditions and the following
- *      disclaimer in the documentation and/or other materials provided
- *      with the distribution.
- *
- *    * Neither the name of Qualcomm Innovation Center, Inc. nor the names of its
- *      contributors may be used to endorse or promote products derived
- *      from this software without specific prior written permission.
- *
- * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
- * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
- * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
- * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
- * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
-/*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
-* Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -112,6 +76,7 @@ DisplayError HWPeripheralDRM::Init() {
   }
 
   InitDestScaler();
+  InitAIScaler();
 
   PopulateBitClkRates();
   CreatePanelFeaturePropertyMap();
@@ -144,6 +109,28 @@ void HWPeripheralDRM::InitDestScaler() {
   topology_control_ = UINT32(sde_drm::DRMTopologyControl::DSPP);
   if (dest_scaler_blocks_used_) {
     topology_control_ |= UINT32(sde_drm::DRMTopologyControl::DEST_SCALER);
+  }
+}
+
+void HWPeripheralDRM::InitAIScaler() {
+  if (hw_resource_.hw_ai_scaler_count) {
+    // Do all ai scaler block resource allocations here.
+    // ai_scaler_blocks_used_ will be only one irrespective of single or dual DSI.
+    if (kQuadSplit == mixer_attributes_.split_type) {
+      ai_scaler_blocks_used_ = 0;  // Not Supported
+      return;
+    }
+
+    ai_scaler_blocks_used_ = 1;
+    if (hw_resource_.hw_ai_scaler_count >= (hw_ai_scaler_blocks_used_ + ai_scaler_blocks_used_)) {
+      // Enough ai scaler blocks available so update the static counter.
+      hw_ai_scaler_blocks_used_ += ai_scaler_blocks_used_;
+    } else {
+      ai_scaler_blocks_used_ = 0;
+    }
+    ai_scaler_cache_.resize(ai_scaler_blocks_used_);
+    // Update crtc (layer-mixer) configuration info.
+    mixer_attributes_.ai_scaler_blocks_used = ai_scaler_blocks_used_;
   }
 }
 
@@ -291,8 +278,13 @@ DisplayError HWPeripheralDRM::Commit(HWLayersInfo *hw_layers_info) {
   SetSelfRefreshState();
   SetVMReqState();
 
+  if (first_cycle_) {
+    SetDisplayMode(
+        static_cast<HWDisplayMode>(connector_info_.modes[current_mode_index_].cur_panel_mode));
+  }
+
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_EPT, token_.conn_id,
-                            hw_layers_info->expected_present_time);
+                            hw_layers_info->common_info->expected_present_time);
 
   DisplayError error = HWDeviceDRM::Commit(hw_layers_info);
   shared_ptr<Fence> cwb_fence = Fence::Create(INT(cwb_fence_fd), "cwb_fence");
@@ -332,13 +324,27 @@ DisplayError HWPeripheralDRM::Commit(HWLayersInfo *hw_layers_info) {
 }
 
 void HWPeripheralDRM::ResetDestScalarCache() {
-  for (uint32_t j = 0; j < scalar_data_.size(); j++) {
-    dest_scalar_cache_[j] = {};
+  if (dest_scaler_blocks_used_ > 0) {
+    for (uint32_t j = 0; j < scalar_data_.size(); j++) {
+      dest_scalar_cache_[j] = {};
+    }
+  }
+
+  if (ai_scaler_blocks_used_ > 0) {
+    for (uint32_t j = 0; j < ai_scaler_cache_.size(); j++) {
+      ai_scaler_cache_[j] = {};
+    }
   }
 }
 
 void HWPeripheralDRM::SetDestScalarData(const HWLayersInfo &hw_layer_info) {
-  SetDestScalarData(hw_layer_info.dest_scale_info_map);
+  if (dest_scaler_blocks_used_ > 0) {
+    SetDestScalarData(hw_layer_info.dest_scale_info_map);
+  }
+
+  if (ai_scaler_blocks_used_ > 0) {
+    SetAIScalerData(hw_layer_info.ai_scale_info_map);
+  }
 }
 
 void HWPeripheralDRM::SetDestScalarData(const DestScaleInfoMap dest_scale_info_map) {
@@ -389,14 +395,75 @@ void HWPeripheralDRM::SetDestScalarData(const DestScaleInfoMap dest_scale_info_m
   }
 }
 
+void HWPeripheralDRM::SetAIScalerData(const AIScalerInfoMap ai_scale_info_map) {
+  if (!ai_scaler_blocks_used_) {
+    return;
+  }
+
+  for (uint32_t i = 0; i < ai_scaler_blocks_used_; i++) {
+    auto it = ai_scale_info_map.find(i);
+
+    if (it == ai_scale_info_map.end()) {
+      return;
+    }
+
+    HWAIScalerInfo *ai_scale_info = it->second;
+    struct drm_msm_ai_scaler *ai_scaler_cfg = &sde_ai_scaler_cfg_;
+
+    // Update UAPI structure for AI Scaler config
+    ai_scaler_cfg->config = ai_scale_info->ai_scale_data.config;
+    ai_scaler_cfg->src_w = ai_scale_info->ai_scale_data.src_w;
+    ai_scaler_cfg->src_h = ai_scale_info->ai_scale_data.src_h;
+    ai_scaler_cfg->dst_w = ai_scale_info->ai_scale_data.dst_w;
+    ai_scaler_cfg->dst_h = ai_scale_info->ai_scale_data.dst_h;
+    if (ai_scale_info->ai_scale_data.is_param_valid) {
+      memcpy(ai_scaler_cfg->param, ai_scale_info->ai_scale_data.param,
+             AIQE_AI_SCALER_PARAM_LEN * sizeof(ai_scaler_cfg->param[0]));
+    }
+
+    if (ai_scaler_cache_[i].scaler_data.config != sde_ai_scaler_cfg_.config) {
+      needs_ai_scaler_update_ = true;
+    }
+  }
+
+  // Set Panel Feature for AI Scaler Config
+  if (needs_ai_scaler_update_) {
+    PanelFeaturePropertyInfo payload{};
+    int rc;
+    payload.prop_id = kPanelFeatureAIScalerCfg;
+
+    if (sde_ai_scaler_cfg_.config) {
+      payload.prop_ptr = reinterpret_cast<uint64_t>(&sde_ai_scaler_cfg_);
+    } else {
+      // Disable AI Scaler case
+      payload.prop_ptr = reinterpret_cast<uint64_t>(nullptr);
+    }
+    payload.prop_size = sizeof(sde_ai_scaler_cfg_);
+    payload.version = 1;
+
+    rc = SetPanelFeature(payload);
+    if (rc) {
+      DLOGE("failed to set kPanelFeatureAIScalerCfg rc %d", rc);
+    }
+  }
+}
+
 void HWPeripheralDRM::CacheDestScalarData() {
-  if (needs_ds_update_) {
+  if ((dest_scaler_blocks_used_ > 0) && needs_ds_update_) {
     // Cache the destination scalar data during commit
     for (uint32_t i = 0; i < sde_dest_scalar_data_.num_dest_scaler; i++) {
       dest_scalar_cache_[i].flags = sde_dest_scalar_data_.ds_cfg[i].flags;
       dest_scalar_cache_[i].scalar_data = scalar_data_[i];
     }
     needs_ds_update_ = false;
+  }
+
+  if ((ai_scaler_blocks_used_ > 0) && needs_ai_scaler_update_) {
+    // Cache the AI Scaler data during commit
+    for (uint32_t i = 0; i < ai_scaler_cache_.size(); i++) {
+      ai_scaler_cache_[i].scaler_data = sde_ai_scaler_cfg_;
+    }
+    needs_ai_scaler_update_ = false;
   }
 }
 
@@ -615,6 +682,20 @@ DisplayError HWPeripheralDRM::PowerOn(const HWQosData &qos_data, SyncPoints *syn
     needs_ds_update_ = true;
   }
 
+  if (sde_ai_scaler_cfg_.flags) {
+    PanelFeaturePropertyInfo payload{};
+    int rc;
+    payload.prop_id = kPanelFeatureAIScalerCfg;
+    payload.prop_ptr = reinterpret_cast<uint64_t>(&sde_ai_scaler_cfg_);
+    payload.prop_size = sizeof(sde_ai_scaler_cfg_);
+
+    rc = SetPanelFeature(payload);
+    if (rc) {
+      DLOGE("failed to set kPanelFeatureAIScalerCfg rc %d", rc);
+    }
+    needs_ai_scaler_update_ = true;
+  }
+
   DisplayError err = HWDeviceDRM::PowerOn(qos_data, sync_points);
   if (err != kErrorNone) {
     return err;
@@ -641,6 +722,8 @@ DisplayError HWPeripheralDRM::PowerOff(bool teardown, SyncPoints *sync_points) {
   if (!first_cycle_) {
     drm_mgr_intf_->MarkPanelFeatureForNullCommit(token_,
                                            panel_feature_property_map_[kPanelFeatureDemuraInitCfg]);
+    drm_mgr_intf_->MarkPanelFeatureForNullCommit(token_,
+                                                 panel_feature_property_map_[kPanelFeatureABCCfg]);
   }
   SetVMReqState();
   DisplayError err = kErrorNone;
@@ -956,6 +1039,14 @@ void HWPeripheralDRM::CreatePanelFeaturePropertyMap() {
   panel_feature_property_map_[kPanelFeatureSPRUDCCfg] = sde_drm::kDRMPanelFeatureSPRUDC;
   panel_feature_property_map_[kPanelFeatureDemuraCfg0Param2] =
       sde_drm::kDRMPanelFeatureDemuraCfg0Param2;
+  panel_feature_property_map_[kPanelFeatureAiqeSsrcConfig] =
+      sde_drm::kDRMPanelFeatureAiqeSSRCConfig;
+  panel_feature_property_map_[kPanelFeatureAiqeSsrcData] = sde_drm::kDRMPanelFeatureAiqeSSRCData;
+  panel_feature_property_map_[kPanelFeatureAIScalerCfg] = sde_drm::kDRMPanelFeatureAIScalerCfg;
+  panel_feature_property_map_[kPanelFeatureAiqeMdnie] = sde_drm::kDRMPanelFeatureAiqeMdnie;
+  panel_feature_property_map_[kPanelFeatureAiqeMdnieArt] = sde_drm::kDRMPanelFeatureAiqeMdnieArt;
+  panel_feature_property_map_[kPanelFeatureAiqeCopr] = sde_drm::kDRMPanelFeatureAiqeCopr;
+  panel_feature_property_map_[kPanelFeatureABCCfg] = sde_drm::kDRMPanelFeatureABC;
 }
 
 int HWPeripheralDRM::GetPanelFeature(PanelFeaturePropertyInfo *feature_info) {
@@ -987,17 +1078,23 @@ int HWPeripheralDRM::GetPanelFeature(PanelFeaturePropertyInfo *feature_info) {
     case kPanelFeatureRCInitCfg:
     case kPanelFeatureSPRUDCCfg:
     case kPanelFeatureDemuraCfg0Param2:
-    drm_feature.obj_type = DRM_MODE_OBJECT_CRTC;
-    drm_feature.obj_id = token_.crtc_id;
-    break;
+    case kPanelFeatureAiqeSsrcConfig:
+    case kPanelFeatureAiqeSsrcData:
+    case kPanelFeatureAiqeMdnie:
+    case kPanelFeatureAiqeMdnieArt:
+    case kPanelFeatureAiqeCopr:
+    case kPanelFeatureABCCfg:
+      drm_feature.obj_type = DRM_MODE_OBJECT_CRTC;
+      drm_feature.obj_id = token_.crtc_id;
+      break;
     case kPanelFeatureSPRPackType:
     case kPanelFeatureDemuraPanelId:
       drm_feature.obj_type = DRM_MODE_OBJECT_CONNECTOR;
       drm_feature.obj_id =  token_.conn_id;
-     break;
+      break;
     default:
-     DLOGE("obj id population for property %d not implemented", feature_info->prop_id);
-     return -EINVAL;
+      DLOGE("obj id population for property %d not implemented", feature_info->prop_id);
+      return -EINVAL;
   }
 
   drm_mgr_intf_->GetPanelFeature(&drm_feature);
@@ -1022,16 +1119,23 @@ int HWPeripheralDRM::SetPanelFeature(const PanelFeaturePropertyInfo &feature_inf
     case kPanelFeatureDemuraInitCfg:
     case kPanelFeatureSPRUDCCfg:
     case kPanelFeatureDemuraCfg0Param2:
-     drm_feature.obj_type = DRM_MODE_OBJECT_CRTC;
-     drm_feature.obj_id = token_.crtc_id;
-     break;
+    case kPanelFeatureAiqeSsrcConfig:
+    case kPanelFeatureAiqeSsrcData:
+    case kPanelFeatureAIScalerCfg:
+    case kPanelFeatureAiqeMdnie:
+    case kPanelFeatureAiqeMdnieArt:
+    case kPanelFeatureAiqeCopr:
+    case kPanelFeatureABCCfg:
+      drm_feature.obj_type = DRM_MODE_OBJECT_CRTC;
+      drm_feature.obj_id = token_.crtc_id;
+      break;
     case kPanelFeatureSPRPackType:
       drm_feature.obj_type = DRM_MODE_OBJECT_CONNECTOR;
       drm_feature.obj_id =  token_.conn_id;
-     break;
+      break;
     default:
-     DLOGE("Set Panel feature property %d not implemented", feature_info.prop_id);
-     return -EINVAL;
+      DLOGE("Set Panel feature property %d not implemented", feature_info.prop_id);
+      return -EINVAL;
   }
 
   DLOGI("Set Panel feature property %d", feature_info.prop_id);

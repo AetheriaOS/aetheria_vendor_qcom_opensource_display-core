@@ -23,7 +23,7 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -33,17 +33,18 @@
 #define __DISPLAY_BASE_H__
 
 #include <core/display_interface.h>
-#include <private/strategy_interface.h>
+#include <private/abc_feature_fact_intf.h>
 #include <private/color_interface.h>
-#include <private/rc_intf.h>
-#include <private/panel_feature_property_intf.h>
-#include <private/panel_feature_factory_intf.h>
 #include <private/demuratn_core_uvm_fact_intf.h>
 #include <private/feature_license_intf.h>
-#include <private/noise_plugin_intf.h>
-#include <private/noise_plugin_dbg.h>
-#include <private/hw_interface.h>
 #include <private/hw_events_interface.h>
+#include <private/hw_interface.h>
+#include <private/noise_plugin_dbg.h>
+#include <private/noise_plugin_intf.h>
+#include <private/panel_feature_factory_intf.h>
+#include <private/panel_feature_property_intf.h>
+#include <private/rc_intf.h>
+#include <private/strategy_interface.h>
 #include <utils/multi_core_instantiator.h>
 
 #include <limits.h>
@@ -59,9 +60,12 @@
 #include "color_manager.h"
 #include "dpu_core_mux.h"
 
+using aiqe::GetABCFeatureFactIntf;
+
 #define GET_PANEL_FEATURE_FACTORY "GetPanelFeatureFactoryIntf"
 #define GET_DEMURATN_FACTORY "GetDemuraTnCoreUvmFactoryIntf"
 #define GET_FEATURE_LICENSE_FACTORY "GetFeatureLicenseFactoryIntf"
+#define GET_ABC_FACTORY "GetABCFeatureFactIntf"
 
 namespace sdm {
 
@@ -74,6 +78,7 @@ using std::lock_guard;
 typedef PanelFeatureFactoryIntf* (*GetPanelFeatureFactory)();
 typedef DemuraTnCoreUvmFactoryIntf* (*GetDemuraTnFactory)();
 typedef FeatureLicenseFactoryIntf* (*GetFeatureLicenseFactory)();
+typedef aiqe::ABCFeatureFactIntf *(*GetABCFactory)();
 
 class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
  public:
@@ -276,6 +281,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) {
     return kErrorNotSupported;
   }
+  virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
 
  protected:
   struct DisplayMutex {
@@ -445,6 +451,8 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   bool rc_enable_prop_ = false;
   bool rc_config_enable_ = false;  // Specifies if RC is enabled by RCCore
   RCLayersInfo rc_info_ = {};  // when rc_config_enable_ is true, this holds RC top/bottom info
+  DynLib abc_feature_impl_lib_;
+  aiqe::ABCFeatureFactIntf *abc_factory_ = nullptr;
   PanelFeatureFactoryIntf *pf_factory_ = nullptr;
   PanelFeaturePropertyIntf *prop_intf_ = nullptr;
   DemuraTnCoreUvmFactoryIntf *demuratn_factory_ = nullptr;
@@ -475,8 +483,10 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   static std::atomic<uint32_t> hw_rc_blocks_in_use_;
   uint32_t rc_blocks_reserved_ = 0;
   DynLib extension_lib_;
+  bool ssrc_feature_enabled_ = false;
+  bool xr_variant_ = false;
 
-private:
+ private:
   // Max tolerable power-state-change wait-times in milliseconds.
   static const int kPowerStateTimeout = 5000;
 

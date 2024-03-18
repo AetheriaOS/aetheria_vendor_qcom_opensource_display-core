@@ -64,10 +64,10 @@ public:
                                        uint32_t *out_num_requests,
                                        bool *needs_commit);
   SDMDisplayVirtual(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
-                    SDMCompositorCbIntf *callbacks, Display id, int32_t sdm_id,
-                    uint32_t width, uint32_t height);
+                    SDMCompositorCallbacks *callbacks, Display id, int32_t sdm_id, uint32_t width,
+                    uint32_t height);
 
-protected:
+ protected:
   uint32_t width_ = 0;
   uint32_t height_ = 0;
   std::shared_ptr<LayerBuffer> output_buffer_ = std::make_shared<LayerBuffer>();

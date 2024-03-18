@@ -123,6 +123,11 @@ int CPUHint::ReqHintsOffload(int hint, int tid) {
                (current_status == kInactive) ? "initialized" : "renewed",
                large_comp_cycle_.handle_id, kLargeComposition,
                large_comp_cycle_.start_time, large_comp_cycle_.status);
+      std::string temp =
+          "LargeCompHint_" +
+          ((current_status == kInactive) ? std::string("initialized") : std::string("renewed"));
+      DTRACE_BEGIN(temp.c_str());
+      DTRACE_END();
     }
   }
 
@@ -143,6 +148,8 @@ int CPUHint::ReqHintRelease() {
     large_comp_cycle_.tid = 0;
     large_comp_cycle_.start_time = 0;
     large_comp_cycle_.status = kInactive;
+    DTRACE_BEGIN("LargeCompHint_released");
+    DTRACE_END();
   }
   return 0;
 }

@@ -28,7 +28,7 @@
 */
 
 /*
- * Changes from Qualcomm Innovation Center are provided under the following license:
+ * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
  *
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
@@ -75,9 +75,11 @@
 
 #include "xf86drm.h"
 #include "xf86drmMode.h"
-#include <drm/msm_drm.h>
+#include <display/drm/msm_drm_aiqe.h>
 #include <display/drm/msm_drm_pp.h>
+#include <display/drm/msm_drm_aiqe.h>
 #include <display/drm/sde_drm.h>
+#include <drm/msm_drm.h>
 namespace sde_drm {
 
 typedef std::map<std::pair<uint32_t, uint64_t>, float> CompRatioMap;
@@ -823,6 +825,7 @@ struct DRMCrtcInfo {
   uint32_t rc_count = 0;
   uint64_t rc_total_mem_size = 0;
   uint32_t demura_count = 0;
+  uint32_t abc_count = 0;
   uint32_t dspp_count = 0;
   bool skip_inline_rot_threshold = false;
   bool has_noise_layer = false;
@@ -830,6 +833,7 @@ struct DRMCrtcInfo {
   CacVersion cac_version = CacVersion::NONE;
   DDRVersion ddr_version = DDRVersion::kDDRVersion5;
   bool has_cesta = false;
+  uint32_t ai_scaler_count = 0;
 };
 
 enum struct DRMPlaneType {
@@ -1073,6 +1077,8 @@ enum DRMPPFeatureID {
   kFeatureDimmingBlLut,
   kFeatureDimmingDynCtrl,
   kFeatureDimmingMinBl,
+  kFeaturePaHistCtrl,
+  kFeaturePaHistIrq,
   kPPFeaturesMax,
 };
 
@@ -1172,6 +1178,13 @@ enum DRMPanelFeatureID {
   kDRMPanelFeatureDemuraResources,
   kDRMPanelFeatureSPRUDC,
   kDRMPanelFeatureDemuraCfg0Param2,
+  kDRMPanelFeatureAiqeSSRCConfig,
+  kDRMPanelFeatureAiqeSSRCData,
+  kDRMPanelFeatureAIScalerCfg,
+  kDRMPanelFeatureAiqeMdnie,
+  kDRMPanelFeatureAiqeMdnieArt,
+  kDRMPanelFeatureAiqeCopr,
+  kDRMPanelFeatureABC,
   kDRMPanelFeatureMax,
 };
 

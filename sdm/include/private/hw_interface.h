@@ -25,7 +25,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -171,7 +171,7 @@ class HWInterface {
   virtual DisplayError UpdateTransferTime(uint32_t transfer_time) = 0;
   virtual DisplayError CancelDeferredPowerMode() = 0;
   virtual void HandleCwbTeardown(bool sync_teardown) = 0;
-  virtual void SetDestScalarData(const DestScaleInfoMap dest_scale_info_map) = 0;
+  virtual void SetDestScalarData(const HWLayersInfo &hw_layer_info) = 0;
   virtual void GetDRMDisplayToken(sde_drm::DRMDisplayToken *token) const = 0;
 
  protected:

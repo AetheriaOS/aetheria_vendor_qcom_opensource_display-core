@@ -42,27 +42,19 @@ namespace sdm {
 
 class SDMDisplayVirtualDPU : public SDMDisplayVirtual {
 public:
-  SDMDisplayVirtualDPU(CoreInterface *core_intf,
-                       BufferAllocator *buffer_allocator,
-                       SDMCompositorCbIntf *callbacks, Display id,
-                       int32_t sdm_id, uint32_t width, uint32_t height,
-                       float min_lum, float max_lum);
-  virtual DisplayError Init();
-  virtual DisplayError Validate(uint32_t *out_num_types,
-                                uint32_t *out_num_requests);
-  virtual DisplayError Present(shared_ptr<Fence> *out_retire_fence);
-  virtual DisplayError SetOutputBuffer(const SnapHandle *buf,
-                                       shared_ptr<Fence> release_fence);
-  virtual DisplayError SetPanelLuminanceAttributes(float min_lum,
-                                                   float max_lum);
-  virtual DisplayError PreValidateDisplay(bool *exit_validate);
-  virtual DisplayError
-  PostCommitLayerStack(shared_ptr<Fence> *out_retire_fence);
-  virtual DisplayError CommitOrPrepare(bool validate_only,
-                                       shared_ptr<Fence> *out_retire_fence,
-                                       uint32_t *out_num_types,
-                                       uint32_t *out_num_requests,
-                                       bool *needs_commit);
+ SDMDisplayVirtualDPU(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
+                      SDMCompositorCallbacks *callbacks, Display id, int32_t sdm_id, uint32_t width,
+                      uint32_t height, float min_lum, float max_lum);
+ virtual DisplayError Init();
+ virtual DisplayError Validate(uint32_t *out_num_types, uint32_t *out_num_requests);
+ virtual DisplayError Present(shared_ptr<Fence> *out_retire_fence);
+ virtual DisplayError SetOutputBuffer(const SnapHandle *buf, shared_ptr<Fence> release_fence);
+ virtual DisplayError SetPanelLuminanceAttributes(float min_lum, float max_lum);
+ virtual DisplayError PreValidateDisplay(bool *exit_validate);
+ virtual DisplayError PostCommitLayerStack(shared_ptr<Fence> *out_retire_fence);
+ virtual DisplayError CommitOrPrepare(bool validate_only, shared_ptr<Fence> *out_retire_fence,
+                                      uint32_t *out_num_types, uint32_t *out_num_requests,
+                                      bool *needs_commit);
 
 private:
   DisplayError SetConfig(uint32_t width, uint32_t height);

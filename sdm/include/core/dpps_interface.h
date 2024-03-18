@@ -30,7 +30,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -40,6 +40,7 @@
 #include <core/sdm_types.h>
 #include <core/display_interface.h>
 #include <Dataspace.h>
+#include <private/panel_feature_property_intf.h>
 
 #include <string>
 
@@ -104,7 +105,7 @@ class DppsPropIntf {
 class DppsInterface {
  public:
   virtual int Init(DppsPropIntf *intf, const std::string &panel_name,
-                   DisplayInterface *display_intf) = 0;
+                   DisplayInterface *display_intf, PanelFeaturePropertyIntf *prop_intf) = 0;
   virtual int Deinit() = 0;
   virtual int DppsNotifyOps(enum DppsNotifyOps op, void *payload, size_t size) = 0;
 
@@ -114,11 +115,12 @@ class DppsInterface {
 
 class DppsDummyImpl : public DppsInterface {
  public:
-  int Init(DppsPropIntf *intf, const std::string &panel_name,
-           DisplayInterface *display_intf = nullptr) {
+  int Init(DppsPropIntf *intf, const std::string &panel_name, DisplayInterface *display_intf,
+           PanelFeaturePropertyIntf *prop_intf = nullptr) {
     (void)intf;
     (void)panel_name;
     (void)display_intf;
+    (void)prop_intf;
     return 0;
   }
   int Deinit() {
