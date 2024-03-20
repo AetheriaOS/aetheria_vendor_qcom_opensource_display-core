@@ -944,8 +944,8 @@ DisplayError ColorManagerProxy::ColorMgrIdleFallback(bool idle_fallback_hint) {
     prev_idle_fallback_mode_ = curr_mode_;
 
     //Set Native mode on idle fallback
-    idle_fallback_mode.gamut = ColorPrimaries_BT709_5;
-    idle_fallback_mode.gamma = Transfer_sRGB;
+    idle_fallback_mode.gamut = ColorPrimaries_Max;
+    idle_fallback_mode.gamma = Transfer_Max;
     idle_fallback_mode.intent = snapdragoncolor::RenderIntent::kNative;
     idle_fallback_mode.intent_name = "Standard";
 
