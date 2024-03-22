@@ -582,6 +582,7 @@ bool SDMDisplayBuilder::IsHWDisplayConnected(Display client_id) {
 }
 
 int SDMDisplayBuilder::HandlePluggableDisplays(bool delay_hotplug) {
+  SCOPE_LOCK(locker_[pluggable_lock_index_]);
   hwc2_display_t virtual_display_index =
       (hwc2_display_t)GetDisplayIndex(qdutils::DISPLAY_VIRTUAL);
   std::bitset<kSecureMax> secure_sessions = 0;
@@ -1012,6 +1013,7 @@ void SDMDisplayBuilder::DestroyNonPluggableDisplayLocked(
 }
 
 void SDMDisplayBuilder::RemoveDisconnectedPluggableDisplays() {
+  SCOPE_LOCK(locker_[pluggable_lock_index_]);
   HWDisplaysInfo hw_displays_info = {};
   DisplayError error = core_intf_->GetDisplaysStatus(&hw_displays_info);
   if (error != kErrorNone) {

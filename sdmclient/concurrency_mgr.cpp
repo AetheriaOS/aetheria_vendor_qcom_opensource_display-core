@@ -812,7 +812,6 @@ void ConcurrencyMgr::RegisterCompositorCallback(SDMCompositorCbIntf *cb, bool en
     }
 
     {
-      SCOPE_LOCK(locker_[pluggable_lock_index_]);
       DLOGI("Handling pluggable displays...");
       int32_t err = disp_->HandlePluggableDisplays(false);
       if (err) {
