@@ -3776,6 +3776,16 @@ DisplayBuiltIn::PanelOprInfo(const std::string &client_name, bool enable,
   return event_proxy_info_.PanelOprInfo(client_name, enable, cb_intf);
 }
 
+DisplayError DisplayBuiltIn::SetPaHistCollection(
+    const std::string &client_name, bool enable,
+    SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf) {
+  return event_proxy_info_.SetPaHistCollection(client_name, enable, cb_intf);
+}
+
+DisplayError DisplayBuiltIn::GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf) {
+  return event_proxy_info_.GetPaHistBins(buf);
+}
+
 DisplayError EventProxyInfo::Init(const std::string &panel_name,
                                   DisplayInterface *intf,
                                   DynLib &extension_lib) {
@@ -3858,6 +3868,65 @@ EventProxyInfo::PanelOprInfo(const std::string &client_name, bool enable,
   ret = event_proxy_intf_->SetParameter(kSetPanelOprInfoEnable, payload);
   if (ret) {
     DLOGE("Failed to set panel Opr info enablement, ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  return kErrorNone;
+}
+
+DisplayError EventProxyInfo::SetPaHistCollection(
+    const std::string &client_name, bool enable,
+    SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf) {
+  if (!event_proxy_intf_.get()) {
+    DLOGW("Event proxy intf is not available");
+    return kErrorParameters;
+  }
+
+  PaHistCollectionParam *param = nullptr;
+  GenericPayload payload;
+  int ret = payload.CreatePayload(param);
+  if (ret || !param) {
+    DLOGE("Failed to create payload for pa hist, ret %d", ret);
+    return kErrorParameters;
+  }
+
+  param->name = client_name;
+  param->enable = enable;
+  param->cb_intf = cb_intf;
+
+  ret = event_proxy_intf_->SetParameter(kSetPaHistCollection, payload);
+  if (ret) {
+    DLOGE("Failed to set pa hist enablement, ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  return kErrorNone;
+}
+
+DisplayError EventProxyInfo::GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf) {
+  PaHistBinsParam *param = nullptr;
+  GenericPayload payload;
+
+  if (!event_proxy_intf_.get()) {
+    DLOGW("Event proxy intf is not available");
+    return kErrorParameters;
+  }
+
+  if (!buf) {
+    DLOGE("Invalid pa hist bins buf");
+    return kErrorParameters;
+  }
+
+  int ret = payload.CreatePayload(param);
+  if (ret || !param) {
+    DLOGE("Failed to create payload for pa hist bins, ret %d", ret);
+    return kErrorParameters;
+  }
+
+  param->buf = buf;
+  ret = event_proxy_intf_->GetParameter(kGetPaHistBins, &payload);
+  if (ret) {
+    DLOGE("Failed to get pa hist bins, ret %d", ret);
     return kErrorUndefined;
   }
 

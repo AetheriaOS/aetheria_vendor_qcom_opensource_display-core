@@ -170,6 +170,9 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(GetPanelFeatureInfo(PanelFeatureInfo *info));
   MAKE_NO_OP(PanelOprInfo(const std::string &client_name, bool enable,
                           SdmDisplayCbInterface<PanelOprPayload> *cb_intf));
+  MAKE_NO_OP(SetPaHistCollection(const std::string &client_name, bool enable,
+                                 SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf));
+  MAKE_NO_OP(GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf));
   MAKE_NO_OP(SetSsrcMode(const std::string &mode));
 
  protected:
