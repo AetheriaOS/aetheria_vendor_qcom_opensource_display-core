@@ -12,7 +12,6 @@ cc_library_shared {
         "liblog",
         "libvmmem",
         "libsync",
-        "libdisplaydebug"
     ],
     header_libs: [
         "libvmmem_headers",

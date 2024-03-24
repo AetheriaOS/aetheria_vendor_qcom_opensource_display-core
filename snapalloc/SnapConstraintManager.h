@@ -51,6 +51,7 @@ class SnapConstraintManager {
   ~SnapConstraintManager();
   SnapConstraintManager(){};
   static std::mutex constraint_mgr_mutex_;
+  Debug *debug_ = nullptr;
 
   static SnapConstraintManager *instance_;
 

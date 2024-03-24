@@ -105,15 +105,15 @@ SDMLayer::SDMLayer(Display display_id, BufferAllocator *buf_allocator)
       "vendor.qti.hardware.display.snapalloc-impl.so";
   void *snap_impl_lib_ = ::dlopen(snapalloc_lib_name.c_str(), RTLD_NOW);
   if (!snap_impl_lib_) {
-    ALOGE("Dlopen error for snapalloc impl: %s", dlerror());
+    DLOGE("Dlopen error for snapalloc impl: %s", dlerror());
     return;
   }
 
-  std::shared_ptr<ISnapMapper> (*LINK_FETCH_ISnapMapper)() = nullptr;
+  std::shared_ptr<ISnapMapper> (*LINK_FETCH_ISnapMapper)(DebugCallbackIntf *) = nullptr;
   *reinterpret_cast<void **>(&LINK_FETCH_ISnapMapper) =
       ::dlsym(snap_impl_lib_, "FETCH_ISnapMapper");
   if (LINK_FETCH_ISnapMapper) {
-    snapmapper_ = LINK_FETCH_ISnapMapper();
+    snapmapper_ = LINK_FETCH_ISnapMapper(nullptr);
   } else {
     DLOGE("Failed to get snapalloc instance");
   }

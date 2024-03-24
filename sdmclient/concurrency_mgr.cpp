@@ -200,8 +200,8 @@ void ConcurrencyMgr::GetHpdData(int *hpd_bpp, int *hpd_pattern,
   *hpd_connected = hpd_connected_;
 }
 
-DisplayError ConcurrencyMgr::Init(BufferAllocator *buffer_allocator,
-                                  SocketHandler *socket_handler) {
+DisplayError ConcurrencyMgr::Init(BufferAllocator *buffer_allocator, SocketHandler *socket_handler,
+                                  DebugCallbackIntf *debug) {
   SCOPE_LOCK(locker_[SDM_DISPLAY_PRIMARY]);
 
   if (is_composer_up_) {
@@ -216,6 +216,7 @@ DisplayError ConcurrencyMgr::Init(BufferAllocator *buffer_allocator,
 
   DisplayError status = kErrorNotSupported;
 
+  SDMDebugHandler::SetDebugCallback(debug);
   int value = 0; // Default value when property is not present.
   SDMDebugHandler::Get()->GetProperty(ENABLE_VERBOSE_LOG, &value);
   if (true) {
@@ -233,7 +234,7 @@ DisplayError ConcurrencyMgr::Init(BufferAllocator *buffer_allocator,
   DLOGI("disable_get_screen_decorator_support: %d",
         disable_get_screen_decorator_support_);
 
-  auto err = InitSubModules();
+  auto err = InitSubModules(debug);
   if (err != kErrorNone) {
     return err;
   }
@@ -307,7 +308,7 @@ DisplayError ConcurrencyMgr::Deinit() {
   return kErrorNone;
 }
 
-DisplayError ConcurrencyMgr::InitSubModules() {
+DisplayError ConcurrencyMgr::InitSubModules(DebugCallbackIntf *debug) {
   ipc_intf_ = std::make_shared<IPCImpl>(IPCImpl());
   ipc_intf_->Init();
 
@@ -329,15 +330,15 @@ DisplayError ConcurrencyMgr::InitSubModules() {
       "vendor.qti.hardware.display.snapalloc-impl.so";
   void *snap_impl_lib_ = ::dlopen(snapalloc_lib_name.c_str(), RTLD_NOW);
   if (!snap_impl_lib_) {
-    ALOGE("Dlopen error for snapalloc impl: %s", dlerror());
+    DLOGE("Dlopen error for snapalloc impl: %s", dlerror());
     return kErrorResources;
   }
 
-  std::shared_ptr<ISnapMapper> (*LINK_FETCH_ISnapMapper)() = nullptr;
+  std::shared_ptr<ISnapMapper> (*LINK_FETCH_ISnapMapper)(DebugCallbackIntf *) = nullptr;
   *reinterpret_cast<void **>(&LINK_FETCH_ISnapMapper) =
       ::dlsym(snap_impl_lib_, "FETCH_ISnapMapper");
   if (LINK_FETCH_ISnapMapper) {
-    snapmapper_ = LINK_FETCH_ISnapMapper();
+    snapmapper_ = LINK_FETCH_ISnapMapper(debug);
   } else {
     DLOGE("Failed to get snapalloc instance");
     return kErrorResources;

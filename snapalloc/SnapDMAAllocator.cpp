@@ -22,6 +22,10 @@ namespace snapalloc {
 SnapDMAAllocator *SnapDMAAllocator::instance_{nullptr};
 std::mutex SnapDMAAllocator::snap_dma_alloc_mutex_;
 
+SnapDMAAllocator::SnapDMAAllocator() {
+  debug_ = Debug::GetInstance();
+}
+
 SnapDMAAllocator *SnapDMAAllocator::GetInstance() {
   std::lock_guard<std::mutex> lock(snap_dma_alloc_mutex_);
 
@@ -161,7 +165,7 @@ void SnapDMAAllocator::GetHeapInfo(vendor_qti_hardware_display_common_BufferUsag
       heap_name = "qcom,display";
       dma_vm_names->push_back("qcom,cp_sec_display");
     } else if (usage & vendor_qti_hardware_display_common_BufferUsage::CAMERA_OUTPUT) {
-      int secure_preview_only = Debug::IsSecurePreviewOnlyEnabled();
+      int secure_preview_only = debug_->IsSecurePreviewOnlyEnabled();
       if (CSFEnabled()) {
         heap_name = "qcom,system";
         *alloc_size = ALIGN(*alloc_size, SIZE_2MB);

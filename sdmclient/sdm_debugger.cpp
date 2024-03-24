@@ -33,9 +33,9 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
-#include <cutils/properties.h>
 #include <display_properties.h>
 #include <utils/constants.h>
+#include <cstdarg>
 
 #include "sdm_debugger.h"
 
@@ -45,6 +45,14 @@ SDMDebugHandler SDMDebugHandler::debug_handler_;
 
 SDMDebugHandler::SDMDebugHandler() {
   DebugHandler::Set(SDMDebugHandler::Get());
+}
+
+void SDMDebugHandler::SetDebugCallback(DebugCallbackIntf *debug) {
+  debug_handler_.Register(debug);
+}
+
+void SDMDebugHandler::ATRACE_INT(const char *custom_string, const int bit) {
+  debug_handler_.ATrace(custom_string, bit);
 }
 
 void SDMDebugHandler::DebugAll(bool enable, int verbose_level) {
@@ -210,49 +218,58 @@ void SDMDebugHandler::DebugQos(bool enable, int verbose_level) {
 }
 
 void SDMDebugHandler::Error(const char *fmt, ...) {
-  va_list list;
-  va_start(list, fmt);
-  __android_log_vprint(ANDROID_LOG_ERROR, LOG_TAG, fmt, list);
+  std::va_list args;
+  va_start(args, fmt);
+  if (debug_callback_) {
+    debug_callback_->Log(DebugLogType::ERROR, LOG_TAG, fmt, args);
+  }
 }
 
 void SDMDebugHandler::Warning(const char *fmt, ...) {
-  va_list list;
-  va_start(list, fmt);
-  __android_log_vprint(ANDROID_LOG_WARN, LOG_TAG, fmt, list);
+  std::va_list args;
+  va_start(args, fmt);
+  if (debug_callback_) {
+    debug_callback_->Log(DebugLogType::WARNING, LOG_TAG, fmt, args);
+  }
 }
 
 void SDMDebugHandler::Info(const char *fmt, ...) {
-  va_list list;
-  va_start(list, fmt);
-  __android_log_vprint(ANDROID_LOG_INFO, LOG_TAG, fmt, list);
+  std::va_list args;
+  va_start(args, fmt);
+  if (debug_callback_) {
+    debug_callback_->Log(DebugLogType::INFO, LOG_TAG, fmt, args);
+  }
 }
 
 void SDMDebugHandler::Debug(const char *fmt, ...) {
-  va_list list;
-  va_start(list, fmt);
-  __android_log_vprint(ANDROID_LOG_DEBUG, LOG_TAG, fmt, list);
+  std::va_list args;
+  va_start(args, fmt);
+  if (debug_callback_) {
+    debug_callback_->Log(DebugLogType::DEBUG, LOG_TAG, fmt, args);
+  }
 }
 
 void SDMDebugHandler::Verbose(const char *fmt, ...) {
-  if (debug_handler_.verbose_level_) {
-    va_list list;
-    va_start(list, fmt);
-    __android_log_vprint(ANDROID_LOG_VERBOSE, LOG_TAG, fmt, list);
+  std::va_list args;
+  va_start(args, fmt);
+  if (debug_handler_.verbose_level_ && debug_callback_) {
+    debug_callback_->Log(DebugLogType::VERBOSE, LOG_TAG, fmt, args);
   }
 }
 
 void SDMDebugHandler::BeginTrace(const char *class_name,
                                  const char *function_name,
                                  const char *custom_string) {
-  if (atrace_is_tag_enabled(ATRACE_TAG)) {
-    char name[PATH_MAX] = {0};
-    snprintf(name, sizeof(name), "%s::%s::%s", class_name, function_name,
-             custom_string);
-    atrace_begin(ATRACE_TAG, name);
+  if (debug_callback_) {
+    debug_callback_->BeginTrace(class_name, function_name, custom_string);
   }
 }
 
-void SDMDebugHandler::EndTrace() { atrace_end(ATRACE_TAG); }
+void SDMDebugHandler::EndTrace() {
+  if (debug_callback_) {
+    debug_callback_->EndTrace();
+  }
+}
 
 int SDMDebugHandler::GetIdleTimeoutMs() {
   int value = IDLE_TIMEOUT_DEFAULT_MS;
@@ -262,22 +279,29 @@ int SDMDebugHandler::GetIdleTimeoutMs() {
 }
 
 int SDMDebugHandler::GetProperty(const char *property_name, int *value) {
-  char property[PROPERTY_VALUE_MAX];
-
-  if (property_get(property_name, property, NULL) > 0) {
-    *value = atoi(property);
-    return kErrorNone;
+  if (debug_callback_) {
+    return debug_callback_->GetProperty(property_name, value);
+  } else {
+    return kErrorNotSupported;
   }
-
-  return kErrorNotSupported;
 }
 
 int SDMDebugHandler::GetProperty(const char *property_name, char *value) {
-  if (property_get(property_name, value, NULL) > 0) {
-    return kErrorNone;
+  if (debug_callback_) {
+    return debug_callback_->GetProperty(property_name, value);
+  } else {
+    return kErrorNotSupported;
   }
+}
 
-  return kErrorNotSupported;
+void SDMDebugHandler::Register(DebugCallbackIntf *dbg) {
+  debug_callback_ = dbg;
+}
+
+void SDMDebugHandler::ATrace(const char *custom_string, const int bit) {
+  if (debug_callback_) {
+    debug_callback_->ATrace(custom_string, bit);
+  }
 }
 
 } // namespace sdm
