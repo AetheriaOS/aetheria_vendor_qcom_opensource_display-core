@@ -225,4 +225,9 @@ DisplayError SDMDisplayVirtual::SetColorMode(SDMColorMode mode) {
   return kErrorNone;
 }
 
+DisplayError SDMDisplayVirtual::SetColorModeWithRenderIntent(SDMColorMode mode,
+                                                             SDMRenderIntent intent) {
+  return kErrorNone;
+}
+
 } // namespace sdm

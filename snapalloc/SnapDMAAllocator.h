@@ -16,6 +16,7 @@
 #include "ISnapMemAllocBackend.h"
 #include "SnapMemAllocDefs.h"
 #include "SnapTypes.h"
+#include "Debug.h"
 
 #ifdef TARGET_USES_SMMU_PROXY
 #include <linux/qti-smmu-proxy.h>
@@ -51,13 +52,14 @@ class SnapDMAAllocator : public ISnapMemAllocBackend {
                        std::bitset<kVmPermissionMax> *vm_perm);
   Error UnmapBuffer(void *base, unsigned int size);
   ~SnapDMAAllocator() { Deinit(); }
-  SnapDMAAllocator() {}
+  SnapDMAAllocator();
   void GetCSFVersion();
   bool CSFEnabled();
   void InitMemUtils();
   void DeinitMemUtils();
   void Deinit();
 
+  Debug *debug_ = nullptr;
   int dma_dev_fd_ = FD_INIT;
   BufferAllocator buffer_allocator_;
   static std::mutex snap_dma_alloc_mutex_;

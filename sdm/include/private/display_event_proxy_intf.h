@@ -6,6 +6,7 @@
 #ifndef __DISPLAY_EVENT_PROXY_INTF_H__
 #define __DISPLAY_EVENT_PROXY_INTF_H__
 
+#include <array>
 #include <memory>
 #include <private/cb_intf.h>
 #include <private/generic_intf.h>
@@ -17,12 +18,15 @@ namespace sdm {
 class DisplayInterface;
 
 enum SdmDisplayEvents {
-  kSdmOprEvent, // OPR register value
+  kSdmOprEvent,  // OPR register value
+  kSdmPaHistEvent,
   kSdmDisplayEventsMax = 0xff
 };
 
 enum DispEventProxyParams {
   kSetPanelOprInfoEnable,
+  kSetPaHistCollection,
+  kGetPaHistBins,
   kDispEventProxyParamMax = 0xff,
 };
 
@@ -40,6 +44,22 @@ struct PanelOprInfoParam {
   std::string name;
   bool enable;
   SdmDisplayCbInterface<PanelOprPayload> *cb_intf = nullptr;
+};
+
+struct PaHistCollectionPayload {
+  uint32_t version = sizeof(PaHistCollectionPayload);
+  SdmDisplayEvents event;
+};
+
+#define HIST_BIN_SIZE 256
+struct PaHistBinsParam {
+  std::array<uint32_t, HIST_BIN_SIZE> *buf;
+};
+
+struct PaHistCollectionParam {
+  std::string name;
+  bool enable;
+  SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf = nullptr;
 };
 
 using DisplayEventProxyIntf =

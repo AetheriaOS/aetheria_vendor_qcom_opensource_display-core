@@ -122,7 +122,8 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   DisplayError CreatePrimaryDisplay();
 
   ConcurrencyMgr();
-  DisplayError Init(BufferAllocator *buffer_allocator, SocketHandler *socket_handler) override;
+  DisplayError Init(BufferAllocator *buffer_allocator, SocketHandler *socket_handler,
+                    DebugCallbackIntf *debug) override;
   DisplayError Deinit();
   void RegisterCompositorCallback(SDMCompositorCbIntf *cb, bool enable);
 
@@ -549,7 +550,7 @@ private:
   void SetNewThrottlingRate(uint32_t new_rate);
 
   void ResetPanel();
-  DisplayError InitSubModules();
+  DisplayError InitSubModules(DebugCallbackIntf *debug);
 
   void SendHotplug(Display display, bool state);
   DisplayError Hotplug(Display display, bool state);

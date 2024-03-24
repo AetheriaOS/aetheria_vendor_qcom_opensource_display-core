@@ -281,6 +281,14 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) {
     return kErrorNotSupported;
   }
+  virtual DisplayError SetPaHistCollection(
+      const std::string &client_name, bool enable,
+      SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf) {
+    return kErrorNotSupported;
+  }
+  virtual DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf) {
+    return kErrorNotSupported;
+  }
   virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
 
  protected:
@@ -340,7 +348,6 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   DisplayError GetValueOfModeAttribute(const AttrVal &attr, const std::string &type,
                                        std::string *value);
   bool IsSupportColorModeAttribute(const std::string &color_mode);
-  void SetPUonDestScaler();
   void ClearColorInfo();
   void GetColorPrimaryTransferFromAttributes(const AttrVal &attr,
       std::vector<PrimariesTransfer> *supported_pt);
@@ -409,10 +416,6 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   bool partial_update_control_ = true;
   HWEventsInterface *hw_events_intf_ = NULL;
   bool disable_pu_one_frame_ = false;
-  // TODO(user): Temporary changes, to be removed when DRM driver supports
-  // Partial update with Destination scaler enabled.
-  bool disable_pu_on_dest_scaler_ = false;
-  bool de_enabled_ = false;
   bool pu_pending_ = false;
   uint32_t num_color_modes_ = 0;
   std::vector<SDEDisplayMode> color_modes_;

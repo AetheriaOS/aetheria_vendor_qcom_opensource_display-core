@@ -49,7 +49,10 @@ extern "C" {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
 
-std::shared_ptr<ISnapAlloc> FETCH_ISnapAlloc() {
+std::shared_ptr<ISnapAlloc> FETCH_ISnapAlloc(DebugCallbackIntf *dbg) {
+  ::snapalloc::Debug *debug_instance = ::snapalloc::Debug::GetInstance();
+  debug_instance->RegisterDebugCallback(dbg);
+
   std::shared_ptr<ISnapAlloc> obj = std::make_shared<SnapAlloc>();
   return obj;
 }

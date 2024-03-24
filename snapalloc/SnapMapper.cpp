@@ -148,7 +148,10 @@ extern "C" {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
 
-std::shared_ptr<ISnapMapper> FETCH_ISnapMapper() {
+std::shared_ptr<ISnapMapper> FETCH_ISnapMapper(DebugCallbackIntf *dbg) {
+  ::snapalloc::Debug *debug_instance = ::snapalloc::Debug::GetInstance();
+  debug_instance->RegisterDebugCallback(dbg);
+
   std::shared_ptr<ISnapMapper> obj = std::make_shared<SnapMapper>();
   return obj;
 }

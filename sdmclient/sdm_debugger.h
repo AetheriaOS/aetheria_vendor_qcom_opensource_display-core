@@ -41,8 +41,8 @@
 #include <bitset>
 #include <core/sdm_types.h>
 #include <debug_handler.h>
-#include <log/log.h>
-#include <utils/Trace.h>
+
+#include "debug_callback_intf.h"
 
 namespace sdm {
 
@@ -53,6 +53,12 @@ public:
   SDMDebugHandler();
   static inline DebugHandler *Get() { return &debug_handler_; }
   static const char *DumpDir() { return "/data/vendor/display"; }
+
+  // static function to register debug callback
+  static void SetDebugCallback(DebugCallbackIntf *debug);
+
+  // static function to atrace through debug callback
+  static void ATRACE_INT(const char *custom_string, const int bit);
 
   static void DebugAll(bool enable, int verbose_level);
   static void DebugResources(bool enable, int verbose_level);
@@ -83,11 +89,15 @@ public:
   virtual void EndTrace();
   virtual int GetProperty(const char *property_name, int *value);
   virtual int GetProperty(const char *property_name, char *value);
+  virtual void ATrace(const char *custom_string, const int bit);
+  void Register(DebugCallbackIntf *dbg);
 
-private:
+ private:
   static SDMDebugHandler debug_handler_;
   std::bitset<32> log_mask_;
   int32_t verbose_level_;
+
+  DebugCallbackIntf *debug_callback_ = nullptr;
 };
 
 } // namespace sdm

@@ -53,6 +53,7 @@ public:
                                           CwbConfig &cwb_config);
   virtual DisplayError GetDisplayType(int32_t *out_type);
   virtual DisplayError SetColorMode(SDMColorMode mode);
+  virtual DisplayError SetColorModeWithRenderIntent(SDMColorMode mode, SDMRenderIntent intent);
   virtual DisplayError SetOutputBuffer(const SnapHandle *buf,
                                        shared_ptr<Fence> release_fence);
   virtual DisplayError DumpVDSBuffer();

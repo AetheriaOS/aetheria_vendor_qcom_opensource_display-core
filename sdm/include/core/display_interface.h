@@ -1351,6 +1351,26 @@ class DisplayInterface {
   PanelOprInfo(const std::string &client_name, bool enable,
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) = 0;
 
+  /*! @brief Method to enable/disable PA histogram collection.
+
+    @param[in] client_name : client name
+    @param[in] enable: enable or disable
+    @param[in] cb_intf: callback interface
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError SetPaHistCollection(
+      const std::string &client_name, bool enable,
+      SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf) = 0;
+
+  /*! @brief Method to get PA histogram bins.
+
+    @param[out] buf: pointer to save bins
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf) = 0;
+
   /*! @brief Method to set mode for SSRC feature.
 
    @param[in] mode : SSRC mode string
