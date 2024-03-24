@@ -698,6 +698,7 @@ DisplayError CompManager::SetDetailEnhancerData(Handle display_ctx,
     return kErrorResources;
   }
 
+  display_comp_ctx->strategy->SetDetailEnhancerData(de_data);
   return resource_intf_->SetDetailEnhancerData(display_comp_ctx->display_resource_ctx, de_data);
 }
 
