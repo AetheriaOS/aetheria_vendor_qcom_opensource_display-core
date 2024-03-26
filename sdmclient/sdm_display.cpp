@@ -756,6 +756,11 @@ DisplayError SDMDisplay::Deinit() {
     delete color_mode_;
   }
 
+  SDMLayerBuilder *layer_builder = SDMLayerBuilder::GetInstance();
+  layer_builder->DeInit(id_);
+  layer_builder = nullptr;
+  SDMLayerBuilder::PutInstance();
+
   return kErrorNone;
 }
 
