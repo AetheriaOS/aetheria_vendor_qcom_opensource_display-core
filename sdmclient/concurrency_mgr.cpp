@@ -2248,6 +2248,12 @@ DisplayError ConcurrencyMgr::NotifyTUIDone(int ret, int disp_id,
   return kErrorNone;
 }
 
+DisplayError ConcurrencyMgr::SetContentFps(const std::string &name, int32_t fps) {
+  sideband_cb_->NotifyContentFps(name, fps);
+
+  return kErrorNone;
+}
+
 int ConcurrencyMgr::GetDisplayConfigGroup(uint64_t display, DisplayConfigGroupInfo variable_config) {
   int disp_idx = GetDisplayIndex(display);
   if (disp_idx == -1) {
