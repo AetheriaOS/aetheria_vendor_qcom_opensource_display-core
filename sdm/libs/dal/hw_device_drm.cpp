@@ -927,19 +927,22 @@ DisplayError HWDeviceDRM::PopulateDisplayAttributes(uint32_t index) {
                    &display_attributes_[index].topology_num_split);
   display_attributes_[index].is_device_split = (display_attributes_[index].topology_num_split > 1);
   display_attributes_[index].allowed_mode_switch = connector_info_.modes[index].allowed_mode_switch;
+  display_attributes_[index].avr_step = connector_info_.modes[index].avr_step_fps;
+  display_attributes_[index].early_ept_timeout = connector_info_.modes[index].early_ept_timeout;
 
   DLOGI(
       "Display %d-%d attributes[%d]: WxH: %dx%d, DPI: %fx%f, FPS: %d, LM_SPLIT: %d, V_BACK_PORCH:"
       " %d, V_FRONT_PORCH: %d [RFI Adjusted : %s], V_PULSE_WIDTH: %d, V_TOTAL: %d, H_TOTAL: %d,"
-      " CLK: %dKHZ, TOPOLOGY: %d [SPLIT NUMBER: %d], HW_SPLIT: %d", display_id_, disp_type_,
-      index, display_attributes_[index].x_pixels, display_attributes_[index].y_pixels,
-      display_attributes_[index].x_dpi, display_attributes_[index].y_dpi,
-      display_attributes_[index].fps, display_attributes_[index].is_device_split,
-      display_attributes_[index].v_back_porch, display_attributes_[index].v_front_porch,
-      adjusted ? "True" : "False", display_attributes_[index].v_pulse_width,
-      display_attributes_[index].v_total, display_attributes_[index].h_total,
-      display_attributes_[index].clock_khz, display_attributes_[index].topology,
-      display_attributes_[index].topology_num_split, mixer_attributes_.split_type);
+      " CLK: %dKHZ, TOPOLOGY: %d [SPLIT NUMBER: %d], HW_SPLIT: %d, AVR_STEP: %d",
+      display_id_, disp_type_, index, display_attributes_[index].x_pixels,
+      display_attributes_[index].y_pixels, display_attributes_[index].x_dpi,
+      display_attributes_[index].y_dpi, display_attributes_[index].fps,
+      display_attributes_[index].is_device_split, display_attributes_[index].v_back_porch,
+      display_attributes_[index].v_front_porch, adjusted ? "True" : "False",
+      display_attributes_[index].v_pulse_width, display_attributes_[index].v_total,
+      display_attributes_[index].h_total, display_attributes_[index].clock_khz,
+      display_attributes_[index].topology, display_attributes_[index].topology_num_split,
+      mixer_attributes_.split_type, display_attributes_[index].avr_step);
 
   return kErrorNone;
 }
@@ -1887,7 +1890,7 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
     SetQOSData(qos_data);
   }
 
-  if (hw_layers_info->common_info->hw_avr_info.update) {
+  if (hw_layers_info->common_info->hw_avr_info.update.test(kUpdateAVRModeFlag)) {
     sde_drm::DRMQsyncMode mode = sde_drm::DRMQsyncMode::NONE;
     if (hw_layers_info->common_info->hw_avr_info.mode == kContinuousMode) {
       mode = sde_drm::DRMQsyncMode::CONTINUOUS;
@@ -1895,6 +1898,13 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
       mode = sde_drm::DRMQsyncMode::ONESHOT;
     }
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_QSYNC_MODE, token_.conn_id, mode);
+  }
+
+  if (hw_layers_info->common_info->hw_avr_info.update.test(kUpdateAVRStepFlag)) {
+    sde_drm::DRMAvrStepState state = hw_layers_info->common_info->hw_avr_info.step_enabled
+                                         ? sde_drm::DRMAvrStepState::ENABLE
+                                         : sde_drm::DRMAvrStepState::DISABLE;
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_AVR_STEP_STATE, token_.conn_id, state);
   }
 
   // dpps commit feature ops doesn't use the obj id, set it as -1
@@ -3740,6 +3750,23 @@ void HWDeviceDRM::HandleCwbTeardown(bool sync_teardown) {
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_CRTC, cwb_config_[core_id_].token.conn_id, 0);
     TeardownConcurrentWriteback();
   }
+}
+
+DisplayError HWDeviceDRM::NotifyExpectedPresent(uint64_t expected_present_time,
+                                                uint32_t frame_interval_ns) {
+#ifdef DRM_IOCTL_MSM_EARLY_EPT
+  int ret = -1;
+  struct drm_msm_display_early_ept early_ept_cfg = {};
+  early_ept_cfg.connector_id = token_.conn_id;
+  early_ept_cfg.flags = DRM_MSM_EARLY_EPT;
+  early_ept_cfg.ept_ns = expected_present_time;
+  early_ept_cfg.frame_interval = frame_interval_ns;
+  ret = drmIoctl(dev_fd_, DRM_IOCTL_MSM_EARLY_EPT, &early_ept_cfg);
+  if (ret < 0) {
+    return kErrorHardware;
+  }
+#endif
+  return kErrorNone;
 }
 
 }  // namespace sdm

@@ -513,8 +513,12 @@ public:
     // Work around to block main thread execution until async commit finishes.
     display_intf_->DestroyLayer();
   }
-
+  virtual DisplayError SetupVRRConfig() { return kErrorNotSupported; }
+  virtual DisplayError NotifyExpectedPresent(uint64_t expected_present_time,
+                                             uint32_t frame_interval_ns);
+  virtual void SetFrameIntervalNs(uint32_t fi) { frame_interval_ns_ = fi; }
   virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
+  virtual int GetNotifyEptConfig() { return -1; }
 
  protected:
   static uint32_t throttling_refresh_rate_;
@@ -720,6 +724,7 @@ private:
       0; // Expected Present time for current frame
   bool virtual_config_fps_switch_ = false;
   int idle_active_ms_ = 0;
+  uint32_t frame_interval_ns_ = 0;  // FrameInterval for current frame
 };
 
 inline DisplayError SDMDisplay::Perform(uint32_t operation, ...) {

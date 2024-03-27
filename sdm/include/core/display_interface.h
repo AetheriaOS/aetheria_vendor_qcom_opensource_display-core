@@ -259,11 +259,12 @@ struct DisplayConfigGroupInfo {
   bool is_yuv = false;            //!< If the display output is in YUV format.
   bool smart_panel = false;       //!< If the display config has smart panel.
   uint64_t allowed_mode_switch = 0;
+  uint32_t avr_step = 0;  //!< AVR Step fps of the display panel.
 
   bool operator==(const DisplayConfigGroupInfo& info) const {
-    return ((x_pixels == info.x_pixels) && (y_pixels == info.y_pixels) &&
-            (x_dpi == info.x_dpi) && (y_dpi == info.y_dpi) && (is_yuv == info.is_yuv) &&
-            (smart_panel == info.smart_panel));
+    return ((x_pixels == info.x_pixels) && (y_pixels == info.y_pixels) && (x_dpi == info.x_dpi) &&
+            (y_dpi == info.y_dpi) && (is_yuv == info.is_yuv) && (smart_panel == info.smart_panel) &&
+            (avr_step == info.avr_step));
   }
 };
 
@@ -272,12 +273,14 @@ struct DisplayConfigVariableInfo : public DisplayConfigGroupInfo {
   uint32_t vsync_period_ns = 0;   //!< VSync period in nanoseconds.
   bool is_virtual_config = false;
   int32_t parent_config_index = -1;   //!< if virtual config, then corresponding panel config
+  uint32_t early_ept_timeout = 0;     //!< Early EPT timeout value ns
 
   bool operator==(const DisplayConfigVariableInfo& info) const {
     return ((x_pixels == info.x_pixels) && (y_pixels == info.y_pixels) &&
             (h_total == info.h_total) && (v_total == info.v_total) && (x_dpi == info.x_dpi) &&
-            (y_dpi == info.y_dpi) && (fps == info.fps) && (vsync_period_ns == info.vsync_period_ns)
-            && (is_yuv == info.is_yuv) && (smart_panel == info.smart_panel));
+            (y_dpi == info.y_dpi) && (fps == info.fps) &&
+            (vsync_period_ns == info.vsync_period_ns) && (is_yuv == info.is_yuv) &&
+            (smart_panel == info.smart_panel) && (early_ept_timeout == info.early_ept_timeout));
   }
 };
 
@@ -1378,6 +1381,25 @@ class DisplayInterface {
    @return \link DisplayError \endlink
   */
   virtual DisplayError SetSsrcMode(const std::string &mode) = 0;
+
+  /*! @brief Method to set Variable Refresh Rate feature state.
+
+    @param[in] Enable or Disable
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError SetVRRState(bool state) = 0;
+
+  /*! @brief Method to inform driver about frameintervalchange or wakeup from idle.
+
+    @param[in] expected_present_time : ept for incoming frame
+
+    @param[in] frame_interval_ns : frame interval for incoming frame
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError NotifyExpectedPresent(uint64_t expected_present_time,
+                                             uint32_t frame_interval_ns) = 0;
 
  protected:
   virtual ~DisplayInterface() { }

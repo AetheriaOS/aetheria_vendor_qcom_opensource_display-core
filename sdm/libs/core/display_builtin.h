@@ -231,6 +231,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
       SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf) override;
   DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf) override;
   DisplayError SetSsrcMode(const std::string &mode) override;
+  DisplayError SetVRRState(bool state) override;
 
   // Implement the HWEventHandlers
   DisplayError VSync(int64_t timestamp) override;
@@ -283,7 +284,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError BuildLayerStackStats(LayerStack *layer_stack) override;
   void UpdateDisplayModeParams();
   void HandleQsyncPostCommit();
-  void UpdateQsyncMode();
+  void UpdateQsyncConfig();
   void SetVsyncStatus(bool enable);
   void SendBacklight();
   void SendDisplayConfigs();
@@ -299,6 +300,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   bool IdleFallbackLowerFps(bool idle_screen);
   void HandleUpdateTransferTime(QSyncMode mode);
   DisplayError SetupAiqe();
+  DisplayError SetAVRStepState(bool enable);
 
   const uint32_t kPuTimeOutMs = 1000;
   std::vector<HWEvent> event_list_;
@@ -368,6 +370,8 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
 
   DynLib ssrc_lib_;
   std::shared_ptr<aiqe::SsrcFeatureInterface> ssrc_feature_interface_;
+  bool avr_step_enabled_ = false;
+  bool vrr_enabled_ = false;
 };
 
 }  // namespace sdm

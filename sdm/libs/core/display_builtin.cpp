@@ -439,7 +439,7 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
     }
   } else {
     if (CanSkipDisplayPrepare(layer_stack)) {
-      UpdateQsyncMode();
+      UpdateQsyncConfig();
       return kErrorNone;
     }
   }
@@ -507,7 +507,7 @@ DisplayError DisplayBuiltIn::Prepare(LayerStack *layer_stack) {
     return error;
   }
 
-  UpdateQsyncMode();
+  UpdateQsyncConfig();
 
   CacheFrameROI();
 
@@ -544,8 +544,9 @@ void DisplayBuiltIn::CacheFrameROI() {
   }
 }
 
-void DisplayBuiltIn::UpdateQsyncMode() {
-  if (!client_ctx_.hw_panel_info.qsync_support) {
+void DisplayBuiltIn::UpdateQsyncConfig() {
+  // QSync and AVR Step features are de-coupled on CMD Mode panel.
+  if ((client_ctx_.hw_panel_info.mode == kModeVideo) && !client_ctx_.hw_panel_info.qsync_support) {
     return;
   }
 
@@ -568,13 +569,16 @@ void DisplayBuiltIn::UpdateQsyncMode() {
              display_type_, mode);
   }
 
-  disp_layer_stack_->stack_info.common_info.hw_avr_info.update = (mode != active_qsync_mode_) ||
-                                                                needs_avr_update_;
+  disp_layer_stack_->stack_info.common_info.hw_avr_info.update = needs_avr_update_;
+  if (mode != active_qsync_mode_) {
+    disp_layer_stack_->stack_info.common_info.hw_avr_info.update.set(kUpdateAVRModeFlag);
+  }
   disp_layer_stack_->stack_info.common_info.hw_avr_info.mode = GetAvrMode(mode);
+  disp_layer_stack_->stack_info.common_info.hw_avr_info.step_enabled = avr_step_enabled_;
 
-  DLOGV_IF(kTagDisplay, "display %d-%d update: %d mode: %d",
-           display_id_, display_type_, disp_layer_stack_->stack_info.common_info.hw_avr_info.update,
-           mode);
+  DLOGV_IF(kTagDisplay, "display %d-%d update: %d mode: %d AVR Step state: %d", display_id_,
+           display_type_, disp_layer_stack_->stack_info.common_info.hw_avr_info.update, mode,
+           avr_step_enabled_);
 
   // Store active mode.
   active_qsync_mode_ = mode;
@@ -1421,14 +1425,14 @@ void DisplayBuiltIn::HandleQsyncPostCommit() {
   } else if (qsync_mode_ == kQsyncModeOneShotContinuous) {
     // No action needed.
   } else if (qsync_mode_ == kQSyncModeContinuous) {
-      if (!avoid_qsync_mode_change_) {
-        needs_avr_update_ = false;
-      } else if (needs_avr_update_) {
-        validated_ = false;
-        event_handler_->Refresh();
-      }
+    if (!avoid_qsync_mode_change_) {
+      needs_avr_update_.reset();
+    } else if (needs_avr_update_.any()) {
+      validated_ = false;
+      event_handler_->Refresh();
+    }
   } else if (qsync_mode_ == kQSyncModeNone) {
-    needs_avr_update_ = false;
+    needs_avr_update_.reset();
   }
 
   avoid_qsync_mode_change_ = false;
@@ -1500,7 +1504,7 @@ DisplayError DisplayBuiltIn::SetDisplayState(DisplayState state, bool teardown,
   if (state == kStateOff) {
     vsync_enable_ = false;
     if (qsync_mode_ != kQSyncModeNone) {
-      needs_avr_update_ = true;
+      needs_avr_update_.set(kUpdateAVRModeFlag);
     }
   }
 
@@ -1791,7 +1795,7 @@ void DisplayBuiltIn::SetVsyncStatus(bool enable) {
 
 void DisplayBuiltIn::IdleTimeout() {
   DTRACE_SCOPED();
-  if (state_ == kStateOff) {
+  if ((state_ == kStateOff) || avr_step_enabled_) {
     return;
   }
 
@@ -2506,7 +2510,7 @@ DisplayError DisplayBuiltIn::SetQSyncMode(QSyncMode qsync_mode) {
   }
 
   qsync_mode_ = qsync_mode;
-  needs_avr_update_ = true;
+  needs_avr_update_.set(kUpdateAVRModeFlag);
   validated_ = false;
   event_handler_->Refresh();
   return kErrorNone;
@@ -2869,6 +2873,14 @@ DisplayError DisplayBuiltIn::BuildLayerStackStats(LayerStack *layer_stack) {
 
 DisplayError DisplayBuiltIn::SetActiveConfig(uint32_t index) {
   deferred_config_.MarkDirty();
+
+  if (vrr_enabled_) {
+    // Set VRR State
+    bool enable = hw_intf_->IsAVRStepSupported(index);
+    SetQSyncMode(enable ? kQSyncModeContinuous : kQSyncModeNone);
+    SetAVRStepState(enable);
+  }
+
   auto error = DisplayBase::SetActiveConfig(index);
   shared_ptr<Fence> release_fence = nullptr;
   HWDMSType dms_type = client_ctx_.hw_panel_info.dms_type;
@@ -3951,6 +3963,41 @@ DisplayError DisplayBuiltIn::SetSsrcMode(const std::string &mode) {
   }
 
   return ret;
+}
+
+DisplayError DisplayBuiltIn::SetAVRStepState(bool enable) {
+  ClientLock lock(disp_mutex_);
+
+  if (enable && (client_ctx_.hw_panel_info.mode == kModeVideo)) {
+    if (!client_ctx_.hw_panel_info.qsync_support || (qsync_mode_ == kQSyncModeNone)) {
+      DLOGW("AVR Step feature is not supported without QSync on VID mode");
+      return kErrorNotSupported;
+    }
+  }
+
+  if (avr_step_enabled_ == enable) {
+    DLOGI("AVR Step already set in requested state %d", enable);
+    return kErrorNone;
+  }
+
+  avr_step_enabled_ = enable;
+  needs_avr_update_.set(kUpdateAVRStepFlag);
+  validated_ = false;
+  event_handler_->Refresh();
+  DLOGI("AVR Step state set to %d successfully", avr_step_enabled_);
+
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetVRRState(bool state) {
+  SetQSyncMode(state ? kQSyncModeContinuous : kQSyncModeNone);
+  DisplayError error = SetAVRStepState(state);
+  if (error != kErrorNone) {
+    return error;
+  }
+
+  vrr_enabled_ = state;
+  return kErrorNone;
 }
 
 }  // namespace sdm
