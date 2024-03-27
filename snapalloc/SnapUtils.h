@@ -6,6 +6,7 @@
 
 #include "Debug.h"
 #include "SnapTypes.h"
+#include <display/drm/sde_drm.h>
 
 #ifdef __ANDROID__
 #include <display/media/mmm_color_fmt.h>
