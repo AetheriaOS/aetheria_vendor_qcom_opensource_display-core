@@ -2498,9 +2498,8 @@ DisplayError DisplayBuiltIn::GetQSyncMode(QSyncMode *qsync_mode) {
 DisplayError DisplayBuiltIn::SetQSyncMode(QSyncMode qsync_mode) {
   ClientLock lock(disp_mutex_);
 
-  if (!client_ctx_.hw_panel_info.qsync_support || first_cycle_) {
-    DLOGW("Failed: qsync_support: %d first_cycle %d", client_ctx_.hw_panel_info.qsync_support,
-          first_cycle_);
+  if (!client_ctx_.hw_panel_info.qsync_support) {
+    DLOGW("Failed: qsync_support: %d", client_ctx_.hw_panel_info.qsync_support);
     return kErrorNotSupported;
   }
 
