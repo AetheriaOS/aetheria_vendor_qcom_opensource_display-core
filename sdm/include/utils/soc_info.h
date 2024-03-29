@@ -10,7 +10,8 @@
 #define kAnorakSocName "anorak"
 #define kSunSocId 618
 #define kSunSocName "sun"
-#define kNiobeSocId 629
+#define kNiobeSocId1 629
+#define kNiobeSocId2 652
 #define kNiobeSocName "niobe"
 
 #endif  // __SOC_INFO_H__
