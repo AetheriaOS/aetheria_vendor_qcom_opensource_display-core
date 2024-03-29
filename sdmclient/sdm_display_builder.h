@@ -23,6 +23,8 @@
 
 namespace sdm {
 
+static const int pluggable_lock_index_ = kNumDisplays;
+
 struct DisplayMapInfo {
   Display client_id = kNumDisplays;                 // mapped sf id for this display
   int32_t sdm_id = -1;                              // sdm id for this display

@@ -149,6 +149,8 @@ public:
  virtual DisplayError SetDemuraConfig(int demura_idx);
  virtual DisplayError PerformCacConfig(CacConfig config, bool enable);
  virtual DisplayError SetSsrcMode(const std::string &mode);
+ virtual DisplayError SetupVRRConfig();
+  virtual int GetNotifyEptConfig();
 
 private:
  SDMDisplayBuiltIn(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
@@ -224,6 +226,9 @@ private:
  uint32_t large_comp_hint_threshold_ = 0;
  nsecs_t hint_release_start_time_ = 0;
  nsecs_t elapse_time_threshold_ = 100;  // Time is in milliseconds
+
+ // Nominal VSync multiplier for Notify EPT heads-up
+ const int32_t notify_ept_heads_up_config_ = 2;
 };
 
 } // namespace sdm

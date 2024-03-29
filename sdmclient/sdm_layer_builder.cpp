@@ -27,14 +27,13 @@ SDMLayerBuilder *SDMLayerBuilder::GetInstance() {
 void SDMLayerBuilder::PutInstance() {
   std::lock_guard<std::mutex> lock(lock_);
 
+  ref_count_--;
   if (!ref_count_) {
     delete layer_builder_;
     layer_builder_ = nullptr;
 
     return;
   }
-
-  ref_count_--;
 }
 
 DisplayError SDMLayerBuilder::Init(BufferAllocator *buffer_allocator,
@@ -153,19 +152,20 @@ DisplayError SDMLayerBuilder::DestroyLayer(uint64_t display_id,
   auto &layer_set = layer_stack.layer_set_;
   auto &layer_map = layer_stack.layer_map_;
 
-  auto layer = layer_map.find(layer_id);
-  if (layer == layer_map.end()) {
+  auto layer_iter = layer_map.find(layer_id);
+  if (layer_iter == layer_map.end()) {
     DLOGW("Layer: %" PRIu64 " not found", layer_id);
     return kErrorNotSupported;
   }
 
-  layer_map.erase(layer);
+  const auto layer = layer_iter->second;
+  layer_map.erase(layer_iter);
 
-  const auto z_range = layer_set.equal_range(layer->second);
+  const auto z_range = layer_set.equal_range(layer);
   for (auto current = z_range.first; current != z_range.second; ++current) {
-    if (*current == layer->second) {
+    if (*current == layer) {
       current = layer_set.erase(current);
-      delete layer->second;
+      delete layer;
       break;
     }
   }

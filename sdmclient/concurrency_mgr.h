@@ -482,6 +482,7 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   DisplayError SetCameraSmoothInfo(SDMCameraSmoothOp op, int32_t fps) override;
   DisplayError NotifyTUIDone(int ret, int disp_id,
                              SDMTUIEventType event_type) override;
+  DisplayError SetContentFps(const std::string &name, int32_t fps) override;
   int GetDisplayConfigGroup(uint64_t display, DisplayConfigGroupInfo variable_config);
 
   // SDMDisplayEventHandler
@@ -522,12 +523,16 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   bool IsClientConnected() { return client_connected_; }
   Display GetVsyncSource() override { return vsync_source_; }
   bool VsyncCallbackRegistered() override { return client_connected_; }
+  DisplayError SetupVRRConfig(uint64_t display_id);
+  DisplayError NotifyExpectedPresent(Display display, uint64_t expected_present_time,
+                                     uint32_t frame_interval_ns);
+  DisplayError SetFrameIntervalNs(Display display, uint32_t frameIntervalNs);
+  int GetNotifyEptConfig(Display display);
 
   DisplayError SetSsrcMode(uint64_t display_id, const std::string &mode_name);
   DisplayError EnableCopr(uint64_t display_id, bool enable);
   DisplayError GetCoprStatus(uint64_t display_id, std::vector<int32_t> *copr_status);
 
-  static const int pluggable_lock_index_ = kNumDisplays;
   static const int locker_count_ = pluggable_lock_index_ + 1;
   static Locker locker_[locker_count_];
   static Locker display_config_locker_;

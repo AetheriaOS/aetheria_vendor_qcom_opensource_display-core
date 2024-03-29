@@ -1697,4 +1697,31 @@ DisplayError SDMDisplayBuiltIn::SetSsrcMode(const std::string &mode) {
   return display_intf_->SetSsrcMode(mode);
 }
 
+DisplayError SDMDisplayBuiltIn::SetupVRRConfig() {
+  DisplayError error = kErrorNone;
+  uint32_t avr_step = variable_config_map_.at(active_config_index_).avr_step;
+
+  if (avr_step > 0) {
+    // Enable Variable Refresh Rate State
+    DLOGI("Enable VRR State for Config %d with AVR Step %d fps", active_config_index_, avr_step);
+    error = display_intf_->SetVRRState(true);
+    if (error != kErrorNone) {
+      return error;
+    }
+  }
+
+  for (auto &[config_id, config] : variable_config_map_) {
+    if (config.avr_step > 0) {
+      // Publish AVR Step period as the Vsync Period for an AVR Step enabled mode.
+      config.vsync_period_ns = (1000.f / static_cast<float>(config.avr_step)) * 1000000;
+    }
+  }
+
+  return error;
+}
+
+int SDMDisplayBuiltIn::GetNotifyEptConfig() {
+  return notify_ept_heads_up_config_;
+}
+
 } // namespace sdm

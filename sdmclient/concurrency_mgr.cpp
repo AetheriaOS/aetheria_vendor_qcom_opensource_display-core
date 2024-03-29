@@ -812,7 +812,6 @@ void ConcurrencyMgr::RegisterCompositorCallback(SDMCompositorCbIntf *cb, bool en
     }
 
     {
-      SCOPE_LOCK(locker_[pluggable_lock_index_]);
       DLOGI("Handling pluggable displays...");
       int32_t err = disp_->HandlePluggableDisplays(false);
       if (err) {
@@ -2248,6 +2247,12 @@ DisplayError ConcurrencyMgr::NotifyTUIDone(int ret, int disp_id,
   return kErrorNone;
 }
 
+DisplayError ConcurrencyMgr::SetContentFps(const std::string &name, int32_t fps) {
+  sideband_cb_->NotifyContentFps(name, fps);
+
+  return kErrorNone;
+}
+
 int ConcurrencyMgr::GetDisplayConfigGroup(uint64_t display, DisplayConfigGroupInfo variable_config) {
   int disp_idx = GetDisplayIndex(display);
   if (disp_idx == -1) {
@@ -2521,6 +2526,37 @@ DisplayError ConcurrencyMgr::EnableCopr(uint64_t display_id, bool enable) {
 
 DisplayError ConcurrencyMgr::GetCoprStatus(uint64_t display_id, std::vector<int32_t> *copr_status) {
   return kErrorNone;
+}
+
+DisplayError ConcurrencyMgr::SetupVRRConfig(uint64_t display) {
+  return CallDisplayFunction(display, &SDMDisplay::SetupVRRConfig);
+}
+
+DisplayError ConcurrencyMgr::NotifyExpectedPresent(Display display, uint64_t expected_present_time,
+                                                   uint32_t frame_interval_ns) {
+  return CallDisplayFunction(display, &SDMDisplay::NotifyExpectedPresent, expected_present_time,
+                             frame_interval_ns);
+}
+
+DisplayError ConcurrencyMgr::SetFrameIntervalNs(Display display, uint32_t frame_interval_ns) {
+  Locker::ScopeLock lock_d(locker_[display]);
+  if (!sdm_display_[display]) {
+    return kErrorParameters;
+  }
+
+  sdm_display_[display]->SetFrameIntervalNs(frame_interval_ns);
+
+  return kErrorNone;
+}
+
+int ConcurrencyMgr::GetNotifyEptConfig(Display display) {
+  int disp_idx = GetDisplayIndex(display);
+  if (disp_idx == -1) {
+    DLOGE("Invalid display = %d", disp_idx);
+    return -1;
+  }
+
+  return sdm_display_[disp_idx]->GetNotifyEptConfig();
 }
 
 } // namespace sdm

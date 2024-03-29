@@ -286,6 +286,12 @@ DisplayError HWPeripheralDRM::Commit(HWLayersInfo *hw_layers_info) {
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_EPT, token_.conn_id,
                             hw_layers_info->common_info->expected_present_time);
 
+  drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_FRAME_INTERVAL, token_.conn_id,
+                            hw_layers_info->common_info->frame_interval);
+
+  drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_USECASE_IDX, token_.conn_id,
+                            hw_layers_info->flags.only_video_updating);
+
   DisplayError error = HWDeviceDRM::Commit(hw_layers_info);
   shared_ptr<Fence> cwb_fence = Fence::Create(INT(cwb_fence_fd), "cwb_fence");
   if (error != kErrorNone) {
@@ -1231,6 +1237,11 @@ DisplayError HWPeripheralDRM::GetQsyncFps(uint32_t *qsync_fps) {
   }
 
   return kErrorNotSupported;
+}
+
+bool HWPeripheralDRM::IsAVRStepSupported(uint32_t config_index) {
+  uint32_t avr_step = connector_info_.modes[config_index].avr_step_fps;
+  return (avr_step > 0);
 }
 
 }  // namespace sdm

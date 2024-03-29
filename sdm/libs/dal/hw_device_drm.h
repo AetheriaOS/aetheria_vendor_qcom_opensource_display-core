@@ -207,6 +207,9 @@ class HWDeviceDRM : public HWInterface {
   }
   virtual DisplayError CancelDeferredPowerMode();
   virtual void HandleCwbTeardown(bool sync_teardown);
+  virtual bool IsAVRStepSupported(uint32_t config_index) { return false; }
+  virtual DisplayError NotifyExpectedPresent(uint64_t expected_present_time,
+                                             uint32_t frame_interval_ns);
 
   enum {
     kHWEventVSync,
@@ -304,7 +307,7 @@ class HWDeviceDRM : public HWInterface {
     // Find handle_id in output buffer map. Else create fb_id and add <handle_id,fb_id> in map.
     void MapOutputBufferToFbId(std::shared_ptr<LayerBuffer> buffer, bool *fb_modified);
     // Find fb_id for given handle_id in the layer map.
-    std::vector<uint32_t> GetFbId(Layer *layer, uint64_t handle_id);
+    void GetFbId(Layer *layer, uint64_t handle_id, std::vector<uint32_t> *fb_id);
     // Find fb_id for given handle_id in output buffer map.
     uint32_t GetOutputFbId(uint64_t handle_id);
     uint32_t core_id_;
