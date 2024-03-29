@@ -1973,7 +1973,6 @@ SDMDisplay::PostCommitLayerStack(shared_ptr<Fence> *out_retire_fence) {
     pending_first_commit_config_ = false;
     SetActiveConfig(pending_first_commit_config_index_);
   }
-  virtual_config_fps_switch_ = false;
 
   return status;
 }
@@ -2935,6 +2934,7 @@ void SDMDisplay::UpdateActiveConfig() {
 
   // Reset pending config.
   pending_config_ = false;
+  virtual_config_fps_switch_ = false;
 }
 
 int32_t
@@ -3004,10 +3004,17 @@ DisplayError SDMDisplay::SetActiveConfigWithConstraints(
     return kErrorNotSupported;
   }
 
+  DisplayConfigVariableInfo info_client_requested = {};
+  GetDisplayAttributesForConfig(INT(config), &info_client_requested);
   Config real_config_for_fps_switch = config;
   if (IsVirtualConfig(config) || IsVirtualConfig(active_config_index_)) {
     DisplayError error = SetFBForExtendedResolution(config, &real_config_for_fps_switch);
     if (!virtual_config_fps_switch_) {
+      if ((error == kErrorNone) && (info_client_requested.x_pixels != fb_width_ ||
+                                    info_client_requested.y_pixels != fb_height_)) {
+        fb_width_ = info_client_requested.x_pixels;
+        fb_height_ = info_client_requested.y_pixels;
+      }
       return error;
     } else {
       config = real_config_for_fps_switch;
@@ -3055,11 +3062,21 @@ DisplayError SDMDisplay::SetActiveConfigWithConstraints(
           vsync_period_change_constraints->desiredTimeNanos);
 
   out_timeline->refreshRequired = true;
-  if (is_client_up_ &&
-      (info.x_pixels != fb_width_ || info.y_pixels != fb_height_)) {
-    out_timeline->refreshRequired = false;
-    fb_width_ = info.x_pixels;
-    fb_height_ = info.y_pixels;
+  if (is_client_up_) {
+    if (virtual_config_fps_switch_) {
+      if (info_client_requested.x_pixels != fb_width_ ||
+          info_client_requested.y_pixels != fb_height_) {
+        out_timeline->refreshRequired = false;
+        fb_width_ = info_client_requested.x_pixels;
+        fb_height_ = info_client_requested.y_pixels;
+      }
+    } else {
+      if (info.x_pixels != fb_width_ || info.y_pixels != fb_height_) {
+        out_timeline->refreshRequired = false;
+        fb_width_ = info.x_pixels;
+        fb_height_ = info.y_pixels;
+      }
+    }
   }
   return kErrorNone;
 }
@@ -3175,6 +3192,7 @@ void SDMDisplay::SubmitActiveConfigChange(
   pending_refresh_rate_config_ = UINT_MAX;
   pending_refresh_rate_refresh_time_ = INT64_MAX;
   pending_refresh_rate_applied_time_ = INT64_MAX;
+  virtual_config_fps_switch_ = false;
 }
 
 bool SDMDisplay::IsActiveConfigReadyToSubmit(int64_t time) {
@@ -4084,15 +4102,18 @@ DisplayError SDMDisplay::SetFBForExtendedResolution(Config config,
   uint32_t new_config_height = variable_config_map_[config].y_pixels;
   uint32_t new_config_fps = variable_config_map_[config].fps;
 
-  // Resize fb with the new resolution to enable dest scaler.
-  int status = SetFrameBufferResolution(new_config_width, new_config_height);
-  if (status) {
-    return kErrorParameters;
-  }
-
   uint32_t hwc_active_config_width = variable_config_map_[active_config_index_].x_pixels;
   uint32_t hwc_active_config_height = variable_config_map_[active_config_index_].y_pixels;
   uint32_t hwc_active_config_fps = variable_config_map_[active_config_index_].fps;
+
+  // Resize fb with the new resolution to enable dest scaler.
+  if ((new_config_width != hwc_active_config_width) ||
+      (new_config_height != hwc_active_config_height)) {
+    int status = SetFrameBufferResolution(new_config_width, new_config_height);
+    if (status) {
+      return kErrorParameters;
+    }
+  }
 
   SetActiveConfigIndex(config);
 
