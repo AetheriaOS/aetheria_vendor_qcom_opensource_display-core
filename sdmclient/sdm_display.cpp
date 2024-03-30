@@ -2656,8 +2656,7 @@ DisplayError SDMDisplay::GetAllDisplayAttributes(
   int index = 0;
 
   for (auto &config : variable_config_map_) {
-    info->insert(std::make_pair(index, config.second));
-    index++;
+    info->insert(std::make_pair(config.first, config.second));
   }
 
   return kErrorNone;
