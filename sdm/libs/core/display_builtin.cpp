@@ -269,6 +269,12 @@ DisplayError DisplayBuiltIn::Init() {
   Debug::Get()->GetProperty(DEFER_FPS_FRAME_COUNT, &value);
   deferred_config_.frame_count = (value > 0) ? UINT32(value) : 0;
 
+  if (event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this, extension_lib_) !=
+      kErrorNone) {
+    DLOGW("Failed to initialize event proxy info");
+    event_proxy_info_.Deinit();
+  }
+
   if (pf_factory_ && prop_intf_) {
     // Get status of RC enablement property. Default RC is disabled.
     int rc_prop_value = 0;
@@ -359,12 +365,6 @@ DisplayError DisplayBuiltIn::Init() {
 
   left_frame_roi_.resize(core_count_);
   right_frame_roi_.resize(core_count_);
-
-  if (event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this,
-                             extension_lib_) != kErrorNone) {
-    DLOGW("Failed to initialize event proxy info");
-    event_proxy_info_.Deinit();
-  }
 
   return error;
 }
@@ -1002,7 +1002,7 @@ DisplayError DisplayBuiltIn::SetupABCFeature() {
   }
 
   std::unique_ptr<DemuraIntf> abc_intf =
-      abc_factory_->CreateABCIntf(input_cfg, prop_intf_, buffer_allocator_);
+      abc_factory_->CreateABCIntf(input_cfg, prop_intf_, buffer_allocator_, this);
   if (!abc_intf) {
     DLOGE("Unable to create abc_intf on Display %d-%d", display_id_, display_type_);
     return kErrorMemory;
