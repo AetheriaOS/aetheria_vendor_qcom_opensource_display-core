@@ -3990,10 +3990,19 @@ DisplayError DisplayBuiltIn::SetAVRStepState(bool enable) {
 }
 
 DisplayError DisplayBuiltIn::SetVRRState(bool state) {
-  SetQSyncMode(state ? kQSyncModeContinuous : kQSyncModeNone);
-  DisplayError error = SetAVRStepState(state);
-  if (error != kErrorNone) {
-    return error;
+  if (!hw_intf_->IsVRRSupported()) {
+    return kErrorNotSupported;
+  }
+
+  uint32_t active_index = 0;
+  dpu_core_mux_->GetActiveConfig(&active_index);
+  if (hw_intf_->IsAVRStepSupported(active_index)) {
+    DLOGI("Set VRR state %d in config %d", state, active_index);
+    SetQSyncMode(state ? kQSyncModeContinuous : kQSyncModeNone);
+    DisplayError error = SetAVRStepState(state);
+    if (error != kErrorNone) {
+      return error;
+    }
   }
 
   vrr_enabled_ = state;

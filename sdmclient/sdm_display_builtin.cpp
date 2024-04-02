@@ -1698,16 +1698,10 @@ DisplayError SDMDisplayBuiltIn::SetSsrcMode(const std::string &mode) {
 }
 
 DisplayError SDMDisplayBuiltIn::SetupVRRConfig() {
-  DisplayError error = kErrorNone;
-  uint32_t avr_step = variable_config_map_.at(active_config_index_).avr_step;
-
-  if (avr_step > 0) {
-    // Enable Variable Refresh Rate State
-    DLOGI("Enable VRR State for Config %d with AVR Step %d fps", active_config_index_, avr_step);
-    error = display_intf_->SetVRRState(true);
-    if (error != kErrorNone) {
-      return error;
-    }
+  // Enable Variable Refresh Rate state
+  DisplayError error = display_intf_->SetVRRState(true);
+  if (error != kErrorNone) {
+    return error;
   }
 
   for (auto &[config_id, config] : variable_config_map_) {

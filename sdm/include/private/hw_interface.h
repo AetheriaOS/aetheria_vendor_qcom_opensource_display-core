@@ -176,6 +176,7 @@ class HWInterface {
   virtual bool IsAVRStepSupported(uint32_t config_index) = 0;
   virtual DisplayError NotifyExpectedPresent(uint64_t expected_present_time,
                                              uint32_t frame_interval_ns) = 0;
+  virtual bool IsVRRSupported() = 0;
 
  protected:
   virtual ~HWInterface() { }

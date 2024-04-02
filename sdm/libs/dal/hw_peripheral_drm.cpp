@@ -1244,4 +1244,14 @@ bool HWPeripheralDRM::IsAVRStepSupported(uint32_t config_index) {
   return (avr_step > 0);
 }
 
+bool HWPeripheralDRM::IsVRRSupported() {
+  for (uint32_t i = 0; i < connector_info_.modes.size(); i++) {
+    if (connector_info_.modes[i].avr_step_fps > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 }  // namespace sdm
