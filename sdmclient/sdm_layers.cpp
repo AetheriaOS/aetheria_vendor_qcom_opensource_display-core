@@ -656,27 +656,21 @@ void SDMLayer::GetUBWCStatsFromMetaData(UBWCStats *cr_stats, UbwcCrStatsVector *
   // in layer_buffer or copy directly to Vector
   if (cr_stats->bDataValid) {
     switch (cr_stats->version) {
-    case UBWCVersion::UBWC_VERSION_4_0:
-    case UBWCVersion::UBWC_VERSION_3_0:
-    case UBWCVersion::UBWC_VERSION_2_0:
-      cr_vec->push_back(
-          std::make_pair(32, cr_stats->ubwc_stats.nCRStatsTile32));
-      cr_vec->push_back(
-          std::make_pair(64, cr_stats->ubwc_stats.nCRStatsTile64));
-      cr_vec->push_back(
-          std::make_pair(96, cr_stats->ubwc_stats.nCRStatsTile96));
-      cr_vec->push_back(
-          std::make_pair(128, cr_stats->ubwc_stats.nCRStatsTile128));
-      cr_vec->push_back(
-          std::make_pair(160, cr_stats->ubwc_stats.nCRStatsTile160));
-      cr_vec->push_back(
-          std::make_pair(192, cr_stats->ubwc_stats.nCRStatsTile192));
-      cr_vec->push_back(
-          std::make_pair(256, cr_stats->ubwc_stats.nCRStatsTile256));
-      break;
-    default:
-      DLOGW("Invalid UBWC Version %d", cr_stats->version);
-      break;
+      case UBWCVersion::UBWC_VERSION_5_0:
+      case UBWCVersion::UBWC_VERSION_4_0:
+      case UBWCVersion::UBWC_VERSION_3_0:
+      case UBWCVersion::UBWC_VERSION_2_0:
+        cr_vec->push_back(std::make_pair(32, cr_stats->ubwc_stats.nCRStatsTile32));
+        cr_vec->push_back(std::make_pair(64, cr_stats->ubwc_stats.nCRStatsTile64));
+        cr_vec->push_back(std::make_pair(96, cr_stats->ubwc_stats.nCRStatsTile96));
+        cr_vec->push_back(std::make_pair(128, cr_stats->ubwc_stats.nCRStatsTile128));
+        cr_vec->push_back(std::make_pair(160, cr_stats->ubwc_stats.nCRStatsTile160));
+        cr_vec->push_back(std::make_pair(192, cr_stats->ubwc_stats.nCRStatsTile192));
+        cr_vec->push_back(std::make_pair(256, cr_stats->ubwc_stats.nCRStatsTile256));
+        break;
+      default:
+        DLOGW("Invalid UBWC Version %d", cr_stats->version);
+        break;
     } // switch(cr_stats->version)
   }   // if (cr_stats->bDatvalid)
 }
