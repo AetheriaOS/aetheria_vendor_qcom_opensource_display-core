@@ -690,8 +690,8 @@ void SDMDisplay::PopulateSDMExtendedDisplayResolution() {
         info = config.second;
         info.x_pixels = extended_display_resolutions.at(res_index).first;
         info.y_pixels = extended_display_resolutions.at(res_index).second;
-        info.x_dpi *= (info.x_pixels / panel_width);
-        info.y_dpi *= (info.y_pixels / panel_height);
+        info.x_dpi *= ((float)info.x_pixels / panel_width);
+        info.y_dpi *= ((float)info.y_pixels / panel_height);
         info.h_total -= (panel_width - info.x_pixels);
         info.v_total -= (panel_height - info.y_pixels);
         info.is_virtual_config = true;
