@@ -157,6 +157,8 @@ static std::unordered_map<vendor_qti_hardware_display_common_PixelFormat, Format
          {true, false, false, false, false, false, false, false}},
         {{vendor_qti_hardware_display_common_PixelFormat::RGBA_5551},
          {true, false, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::Y16},
+         {false, true, false, false, false, false, false, false}},
     };
 
 bool IsUbwcSupported(vendor_qti_hardware_display_common_PixelFormat format) {
