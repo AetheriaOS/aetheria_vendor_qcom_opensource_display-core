@@ -23,9 +23,9 @@
 */
 
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
+* Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -63,7 +63,8 @@ DisplayError DisplayVirtual::Init() {
   }
 
   display_id_info_ = DisplayId(display_id_);
-  dpu_core_mux_ = new DPUCoreMux(display_id_info_, kVirtual, hw_info_intf_, buffer_allocator_);
+  error = DPUCoreFactory::Create(display_id_info_, kVirtual, hw_info_intf_, buffer_allocator_,
+                                 &dpu_core_mux_);
   if (error != kErrorNone) {
     return error;
   }

@@ -23,7 +23,7 @@
 */
 
 /*
-* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
+* Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -196,9 +196,8 @@ DisplayError DisplayBuiltIn::SetupAiqe() {
 DisplayError DisplayBuiltIn::Init() {
   ClientLock lock(disp_mutex_);
 
-  DisplayError error = kErrorNone;
-
-  dpu_core_mux_ = new DPUCoreMux(display_id_info_, kBuiltIn, hw_info_intf_, buffer_allocator_);
+  DisplayError error = DPUCoreFactory::Create(display_id_info_, kBuiltIn, hw_info_intf_,
+                                              buffer_allocator_, &dpu_core_mux_);
   if (error != kErrorNone) {
     DLOGE("Failed to create hardware interface on. Error = %d", error);
     return error;

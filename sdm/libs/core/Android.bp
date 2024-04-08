@@ -40,7 +40,9 @@ cc_library_shared {
         "resource_default.cpp",
         "color_manager.cpp",
         "hw_info_default.cpp",
-        "dpu_core_mux.cpp",
+        "dpu_core_factory.cpp",
+        "dpu_single_core.cpp",
+        "dpu_multi_core.cpp",
     ],
 
 }
