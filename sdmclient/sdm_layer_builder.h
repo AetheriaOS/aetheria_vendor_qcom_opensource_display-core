@@ -10,6 +10,7 @@
 
 #include <core/buffer_allocator.h>
 #include <core/sdm_types.h>
+#include <utils/locker.h>
 
 #include "sdm_display_intf_layer_builder.h"
 #include "sdm_layers.h"
@@ -106,6 +107,7 @@ private:
       return kErrorParameters;
     }
 
+    SCOPE_LOCK(locker_[display]);
     auto layer = GetSDMLayer(display, layer_id);
     if (!layer) {
       return kErrorNotSupported;
@@ -125,6 +127,7 @@ private:
   static SDMLayerBuilder *layer_builder_;
   static uint32_t ref_count_;
   static std::mutex lock_;
+  static Locker locker_[kNumDisplays];
 };
 
 } // namespace sdm
