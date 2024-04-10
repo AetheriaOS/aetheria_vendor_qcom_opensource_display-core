@@ -35,6 +35,7 @@
 #include <core/buffer_allocator.h>
 #include <core/buffer_sync_handler.h>
 #include <core/ipc_interface.h>
+#include <core/display_interface.h>
 
 #include <private/generic_intf.h>
 #include <private/generic_payload.h>
@@ -79,6 +80,7 @@ struct DemuraInputConfig {
   uint64_t panel_width = 0;
   uint64_t panel_height = 0;
   std::string panel_name;
+  DisplayInterface *display_intf = nullptr;
 };
 
 // Demura specific param as strings
@@ -89,6 +91,7 @@ const std::string kDemuraFeatureParamPendingReconfig = "PendingReconfig";
 const std::string kDemuraFeatureParamSprPattern = "SprPattern";
 const std::string kDemuraFeatureParamConfigIdx = "ConfigIdx";
 const std::string kDemuraFeatureParamNeedScreenRefresh = "NeedScreenRefresh";
+const std::string kDemuraFeatureParamBacklightEvent = "DisplayBacklightEvent";
 
 using DemuraIntf = GenericIntf<const std::string&, const std::string&, GenericPayload>;
 }  // namespace sdm

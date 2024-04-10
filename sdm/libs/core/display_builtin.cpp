@@ -744,6 +744,8 @@ DisplayError DisplayBuiltIn::SetupDemura() {
 #endif
   input_cfg.panel_id = panel_id_;
   DLOGI("panel id %lx\n", input_cfg.panel_id);
+  input_cfg.panel_name = client_ctx_.hw_panel_info.panel_name;
+  input_cfg.display_intf = this;
   std::unique_ptr<DemuraIntf> demura =
       pf_factory_->CreateDemuraIntf(input_cfg, prop_intf_, buffer_allocator_, spr_);
   if (!demura) {
