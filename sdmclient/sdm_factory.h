@@ -20,6 +20,14 @@ public:
   SDMDisplaySettingsIntf *CreateSettingsIntf();
   SDMDisplaySideBandIntf *CreateSideBandIntf();
   SDMDisplayAiqeIntf *CreateAiqeIntf();
+
+  void DestroyCapsIntf();
+  void DestroyDrawCycleIntf();
+  void DestroyLayerBuilderIntf();
+  void DestroyLifeCycleIntf();
+  void DestroySideBandIntf();
+  void DestroySettingsIntf();
+  void DestroyAiqeIntf();
 };
 
 } // namespace sdm

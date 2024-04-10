@@ -29,10 +29,17 @@ void SDMLayerBuilder::PutInstance() {
 
   ref_count_--;
   if (!ref_count_) {
+    layer_builder_->Deinit();
     delete layer_builder_;
     layer_builder_ = nullptr;
 
     return;
+  }
+}
+
+void SDMLayerBuilder::Deinit() {
+  for (auto i : display_layer_stack_) {
+    DeInit(i.first);
   }
 }
 

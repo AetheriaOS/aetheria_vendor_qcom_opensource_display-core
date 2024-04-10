@@ -35,11 +35,8 @@
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 #include <core/buffer_sync_handler.h>
-#include <cutils/native_handle.h>
-#include <cutils/sockets.h>
 #include <dlfcn.h>
-#include <sync/sync.h>
-#include <utils/String16.h>
+#include <sys/mman.h>
 
 #include "concurrency_mgr.h"
 #include "sdm_debugger.h"
@@ -99,9 +96,9 @@ void SDMColorManager::MarshallStructIntoParcel(const PPDisplayAPIPayload &data,
     out_parcel->write(data.payload, data.size);
 }
 
-SDMColorManager *
-SDMColorManager::CreateColorManager(BufferAllocator *buffer_allocator) {
-  SDMColorManager *color_mgr = new SDMColorManager(buffer_allocator);
+SDMColorManager *SDMColorManager::CreateColorManager(BufferAllocator *buffer_allocator,
+                                                     SocketHandler *socket_handler) {
+  SDMColorManager *color_mgr = new SDMColorManager(buffer_allocator, socket_handler);
 
   if (color_mgr) {
     // Load display API interface library. And retrieve color API function
@@ -154,8 +151,8 @@ SDMColorManager::CreateColorManager(BufferAllocator *buffer_allocator) {
   return color_mgr;
 }
 
-SDMColorManager::SDMColorManager(BufferAllocator *buffer_allocator)
-    : buffer_allocator_(buffer_allocator) {}
+SDMColorManager::SDMColorManager(BufferAllocator *buffer_allocator, SocketHandler *socket_handler)
+    : buffer_allocator_(buffer_allocator), socket_handler_(socket_handler) {}
 
 SDMColorManager::~SDMColorManager() {}
 
@@ -174,7 +171,7 @@ DisplayError SDMColorManager::EnableQDCMMode(bool enable,
   DisplayError ret = kErrorNone;
 
   if (!qdcm_mode_mgr_) {
-    qdcm_mode_mgr_ = SDMQDCMModeManager::CreateQDCMModeMgr();
+    qdcm_mode_mgr_ = SDMQDCMModeManager::CreateQDCMModeMgr(socket_handler_);
     if (!qdcm_mode_mgr_) {
       DLOGE("Unable to create QDCM operating mode manager.");
       ret = kErrorNotSupported;
@@ -401,15 +398,14 @@ const char *const SDMQDCMModeManager::kSocketName = "pps";
 const char *const SDMQDCMModeManager::kTagName = "surfaceflinger";
 const char *const SDMQDCMModeManager::kPackageName = "colormanager";
 
-SDMQDCMModeManager *SDMQDCMModeManager::CreateQDCMModeMgr() {
+SDMQDCMModeManager *SDMQDCMModeManager::CreateQDCMModeMgr(SocketHandler *socket_handler) {
   SDMQDCMModeManager *mode_mgr = new SDMQDCMModeManager();
 
   if (!mode_mgr) {
     DLOGW("No memory to create SDMQDCMModeManager.");
     return NULL;
   } else {
-    mode_mgr->socket_fd_ = ::socket_local_client(
-        kSocketName, ANDROID_SOCKET_NAMESPACE_RESERVED, SOCK_STREAM);
+    mode_mgr->socket_fd_ = socket_handler->GetSocketFd(kDpps);
     if (mode_mgr->socket_fd_ < 0) {
       // it should not be disastrous and we still can grab wakelock in QDCM
       // mode.

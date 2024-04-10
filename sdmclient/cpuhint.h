@@ -37,8 +37,9 @@
 #define __CPUHINT_H__
 
 #include <core/sdm_types.h>
-#include <utils/Timers.h>
 #include <utils/sys.h>
+#include "sdm_common.h"
+#include "sdm_compositor_callbacks.h"
 
 namespace sdm {
 
@@ -66,11 +67,11 @@ class SDMDebugHandler;
 
 class CPUHint {
 public:
-  DisplayError Init(SDMDebugHandler *debug_handler);
-  int ReqHintsOffload(int hint, int tid);
-  int ReqHintRelease();
-  int ReqHint(PerfHintThreadType type, int tid);
-  void ReqEvent(int event);
+ DisplayError Init(SDMDebugHandler *debug_handler, SDMCompositorCallbacks *cb);
+ int ReqHintsOffload(int hint, int tid);
+ int ReqHintRelease();
+ int ReqHint(PerfHintThreadType type, int tid);
+ void ReqEvent(int event);
 
 private:
   const int kLargeComposition = 0x00001097;
@@ -90,6 +91,8 @@ private:
   std::mutex tid_lock_;
 
   LongTermHintInfo large_comp_cycle_{};
+
+  SDMCompositorCallbacks *cb_ = nullptr;
 };
 
 } // namespace sdm

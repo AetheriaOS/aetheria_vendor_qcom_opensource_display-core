@@ -61,6 +61,7 @@ public:
   virtual DisplayError SetDisplayBrightness(Display display,
                                             float brightness) = 0;
   virtual DisplayError GetDisplayPortId(uint32_t disp_id, int *port_id) = 0;
+  virtual std::mutex *GetLumMutex() = 0;
 };
 
 } // namespace sdm

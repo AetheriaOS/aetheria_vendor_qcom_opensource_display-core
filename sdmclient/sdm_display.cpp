@@ -33,12 +33,11 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
-#include <cutils/properties.h>
 #include <errno.h>
 #include <math.h>
-#include <sync/sync.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/mman.h>
 #include <utils/constants.h>
 #include <utils/debug.h>
 #include <utils/formats.h>
@@ -374,9 +373,7 @@ DisplayError SDMColorModeMgr::RestoreColorTransform() {
   return kErrorNone;
 }
 
-DisplayError
-SDMColorModeMgr::SetColorTransform(const float *matrix,
-                                   android_color_transform_t /*hint*/) {
+DisplayError SDMColorModeMgr::SetColorTransform(const float *matrix, SDMColorTransform /*hint*/) {
   DTRACE_SCOPED();
   auto status = kErrorNone;
   double color_matrix[kColorTransformMatrixCount] = {0};
@@ -818,9 +815,10 @@ void SDMDisplay::BuildLayerStack() {
     bool is_video = false;
     SnapHandle *hdl = (SnapHandle *) layer->input_buffer.buffer_id;
     if (hdl) {
-      uint32_t buffer_type;
+      // BUFFER_TYPE returns 1 for YUV (which is == BUFFER_TYPE_VIDEO), 0 otherwise
+      uint32_t buffer_type = 0;
       snapmapper_->GetMetadata(*hdl, MetadataType::BUFFER_TYPE, &buffer_type);
-      if (buffer_type == BUFFER_TYPE_VIDEO) {
+      if (buffer_type) {
         layer_stack_.flags.video_present = true;
         is_video = true;
         if (IsLayerUpdating(sdm_layer)) {
@@ -833,7 +831,7 @@ void SDMDisplay::BuildLayerStack() {
       }
 
       // TZ Protected Buffer - L1
-      // Gralloc Usage Protected Buffer - L3 - which needs to be treated as Secure & avoid fallback
+      // Snapalloc Usage Protected Buffer - L3 - which needs to be treated as Secure & avoid fallback
       BufferUsage handle_flags;
       snapmapper_->GetMetadata(*hdl, MetadataType::USAGE, &handle_flags);
       if (handle_flags & BufferUsage::PROTECTED) {
@@ -1511,13 +1509,8 @@ DisplayError SDMDisplay::Refresh() {
 }
 
 DisplayError SDMDisplay::CECMessage(char *message) {
-  /* aparmar
-    if (qservice_) {
-      qservice_->onCECMessageReceived(message, 0);
-    } else {
-      DLOGW("Qservice instance not available.");
-    }
-  */
+  callbacks_->OnCECMessageReceived(message, 0);
+
   return kErrorNone;
 }
 
@@ -1894,7 +1887,6 @@ DisplayError SDMDisplay::CommitLayerStack(void) {
   }
 
   DisplayError error = kErrorUndefined;
-  int status = 0;
   error = display_intf_->Commit(&layer_stack_);
 
   if (error == kErrorNone) {
@@ -2299,13 +2291,13 @@ DisplayError SDMDisplay::SetFrameBufferResolution(uint32_t x_pixels,
 
   int aligned_width;
   int aligned_height;
-  uint32_t usage = GRALLOC_USAGE_HW_FB;
+  uint32_t usage = BufferUsage::COMPOSER_CLIENT_TARGET;
   int format = static_cast<int>(SDMPixelFormat::PIXEL_FORMAT_RGBA_8888);
   int ubwc_disabled = 0;
   int flags = 0;
 
   // By default UBWC is enabled and below property is global enable/disable for
-  // all buffers allocated through gralloc , including framebuffer targets.
+  // all buffers allocated through snapalloc , including framebuffer targets.
   SDMDebugHandler::Get()->GetProperty(DISABLE_UBWC_PROP, &ubwc_disabled);
   if (!ubwc_disabled) {
     usage |= BufferUsage::QTI_ALLOC_UBWC;
@@ -3082,7 +3074,7 @@ DisplayError SDMDisplay::SetActiveConfigWithConstraints(
 }
 
 void SDMDisplay::ProcessActiveConfigChange() {
-  if (!IsActiveConfigReadyToSubmit(systemTime(SYSTEM_TIME_MONOTONIC))) {
+  if (!IsActiveConfigReadyToSubmit(callbacks_->SystemTime(SYSTEM_TIME_MONOTONIC))) {
     return;
   }
 
@@ -3117,7 +3109,7 @@ SDMDisplay::GetVsyncPeriodByActiveConfig(bool get_real_config,
 
 bool SDMDisplay::GetTransientVsyncPeriod(VsyncPeriodNanos *vsync_period) {
   std::lock_guard<std::mutex> lock(transient_refresh_rate_lock_);
-  auto now = systemTime(SYSTEM_TIME_MONOTONIC);
+  auto now = callbacks_->SystemTime(SYSTEM_TIME_MONOTONIC);
 
   while (!transient_refresh_rate_info_.empty()) {
     if (IsActiveConfigApplied(
@@ -3151,7 +3143,7 @@ SDMDisplay::RequestActiveConfigChange(Config config,
 
 std::tuple<int64_t, int64_t> SDMDisplay::EstimateVsyncPeriodChangeTimeline(
     VsyncPeriodNanos current_vsync_period, int64_t desired_time) {
-  const auto now = systemTime(SYSTEM_TIME_MONOTONIC);
+  const auto now = callbacks_->SystemTime(SYSTEM_TIME_MONOTONIC);
   const auto delta = desired_time - now;
   const auto refresh_rate_activate_period =
       current_vsync_period * vsyncs_to_apply_rate_change_;
@@ -4062,8 +4054,6 @@ DisplayError SDMDisplay::GetSDMActiveConfig(bool get_real_config, Config *config
   if (is_current_config_virtual) {
     *config_index = active_config_index_;
 
-    uint32_t real_config_width = variable_config_map_[real_config].x_pixels;
-    uint32_t real_config_height = variable_config_map_[real_config].y_pixels;
     uint32_t real_config_fps = variable_config_map_[real_config].fps;
 
     uint32_t virtual_config_width = variable_config_map_[active_config_index_].x_pixels;

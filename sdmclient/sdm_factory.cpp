@@ -84,4 +84,33 @@ SDMDisplayAiqeIntf *SDMInterfaceFactoryImpl::CreateAiqeIntf() {
 
   return aqie_intf;
 }
+
+void SDMInterfaceFactoryImpl::DestroyCapsIntf() {
+  ConcurrencyMgr::RemoveInstance();
+}
+
+void SDMInterfaceFactoryImpl::DestroyDrawCycleIntf() {
+  ConcurrencyMgr::RemoveInstance();
+}
+
+void SDMInterfaceFactoryImpl::DestroyLayerBuilderIntf() {
+  SDMLayerBuilder::PutInstance();
+}
+
+void SDMInterfaceFactoryImpl::DestroyLifeCycleIntf() {
+  ConcurrencyMgr::RemoveInstance();
+}
+
+void SDMInterfaceFactoryImpl::DestroySideBandIntf() {
+  ConcurrencyMgr::RemoveInstance();
+}
+
+void SDMInterfaceFactoryImpl::DestroyAiqeIntf() {
+  ConcurrencyMgr::RemoveInstance();
+}
+
+void SDMInterfaceFactoryImpl::DestroySettingsIntf() {
+  ConcurrencyMgr::RemoveInstance();
+}
+
 } // namespace sdm

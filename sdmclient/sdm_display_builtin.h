@@ -49,22 +49,9 @@
 
 namespace sdm {
 
-enum class LayerStitchTaskCode : int32_t {
-  kCodeGetInstance,
-  kCodeStitch,
-  kCodeDestroyInstance,
-};
-
 struct LayerStitchGetInstanceContext
     : public SyncTask<LayerStitchTaskCode>::TaskContext {
   LayerBuffer *output_buffer = NULL;
-};
-
-struct LayerStitchContext : public SyncTask<LayerStitchTaskCode>::TaskContext {
-  // aparmar: vector<StitchParams> stitch_params;
-  shared_ptr<Fence> src_acquire_fence = nullptr;
-  shared_ptr<Fence> dst_acquire_fence = nullptr;
-  shared_ptr<Fence> release_fence = nullptr;
 };
 
 class SDMDisplayBuiltIn : public SDMDisplay,
@@ -85,7 +72,7 @@ public:
  virtual DisplayError SetColorModeWithRenderIntent(SDMColorMode mode, SDMRenderIntent intent);
  virtual DisplayError SetColorModeById(int32_t color_mode_id);
  virtual DisplayError SetColorModeFromClientApi(int32_t color_mode_id);
- virtual DisplayError SetColorTransform(const float *matrix, android_color_transform_t hint);
+ virtual DisplayError SetColorTransform(const float *matrix, SDMColorTransform hint);
  virtual DisplayError RestoreColorTransform();
  virtual DisplayError Perform(uint32_t operation, ...);
  virtual DisplayError GetActiveSecureSession(std::bitset<kSecureMax> *secure_sessions);
@@ -167,7 +154,7 @@ private:
  bool CanSkipCommit();
  DisplayError SetMixerResolution(uint32_t width, uint32_t height);
  DisplayError GetMixerResolution(uint32_t *width, uint32_t *height);
- // DisplayError CommitStitchLayers();
+ DisplayError CommitStitchLayers();
  void AppendStitchLayer();
  bool InitLayerStitch();
  void InitStitchTarget();
@@ -207,7 +194,6 @@ private:
  bool qsync_reconfigured_ = false;
  // Members for Color sampling feature
  DisplayError HistogramEvent(int fd, uint32_t blob_id) override;
- histogram::HistogramCollector histogram;
  std::mutex sampling_mutex;
  bool api_sampling_vote = false;
  bool vndservice_sampling_vote = false;
