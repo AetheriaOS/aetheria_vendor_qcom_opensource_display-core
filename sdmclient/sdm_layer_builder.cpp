@@ -12,6 +12,7 @@ namespace sdm {
 SDMLayerBuilder *SDMLayerBuilder::layer_builder_ = nullptr;
 uint32_t SDMLayerBuilder::ref_count_ = 0;
 std::mutex SDMLayerBuilder::lock_;
+Locker SDMLayerBuilder::locker_[kNumDisplays];
 
 SDMLayerBuilder *SDMLayerBuilder::GetInstance() {
   std::lock_guard<std::mutex> lock(lock_);
@@ -62,6 +63,7 @@ DisplayError SDMLayerBuilder::Init(BufferAllocator *buffer_allocator,
 }
 
 DisplayError SDMLayerBuilder::DeInit(uint64_t display_id) {
+  SCOPE_LOCK(locker_[display_id]);
   auto display = display_layer_stack_.find(display_id);
   if (display == display_layer_stack_.end()) {
     DLOGW("Display: %" PRIu64 " not found", display_id);
@@ -118,7 +120,7 @@ DisplayError SDMLayerBuilder::SetLayerAsMask(uint64_t disp_id,
 
   auto sdm_layer = GetSDMLayer(disp_id, layer_id);
   if (!sdm_layer) {
-    DLOGW("Failed to retrieve the hwc layer fpr display: %" PRIu64, disp_id);
+    DLOGW("Failed to retrieve the sdm layer fpr display: %" PRIu64, disp_id);
     return kErrorResources;
   }
 
@@ -129,6 +131,11 @@ DisplayError SDMLayerBuilder::SetLayerAsMask(uint64_t disp_id,
 
 DisplayError SDMLayerBuilder::CreateLayer(uint64_t display_id,
                                           int64_t *out_layer_id) {
+  SCOPE_LOCK(locker_[display_id]);
+  if (display_layer_stack_.find(display_id) == display_layer_stack_.end()) {
+    DLOGW("Display: %" PRIu64 " not found - may have been deleted already", display_id);
+    return kErrorNotSupported;
+  }
   auto layer = new SDMLayer(display_id, buffer_allocator_);
   auto layer_id = layer->GetId();
 
@@ -149,9 +156,10 @@ DisplayError SDMLayerBuilder::CreateLayer(uint64_t display_id,
 
 DisplayError SDMLayerBuilder::DestroyLayer(uint64_t display_id,
                                            int64_t layer_id) {
+  SCOPE_LOCK(locker_[display_id]);
   auto stack = display_layer_stack_.find(display_id);
   if (stack == display_layer_stack_.end()) {
-    DLOGW("Display: %" PRIu64 " not found", display_id);
+    DLOGW("Display: %" PRIu64 " not found - may have been deleted already", display_id);
     return kErrorNotSupported;
   }
 
@@ -197,6 +205,7 @@ DisplayError
 SDMLayerBuilder::SetLayerBuffer(uint64_t display_id, int64_t layer_id,
                                 const SnapHandle *buffer,
                                 const shared_ptr<Fence> &acquire_fence) {
+  SCOPE_LOCK(locker_[display_id]);
   auto layer = GetSDMLayer(display_id, layer_id);
   if (!layer) {
     return kErrorNotSupported;
@@ -236,6 +245,7 @@ DisplayError SDMLayerBuilder::SetLayerTransform(uint64_t display, int64_t layer,
 
 DisplayError SDMLayerBuilder::SetLayerZOrder(uint64_t display_id,
                                              int64_t layer_id, uint32_t z) {
+  SCOPE_LOCK(locker_[display_id]);
   auto stack = display_layer_stack_.find(display_id);
   if (stack == display_layer_stack_.end()) {
     DLOGW("Display: %" PRIu64 " not found", display_id);
@@ -291,6 +301,7 @@ DisplayError SDMLayerBuilder::SetLayerFlag(uint64_t display, int64_t layer,
 DisplayError SDMLayerBuilder::SetLayerSurfaceDamage(uint64_t display,
                                                     int64_t layer_id,
                                                     SDMRegion damage) {
+  SCOPE_LOCK(locker_[display]);
   if (display >= kNumDisplays) {
     return kErrorParameters;
   }
@@ -334,6 +345,7 @@ DisplayError SDMLayerBuilder::SetLayerPerFrameMetadata(uint64_t display,
                                                        uint32_t num_elements,
                                                        const int32_t *int_keys,
                                                        const float *metadata) {
+  SCOPE_LOCK(locker_[display]);
   if (display >= kNumDisplays) {
     return kErrorParameters;
   }
