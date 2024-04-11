@@ -34,7 +34,6 @@
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 #include <stdarg.h>
-#include <sync/sync.h>
 #include <utils/constants.h>
 #include <utils/debug.h>
 
@@ -146,12 +145,12 @@ DisplayError
 SDMDisplayVirtual::SetOutputBuffer(const SnapHandle *output_handle,
                                    shared_ptr<Fence> release_fence) {
   int output_handle_format = 0;
-  int64_t output_compression_type, output_handle_flags;
-  snapmapper_->GetMetadata(*output_handle, MetadataType::IS_UBWC, &output_handle_flags);
+  int64_t output_compression_type, output_ubwc_flag;
+  snapmapper_->GetMetadata(*output_handle, MetadataType::IS_UBWC, &output_ubwc_flag);
   snapmapper_->GetMetadata(*output_handle, MetadataType::PIXEL_FORMAT_ALLOCATED, &output_handle_format);
   snapmapper_->GetMetadata(*output_handle, MetadataType::COMPRESSION, &output_compression_type);
   ColorMetadata color_metadata = {};
-  int ubwc_flag = output_handle_flags ? INT32(MetadataType::IS_UBWC) : 0;
+  int ubwc_flag = output_ubwc_flag ? INT32(MetadataType::IS_UBWC) : 0;
 
   if (output_handle_format ==
       static_cast<int>(SDMPixelFormat::PIXEL_FORMAT_RGBA_8888)) {
@@ -165,7 +164,7 @@ SDMDisplayVirtual::SetOutputBuffer(const SnapHandle *output_handle,
     return kErrorParameters;
   }
 
-  if (sdm::SetCSC(output_handle, &color_metadata, snapmapper_) != kErrorNone) {
+  if (sdm::SetCSC(output_handle, &color_metadata, snapmapper_) != Error::NONE) {
     return kErrorParameters;
   }
 
@@ -182,7 +181,9 @@ SDMDisplayVirtual::SetOutputBuffer(const SnapHandle *output_handle,
   output_handle_ = output_handle;
 
   // TZ Protected Buffer - L1
-  if (output_handle_flags & BufferUsage::PROTECTED) {
+  BufferUsage usage;
+  snapmapper_->GetMetadata(*output_handle, MetadataType::USAGE, &usage);
+  if (usage & BufferUsage::PROTECTED) {
     output_buffer_->flags.secure = 1;
   }
 

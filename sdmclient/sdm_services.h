@@ -39,6 +39,8 @@
 #include <utils/locker.h>
 
 #include <vector>
+#include <core/buffer_allocator.h>
+#include <core/socket_handler.h>
 
 #include "sdm_color_manager.h"
 #include "sdm_display.h"
@@ -181,8 +183,9 @@ public:
     kCwbFlagAvoidRefresh,
   };
 
-  explicit SDMServices(SDMServicesCbIntf *cb, BufferAllocator *buffer_allocator):
-        cb_(cb), buffer_allocator_(buffer_allocator) {}
+  explicit SDMServices(SDMServicesCbIntf *cb, BufferAllocator *buffer_allocator,
+                       SocketHandler *socket_handler)
+      : cb_(cb), buffer_allocator_(buffer_allocator), socket_handler_(socket_handler) {}
 
   void Init(SDMDisplayBuilder *disp, BufferAllocator *buffer_allocator,
             Locker *locker, SDMTrustedUI *tui);
@@ -403,6 +406,7 @@ private:
   Locker *locker_ = nullptr;
   SDMColorManager *color_mgr_ = nullptr;
   BufferAllocator *buffer_allocator_ = nullptr;
+  SocketHandler *socket_handler_ = nullptr;
 };
 
 } // namespace sdm

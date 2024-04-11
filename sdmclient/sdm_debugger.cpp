@@ -39,6 +39,8 @@
 
 #include "sdm_debugger.h"
 
+#define SDM_LOG_TAG "SDM"
+
 namespace sdm {
 
 SDMDebugHandler SDMDebugHandler::debug_handler_;
@@ -221,7 +223,7 @@ void SDMDebugHandler::Error(const char *fmt, ...) {
   std::va_list args;
   va_start(args, fmt);
   if (debug_callback_) {
-    debug_callback_->Log(DebugLogType::ERROR, LOG_TAG, fmt, args);
+    debug_callback_->Log(DebugLogType::ERROR, SDM_LOG_TAG, fmt, args);
   }
 }
 
@@ -229,7 +231,7 @@ void SDMDebugHandler::Warning(const char *fmt, ...) {
   std::va_list args;
   va_start(args, fmt);
   if (debug_callback_) {
-    debug_callback_->Log(DebugLogType::WARNING, LOG_TAG, fmt, args);
+    debug_callback_->Log(DebugLogType::WARNING, SDM_LOG_TAG, fmt, args);
   }
 }
 
@@ -237,7 +239,7 @@ void SDMDebugHandler::Info(const char *fmt, ...) {
   std::va_list args;
   va_start(args, fmt);
   if (debug_callback_) {
-    debug_callback_->Log(DebugLogType::INFO, LOG_TAG, fmt, args);
+    debug_callback_->Log(DebugLogType::INFO, SDM_LOG_TAG, fmt, args);
   }
 }
 
@@ -245,7 +247,7 @@ void SDMDebugHandler::Debug(const char *fmt, ...) {
   std::va_list args;
   va_start(args, fmt);
   if (debug_callback_) {
-    debug_callback_->Log(DebugLogType::DEBUG, LOG_TAG, fmt, args);
+    debug_callback_->Log(DebugLogType::DEBUG, SDM_LOG_TAG, fmt, args);
   }
 }
 
@@ -253,7 +255,7 @@ void SDMDebugHandler::Verbose(const char *fmt, ...) {
   std::va_list args;
   va_start(args, fmt);
   if (debug_handler_.verbose_level_ && debug_callback_) {
-    debug_callback_->Log(DebugLogType::VERBOSE, LOG_TAG, fmt, args);
+    debug_callback_->Log(DebugLogType::VERBOSE, SDM_LOG_TAG, fmt, args);
   }
 }
 

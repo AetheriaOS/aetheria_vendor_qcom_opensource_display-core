@@ -35,10 +35,10 @@
  */
 #include <cstring>
 #include <inttypes.h>
-#include <log/log.h>
 #include <utils/sys.h>
 
 #include "ipc_impl.h"
+#include "sdm_common.h"
 
 #define __CLASS__ "IPCImpl"
 
@@ -359,45 +359,10 @@ int IPCImpl::ProcessOps(IPCOps op, const GenericPayload &in,
     if (!out) {
       return -EINVAL;
     }
-    /*aparmar
-          std::shared_ptr<IDemuraFileFinder> demuraAidl = nullptr;
-          const std::string instance = std::string() +
-       IDemuraFileFinder::descriptor + "/default"; if
-       (!AServiceManager_isDeclared(instance.c_str())) { ALOGE("demura hal
-       service is not declared"); return -ENODEV;
-          }
-          auto demuraBinder =
-       ::ndk::SpAIBinder(AServiceManager_waitForService(instance.c_str())); if
-       (demuraBinder.get() == nullptr) { ALOGE("demura hal service doesn't
-       exist"); return -EINVAL;
-          }
-          demuraAidl = IDemuraFileFinder::fromBinder(demuraBinder);
-          if (demuraAidl == nullptr) {
-            DLOGE("Could not get IDemuraFileFinder");
-            return -ENODEV;
-          }
-          uint32_t sz = 0;
-          uint64_t *panel_id = nullptr;
-          DemuraPaths *file_paths = nullptr;
-          if ((ret = in.GetPayload(panel_id, &sz))) {
-            DLOGE("Failed to get input payload error = %d", ret);
-            return ret;
-          }
-          DLOGI("panel_id %" PRIu64, *panel_id);
-          if ((ret = out->GetPayload(file_paths, &sz))) {
-            DLOGE("Failed to get output payload error = %d", ret);
-            return ret;
-          }
-          DemuraFilePaths paths = {};
-          auto status = demuraAidl->getDemuraFilePaths(*panel_id, &paths);
-          if (!status.isOk()) {
-            ALOGE("getDemuraFilePaths failed, status: %d: %s",
-       status.getStatus(), status.getMessage()); return -EINVAL;
-          }
-          file_paths->configPath = paths.configFilePath;
-          file_paths->signaturePath = paths.signatureFilePath;
-          file_paths->publickeyPath = paths.publickeyFilePath;
-          */
+    if (!cb_) {
+      return -ENODEV;
+    }
+    ret = cb_->GetDemuraFilePaths(in, out);
   } break;
 
   case kIpcOpsExportBuffers: {

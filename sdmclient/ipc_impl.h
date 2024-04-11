@@ -43,6 +43,7 @@
 #include "qrtr_client_interface.h"
 #include "utils/sys.h"
 #include "vm_interface.h"
+#include "sdm_compositor_callbacks.h"
 
 namespace sdm {
 
@@ -57,6 +58,7 @@ typedef int (*PutMemBufInterface)();
 class IPCImpl : public IPCIntf, QRTRCallbackInterface {
 public:
   virtual ~IPCImpl(){};
+  IPCImpl(SDMCompositorCallbacks *cb) : cb_(cb) {}
   int Init();
   int Deinit();
   int SetParameter(IPCParams param, const GenericPayload &in);
@@ -82,6 +84,7 @@ private:
   static DynLib mem_buf_client_lib_;
   static GetMemBufInterface GetMemBuf;
   static PutMemBufInterface PutMembuf;
+  SDMCompositorCallbacks *cb_ = nullptr;
 };
 } // namespace sdm
 

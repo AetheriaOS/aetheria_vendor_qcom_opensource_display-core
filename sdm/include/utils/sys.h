@@ -22,6 +22,12 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/*
+ * Changes from Qualcomm Innovation Center are provided under the following license:
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
+
 #ifndef __SYS_H__
 #define __SYS_H__
 
@@ -49,7 +55,7 @@ class Sys {
 #endif
 
   // Pointers to system calls which are either mapped to actual system call or virtual driver.
-#ifdef TRUSTED_VM
+#if defined(TRUSTED_VM) || defined(DEMURA_STAND_ALONE)
   typedef int (*ioctl)(int, unsigned long int, ...);  // NOLINT
 #else
   typedef int (*ioctl)(int, int, ...);
@@ -67,7 +73,7 @@ class Sys {
   typedef int (*eventfd)(unsigned int, int);
   typedef int (*inotify_init)(void);
   typedef int (*inotify_add_watch)(int, const char *, uint32_t);
-#ifdef TRUSTED_VM
+#if defined(TRUSTED_VM) || defined(DEMURA_STAND_ALONE)
   typedef int (*inotify_rm_watch)(int, int);
 #else
   typedef int (*inotify_rm_watch)(int, uint32_t);

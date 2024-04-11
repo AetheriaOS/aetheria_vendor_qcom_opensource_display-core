@@ -162,7 +162,14 @@ DisplayError DisplayBase::Init() {
     default_clock_hz_.insert(std::pair<uint32_t, uint32_t>(i, 0));
     cached_framebuffer_.insert(std::pair<uint32_t, LayerBuffer>(i, {}));
     cached_qos_data_.insert(std::pair<uint32_t, HWQosData>(i, {}));
-    disp_layer_stack_->info.insert(std::pair<uint32_t, HWLayersInfo>(i, {}));
+  }
+  for (int disp_index = 0; disp_index < kDispStackCount; disp_index++) {
+    for (int i = 0; i < core_id_.size(); i++) {
+      if (!core_id_[i]) {
+        continue;
+      }
+      disp_layer_stacks_[disp_index].info.insert(std::pair<uint32_t, HWLayersInfo>(i, {}));
+    }
   }
 
   dpu_core_mux_->GetHWPanelInfo(&device_ctx_, &client_ctx_);
@@ -1868,7 +1875,7 @@ DisplayError DisplayBase::PostCommit() {
 
   if (clearstack_.load()) {
     uint8_t clearindex = (disp_stack_index_ + 1) % kDispStackCount;
-    disp_layer_stacks_[clearindex] = DispLayerStack();
+    disp_layer_stacks_[clearindex].Clear();
     clearstack_.store(false);
   }
 
@@ -4787,14 +4794,7 @@ void DisplayBase::ResetDispLayerStack() {
     clearstack_.store(true);
   } else {
     DLOGW("Stack did not clear in PostCommit. Clear now.");
-    *disp_layer_stack_ = DispLayerStack();
-  }
-
-  for (int i = 0; i < core_id_.size(); i++) {
-    if (!core_id_[i]) {
-        continue;
-    }
-    disp_layer_stack_->info.insert(std::pair<uint32_t, HWLayersInfo>(i, {}));
+    disp_layer_stack_->Clear();
   }
 }
 

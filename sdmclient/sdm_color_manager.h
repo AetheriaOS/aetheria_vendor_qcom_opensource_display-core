@@ -38,12 +38,14 @@
 
 #include <core/sdm_types.h>
 #include <core/buffer_allocator.h>
+#include <core/socket_handler.h>
 #include <private/color_params.h>
 #include <stdlib.h>
 #include <utils/locker.h>
 #include <utils/sys.h>
 #include "sdm_display.h"
 #include <sdm_display_intf_parcel.h>
+#include "sdm_compositor_callbacks.h"
 
 namespace sdm {
 
@@ -89,9 +91,9 @@ public:
   static const ActiveFeatureCMD kActiveFeatureCMD[kMaxNumActiveFeature];
 
 public:
-  static SDMQDCMModeManager *CreateQDCMModeMgr();
-  ~SDMQDCMModeManager();
-  DisplayError EnableQDCMMode(bool enable, SDMDisplay *sdm_display);
+ static SDMQDCMModeManager *CreateQDCMModeMgr(SocketHandler *socket_handler);
+ ~SDMQDCMModeManager();
+ DisplayError EnableQDCMMode(bool enable, SDMDisplay *sdm_display);
 
 protected:
   bool SendSocketCmd();
@@ -113,13 +115,14 @@ private:
 class SDMColorManager {
 public:
   static const int kNumSolidFillLayers = 2;
-  static SDMColorManager *CreateColorManager(BufferAllocator *buffer_allocator);
+  static SDMColorManager *CreateColorManager(BufferAllocator *buffer_allocator,
+                                             SocketHandler *socket_handler);
   static DisplayError CreatePayloadFromParcel(SDMParcel *in, uint32_t *disp_id,
                                               PPDisplayAPIPayload *sink);
   static void MarshallStructIntoParcel(const PPDisplayAPIPayload &data,
                                        SDMParcel *out_parcel);
 
-  explicit SDMColorManager(BufferAllocator *buffer_allocator);
+  explicit SDMColorManager(BufferAllocator *buffer_allocator, SocketHandler *socket_handler);
   ~SDMColorManager();
   void DestroyColorManager();
   DisplayError EnableQDCMMode(bool enable, SDMDisplay *sdm_display);
@@ -146,6 +149,7 @@ private:
 
   PPColorFillParams solid_fill_params_;
   BufferAllocator *buffer_allocator_ = NULL;
+  SocketHandler *socket_handler_ = nullptr;
   BufferInfo buffer_info;
   Locker locker_;
 };

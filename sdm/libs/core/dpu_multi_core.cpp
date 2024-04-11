@@ -1,47 +1,49 @@
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
-*
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
-#include <string>
-#include <vector>
-#include <map>
+#include "dpu_multi_core.h"
 
-#include "dpu_core_mux.h"
-
-#define __CLASS__ "DPUCoreMux"
+#define __CLASS__ "DPUMultiCore"
 #define zero_index 0
 
 namespace sdm {
 
-DPUCoreMux::DPUCoreMux(DisplayId display_id, SDMDisplayType type,
-                       sdm::MultiCoreInstance<uint32_t, HWInfoInterface *> hw_info_intf,
-                       BufferAllocator *buffer_allocator)
-    : display_id_(display_id) {
+DPUMultiCore::DPUMultiCore(DisplayId display_id, SDMDisplayType type,
+                           MultiCoreInstance<uint32_t, HWInfoInterface *> hw_info_intf,
+                           BufferAllocator *buffer_allocator)
+    : display_id_(display_id),
+      type_(type),
+      hw_info_intf_(hw_info_intf),
+      buffer_allocator_(buffer_allocator) {}
+
+DisplayError DPUMultiCore::Init() {
   DisplayError error = kErrorNone;
-  for (auto intf = hw_info_intf.Begin(); intf != hw_info_intf.End(); intf++) {
+  for (auto intf = hw_info_intf_.Begin(); intf != hw_info_intf_.End(); intf++) {
     HWInterface *hw = nullptr;
     uint32_t core_id = intf->first;
-    error = HWInterface::Create(display_id.GetConnId(core_id), type, intf->second, buffer_allocator,
-                                &hw);
+    error = HWInterface::Create(display_id_.GetConnId(core_id), type_, intf->second,
+                                buffer_allocator_, &hw);
     if (error != kErrorNone) {
       DLOGE("HW interface create failed");
+      return error;
     }
     hw_intf_.insert(std::make_pair(core_id, hw));
     core_ids_.push_back(core_id);
   }
+
+  return kErrorNone;
 }
 
-DisplayError DPUCoreMux::Destroy() {
+DisplayError DPUMultiCore::Destroy() {
   for (auto hw_intf : hw_intf_) {
     HWInterface::Destroy(hw_intf.second);
   }
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetDisplayId(int32_t *display_id) {
+DisplayError DPUMultiCore::GetDisplayId(int32_t *display_id) {
   *display_id = 0;
   DisplayError error = kErrorNone;
   for (auto hw_intf : hw_intf_) {
@@ -52,10 +54,11 @@ DisplayError DPUCoreMux::GetDisplayId(int32_t *display_id) {
     }
     *display_id = *display_id | DisplayId(hw_intf.first, disp_id).GetDisplayId();
   }
+
   return error;
 }
 
-DisplayError DPUCoreMux::GetActiveConfig(uint32_t *active_config) {
+DisplayError DPUMultiCore::GetActiveConfig(uint32_t *active_config) {
   std::vector<uint32_t> active_config_list;
   DisplayError error = kErrorNone;
   uint32_t active_config_val = 0;
@@ -77,7 +80,7 @@ DisplayError DPUCoreMux::GetActiveConfig(uint32_t *active_config) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetDefaultConfig(uint32_t *default_config) {
+DisplayError DPUMultiCore::GetDefaultConfig(uint32_t *default_config) {
   std::vector<uint32_t> default_config_list;
   DisplayError error = kErrorNone;
   uint32_t default_config_val = 0;
@@ -99,7 +102,7 @@ DisplayError DPUCoreMux::GetDefaultConfig(uint32_t *default_config) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetNumDisplayAttributes(uint32_t *count) {
+DisplayError DPUMultiCore::GetNumDisplayAttributes(uint32_t *count) {
   std::vector<uint32_t> count_list;
   uint32_t count_val = 0;
 
@@ -120,9 +123,8 @@ DisplayError DPUCoreMux::GetNumDisplayAttributes(uint32_t *count) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetDisplayAttributes(uint32_t index,
-                                              DisplayDeviceContext *device_ctx,
-                                              DisplayClientContext *client_ctx) {
+DisplayError DPUMultiCore::GetDisplayAttributes(uint32_t index, DisplayDeviceContext *device_ctx,
+                                                DisplayClientContext *client_ctx) {
   DisplayError error = kErrorNone;
   std::map<uint32_t, HWDisplayAttributes> display_attr_map;
 
@@ -135,7 +137,7 @@ DisplayError DPUCoreMux::GetDisplayAttributes(uint32_t index,
 
   client_ctx->display_attributes = display_attr_map[core_ids_[0]];
   DisplayInfoContext info_ctx = {};
-  info_ctx.display_attributes =  display_attr_map[core_ids_[0]];
+  info_ctx.display_attributes = display_attr_map[core_ids_[0]];
   if (device_ctx->find(core_ids_[0]) == device_ctx->end()) {
     device_ctx->insert({core_ids_[0], info_ctx});
   } else {
@@ -160,7 +162,7 @@ DisplayError DPUCoreMux::GetDisplayAttributes(uint32_t index,
   return kErrorNone;
 }
 
-void DPUCoreMux::SetOpSyncHint(bool dpu_ctl_op_sync) {
+void DPUMultiCore::SetOpSyncHint(bool dpu_ctl_op_sync) {
   dpu_ctl_op_sync_ = dpu_ctl_op_sync;
 
   op_sync_sequence_.resize(hw_intf_.size());
@@ -171,8 +173,8 @@ void DPUCoreMux::SetOpSyncHint(bool dpu_ctl_op_sync) {
   }
 }
 
-DisplayError DPUCoreMux::GetHWPanelInfo(DisplayDeviceContext *device_ctx,
-                                        DisplayClientContext *client_ctx) {
+DisplayError DPUMultiCore::GetHWPanelInfo(DisplayDeviceContext *device_ctx,
+                                          DisplayClientContext *client_ctx) {
   DisplayError error = kErrorNone;
   std::map<uint32_t, HWPanelInfo> panel_info_map;
 
@@ -212,7 +214,7 @@ DisplayError DPUCoreMux::GetHWPanelInfo(DisplayDeviceContext *device_ctx,
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::SetDisplayAttributes(uint32_t index) {
+DisplayError DPUMultiCore::SetDisplayAttributes(uint32_t index) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->SetDisplayAttributes(index);
     if (error != kErrorNone) {
@@ -223,7 +225,7 @@ DisplayError DPUCoreMux::SetDisplayAttributes(uint32_t index) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::SetDisplayAttributes(const HWDisplayAttributes &display_attributes) {
+DisplayError DPUMultiCore::SetDisplayAttributes(const HWDisplayAttributes &display_attributes) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->SetDisplayAttributes(display_attributes);
     if (error != kErrorNone) {
@@ -234,17 +236,17 @@ DisplayError DPUCoreMux::SetDisplayAttributes(const HWDisplayAttributes &display
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetConfigIndex(char *mode, uint32_t *index) {
+DisplayError DPUMultiCore::GetConfigIndex(char *mode, uint32_t *index) {
   std::vector<uint32_t> index_list;
   uint32_t index_val;
 
   for (auto hw_intf : hw_intf_) {
-     DisplayError error = hw_intf.second->GetConfigIndex(mode, &index_val);
-     if (error != kErrorNone) {
-       return error;
-     }
+    DisplayError error = hw_intf.second->GetConfigIndex(mode, &index_val);
+    if (error != kErrorNone) {
+      return error;
+    }
 
-     index_list.push_back(index_val);
+    index_list.push_back(index_val);
   }
 
   if (!AreAllEntriesSame<uint32_t>(index_list)) {
@@ -255,7 +257,8 @@ DisplayError DPUCoreMux::GetConfigIndex(char *mode, uint32_t *index) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::PowerOn(std::map<uint32_t, HWQosData> &qos_data, SyncPoints *sync_points) {
+DisplayError DPUMultiCore::PowerOn(std::map<uint32_t, HWQosData> &qos_data,
+                                   SyncPoints *sync_points) {
   std::vector<SyncPoints> sync_points_list;
   SyncPoints sync_points_val;
   DisplayError error = kErrorNone;
@@ -277,15 +280,14 @@ DisplayError DPUCoreMux::PowerOn(std::map<uint32_t, HWQosData> &qos_data, SyncPo
   for (int i = 1; i < sync_points_list.size(); i++) {
     auto val = sync_points_list[i];
     sync_points_val.retire_fence = Fence::Merge(sync_points_val.retire_fence, val.retire_fence);
-    sync_points_val.release_fence = Fence::Merge(sync_points_val.release_fence,
-                                                 val.release_fence);
+    sync_points_val.release_fence = Fence::Merge(sync_points_val.release_fence, val.release_fence);
   }
 
   *sync_points = sync_points_val;
   return error;
 }
 
-DisplayError DPUCoreMux::PowerOff(bool teardown, SyncPoints *sync_points) {
+DisplayError DPUMultiCore::PowerOff(bool teardown, SyncPoints *sync_points) {
   std::vector<SyncPoints> sync_points_list;
   SyncPoints sync_points_val;
   DisplayError error = kErrorNone;
@@ -306,15 +308,14 @@ DisplayError DPUCoreMux::PowerOff(bool teardown, SyncPoints *sync_points) {
   for (int i = 1; i < sync_points_list.size(); i++) {
     auto val = sync_points_list[i];
     sync_points_val.retire_fence = Fence::Merge(sync_points_val.retire_fence, val.retire_fence);
-    sync_points_val.release_fence = Fence::Merge(sync_points_val.release_fence,
-                                                  val.release_fence);
+    sync_points_val.release_fence = Fence::Merge(sync_points_val.release_fence, val.release_fence);
   }
 
   *sync_points = sync_points_val;
   return error;
 }
 
-DisplayError DPUCoreMux::Doze(std::map<uint32_t, HWQosData> &qos_data, SyncPoints *sync_points) {
+DisplayError DPUMultiCore::Doze(std::map<uint32_t, HWQosData> &qos_data, SyncPoints *sync_points) {
   std::vector<SyncPoints> sync_points_list;
   SyncPoints sync_points_val;
   DisplayError error = kErrorNone;
@@ -331,16 +332,15 @@ DisplayError DPUCoreMux::Doze(std::map<uint32_t, HWQosData> &qos_data, SyncPoint
   for (int i = 1; i < sync_points_list.size(); i++) {
     auto val = sync_points_list[i];
     sync_points_val.retire_fence = Fence::Merge(sync_points_val.retire_fence, val.retire_fence);
-    sync_points_val.release_fence = Fence::Merge(sync_points_val.release_fence,
-                                                  val.release_fence);
+    sync_points_val.release_fence = Fence::Merge(sync_points_val.release_fence, val.release_fence);
   }
 
   *sync_points = sync_points_val;
   return error;
 }
 
-DisplayError DPUCoreMux::DozeSuspend(std::map<uint32_t, HWQosData> &qos_data,
-                                     SyncPoints *sync_points) {
+DisplayError DPUMultiCore::DozeSuspend(std::map<uint32_t, HWQosData> &qos_data,
+                                       SyncPoints *sync_points) {
   std::vector<SyncPoints> sync_points_list;
   SyncPoints sync_points_val;
   DisplayError error = kErrorNone;
@@ -357,15 +357,14 @@ DisplayError DPUCoreMux::DozeSuspend(std::map<uint32_t, HWQosData> &qos_data,
   for (int i = 1; i < sync_points_list.size(); i++) {
     auto val = sync_points_list[i];
     sync_points_val.retire_fence = Fence::Merge(sync_points_val.retire_fence, val.retire_fence);
-    sync_points_val.release_fence = Fence::Merge(sync_points_val.release_fence,
-                                                  val.release_fence);
+    sync_points_val.release_fence = Fence::Merge(sync_points_val.release_fence, val.release_fence);
   }
 
   *sync_points = sync_points_val;
   return error;
 }
 
-DisplayError DPUCoreMux::Standby(SyncPoints *sync_points) {
+DisplayError DPUMultiCore::Standby(SyncPoints *sync_points) {
   std::vector<SyncPoints> sync_points_list;
   SyncPoints sync_points_val;
   DisplayError error = kErrorNone;
@@ -382,15 +381,14 @@ DisplayError DPUCoreMux::Standby(SyncPoints *sync_points) {
   for (int i = 1; i < sync_points_list.size(); i++) {
     auto val = sync_points_list[i];
     sync_points_val.retire_fence = Fence::Merge(sync_points_val.retire_fence, val.retire_fence);
-    sync_points_val.release_fence = Fence::Merge(sync_points_val.release_fence,
-                                                  val.release_fence);
+    sync_points_val.release_fence = Fence::Merge(sync_points_val.release_fence, val.release_fence);
   }
 
   *sync_points = sync_points_val;
   return error;
 }
 
-DisplayError DPUCoreMux::Validate(std::map<uint32_t, HWLayersInfo> &hw_layers_info) {
+DisplayError DPUMultiCore::Validate(std::map<uint32_t, HWLayersInfo> &hw_layers_info) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->Validate(&hw_layers_info.at(hw_intf.first));
     if (error != kErrorNone) {
@@ -401,7 +399,7 @@ DisplayError DPUCoreMux::Validate(std::map<uint32_t, HWLayersInfo> &hw_layers_in
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::Commit(std::map<uint32_t, HWLayersInfo> &hw_layers_info) {
+DisplayError DPUMultiCore::Commit(std::map<uint32_t, HWLayersInfo> &hw_layers_info) {
   for (uint32_t i : op_sync_sequence_) {
     DisplayError error = hw_intf_.at(core_ids_[i])->Commit(&hw_layers_info.at(core_ids_[i]));
     if (error != kErrorNone) {
@@ -411,8 +409,10 @@ DisplayError DPUCoreMux::Commit(std::map<uint32_t, HWLayersInfo> &hw_layers_info
 
   shared_ptr<Fence> retire_fence = hw_layers_info.at(core_ids_[0]).retire_fence;
   shared_ptr<Fence> sync_handle = hw_layers_info.at(core_ids_[0]).sync_handle;
-  shared_ptr<Fence> op_release_fence = hw_layers_info.at(core_ids_[0]).output_buffer ?
-      hw_layers_info.at(core_ids_[0]).output_buffer->release_fence : nullptr;
+  shared_ptr<Fence> op_release_fence =
+      hw_layers_info.at(core_ids_[0]).output_buffer
+          ? hw_layers_info.at(core_ids_[0]).output_buffer->release_fence
+          : nullptr;
 
 #ifndef SDM_VIRTUAL_DRIVER
   if (!retire_fence || !sync_handle) {
@@ -420,17 +420,17 @@ DisplayError DPUCoreMux::Commit(std::map<uint32_t, HWLayersInfo> &hw_layers_info
   }
 #endif
 
-  for (auto& layers_info : hw_layers_info) {
+  for (auto &layers_info : hw_layers_info) {
     retire_fence = Fence::Merge(layers_info.second.retire_fence, retire_fence);
     sync_handle = Fence::Merge(layers_info.second.sync_handle, sync_handle);
 
     if (layers_info.second.output_buffer) {
-      op_release_fence = Fence::Merge(layers_info.second.output_buffer->release_fence,
-                                      op_release_fence);
+      op_release_fence =
+          Fence::Merge(layers_info.second.output_buffer->release_fence, op_release_fence);
     }
   }
 
-  for (auto& layers_info : hw_layers_info) {
+  for (auto &layers_info : hw_layers_info) {
     if (!layers_info.second.output_buffer) {
       continue;
     }
@@ -441,9 +441,8 @@ DisplayError DPUCoreMux::Commit(std::map<uint32_t, HWLayersInfo> &hw_layers_info
   hw_layers_info.at(core_ids_[0]).common_info->retire_fence = retire_fence;
   hw_layers_info.at(core_ids_[0]).common_info->sync_handle = sync_handle;
 
-  for (auto layers_info : hw_layers_info) {
-    std::vector<Layer> &hw_layers = layers_info.second.hw_layers;
-    for (auto &layer : hw_layers) {
+  for (auto &layers_info : hw_layers_info) {
+    for (auto &layer : layers_info.second.hw_layers) {
       layer.input_buffer.release_fence = sync_handle;
     }
   }
@@ -453,7 +452,7 @@ DisplayError DPUCoreMux::Commit(std::map<uint32_t, HWLayersInfo> &hw_layers_info
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::Flush(std::map<uint32_t, HWLayersInfo> &hw_layers_info) {
+DisplayError DPUMultiCore::Flush(std::map<uint32_t, HWLayersInfo> &hw_layers_info) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->Flush(&hw_layers_info.at(hw_intf.first));
     if (error != kErrorNone) {
@@ -464,11 +463,11 @@ DisplayError DPUCoreMux::Flush(std::map<uint32_t, HWLayersInfo> &hw_layers_info)
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetPPFeaturesVersion(PPFeatureVersion *vers, uint32_t core_id) {
+DisplayError DPUMultiCore::GetPPFeaturesVersion(PPFeatureVersion *vers, uint32_t core_id) {
   return hw_intf_.at(core_id)->GetPPFeaturesVersion(vers);
 }
 
-DisplayError DPUCoreMux::SetPPFeature(PPFeatureInfo *feature, uint32_t &core_id) {
+DisplayError DPUMultiCore::SetPPFeature(PPFeatureInfo *feature, uint32_t &core_id) {
   DisplayError error = kErrorNone;
 
   if (!feature) {
@@ -490,56 +489,56 @@ DisplayError DPUCoreMux::SetPPFeature(PPFeatureInfo *feature, uint32_t &core_id)
   return error;
 }
 
-DisplayError DPUCoreMux::SetVSyncState(bool enable) {
+DisplayError DPUMultiCore::SetVSyncState(bool enable) {
   for (auto hw_intf : hw_intf_) {
-     DisplayError error = hw_intf.second->SetVSyncState(enable);
-     if (error != kErrorNone) {
-       return error;
-     }
+    DisplayError error = hw_intf.second->SetVSyncState(enable);
+    if (error != kErrorNone) {
+      return error;
+    }
   }
   return kErrorNone;
 }
 
-void DPUCoreMux::SetIdleTimeoutMs(uint32_t timeout_ms) {
+void DPUMultiCore::SetIdleTimeoutMs(uint32_t timeout_ms) {
   for (auto hw_intf : hw_intf_) {
-     hw_intf.second->SetIdleTimeoutMs(timeout_ms);
+    hw_intf.second->SetIdleTimeoutMs(timeout_ms);
   }
 }
 
-DisplayError DPUCoreMux::SetDisplayMode(const HWDisplayMode hw_display_mode) {
+DisplayError DPUMultiCore::SetDisplayMode(const HWDisplayMode hw_display_mode) {
   for (auto hw_intf : hw_intf_) {
-     DisplayError error = hw_intf.second->SetDisplayMode(hw_display_mode);
-     if (error != kErrorNone) {
-       return error;
-     }
-  }
-
-  return kErrorNone;
-}
-
-DisplayError DPUCoreMux::SetRefreshRate(uint32_t refresh_rate) {
-  for (auto hw_intf : hw_intf_) {
-     DisplayError error = hw_intf.second->SetRefreshRate(refresh_rate);
-     if (error != kErrorNone) {
-       return error;
-     }
+    DisplayError error = hw_intf.second->SetDisplayMode(hw_display_mode);
+    if (error != kErrorNone) {
+      return error;
+    }
   }
 
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::SetPanelBrightness(int level) {
+DisplayError DPUMultiCore::SetRefreshRate(uint32_t refresh_rate) {
   for (auto hw_intf : hw_intf_) {
-     DisplayError error = hw_intf.second->SetPanelBrightness(level);
-     if (error != kErrorNone) {
-       return error;
-     }
+    DisplayError error = hw_intf.second->SetRefreshRate(refresh_rate);
+    if (error != kErrorNone) {
+      return error;
+    }
   }
 
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetHWScanInfo(HWScanInfo *scan_info) {
+DisplayError DPUMultiCore::SetPanelBrightness(int level) {
+  for (auto hw_intf : hw_intf_) {
+    DisplayError error = hw_intf.second->SetPanelBrightness(level);
+    if (error != kErrorNone) {
+      return error;
+    }
+  }
+
+  return kErrorNone;
+}
+
+DisplayError DPUMultiCore::GetHWScanInfo(HWScanInfo *scan_info) {
   std::vector<HWScanInfo> scan_info_list;
   HWScanInfo scan_info_val;
 
@@ -560,7 +559,7 @@ DisplayError DPUCoreMux::GetHWScanInfo(HWScanInfo *scan_info) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetVideoFormat(uint32_t config_index, uint32_t *video_format) {
+DisplayError DPUMultiCore::GetVideoFormat(uint32_t config_index, uint32_t *video_format) {
   std::vector<uint32_t> video_format_list;
   uint32_t video_format_val = 0;
 
@@ -581,7 +580,7 @@ DisplayError DPUCoreMux::GetVideoFormat(uint32_t config_index, uint32_t *video_f
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetMaxCEAFormat(uint32_t *max_cea_format) {
+DisplayError DPUMultiCore::GetMaxCEAFormat(uint32_t *max_cea_format) {
   std::vector<uint32_t> max_cea_format_list;
   uint32_t max_cea_format_val = 0;
 
@@ -602,8 +601,8 @@ DisplayError DPUCoreMux::GetMaxCEAFormat(uint32_t *max_cea_format) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::SetCursorPosition(std::map<uint32_t, HWLayersInfo> &hw_layers_info,
-                                               int x, int y) {
+DisplayError DPUMultiCore::SetCursorPosition(std::map<uint32_t, HWLayersInfo> &hw_layers_info,
+                                             int x, int y) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->SetCursorPosition(&hw_layers_info.at(hw_intf.first), x, y);
     if (error != kErrorNone) {
@@ -614,18 +613,18 @@ DisplayError DPUCoreMux::SetCursorPosition(std::map<uint32_t, HWLayersInfo> &hw_
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::OnMinHdcpEncryptionLevelChange(uint32_t min_enc_level) {
+DisplayError DPUMultiCore::OnMinHdcpEncryptionLevelChange(uint32_t min_enc_level) {
   for (auto hw_intf : hw_intf_) {
-     DisplayError error = hw_intf.second->OnMinHdcpEncryptionLevelChange(min_enc_level);
-     if (error != kErrorNone) {
-       return error;
-     }
+    DisplayError error = hw_intf.second->OnMinHdcpEncryptionLevelChange(min_enc_level);
+    if (error != kErrorNone) {
+      return error;
+    }
   }
 
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetPanelBrightness(int *level) {
+DisplayError DPUMultiCore::GetPanelBrightness(int *level) {
   std::vector<int> level_list;
   int level_val = 0;
 
@@ -646,7 +645,7 @@ DisplayError DPUCoreMux::GetPanelBrightness(int *level) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::SetAutoRefresh(bool enable) {
+DisplayError DPUMultiCore::SetAutoRefresh(bool enable) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->SetAutoRefresh(enable);
     if (error != kErrorNone) {
@@ -657,7 +656,7 @@ DisplayError DPUCoreMux::SetAutoRefresh(bool enable) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::SetScaleLutConfig(HWScaleLutInfo *lut_info) {
+DisplayError DPUMultiCore::SetScaleLutConfig(HWScaleLutInfo *lut_info) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->SetScaleLutConfig(lut_info);
     if (error != kErrorNone) {
@@ -667,7 +666,7 @@ DisplayError DPUCoreMux::SetScaleLutConfig(HWScaleLutInfo *lut_info) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::UnsetScaleLutConfig() {
+DisplayError DPUMultiCore::UnsetScaleLutConfig() {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->UnsetScaleLutConfig();
     if (error != kErrorNone) {
@@ -678,7 +677,7 @@ DisplayError DPUCoreMux::UnsetScaleLutConfig() {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::SetMixerAttributes(const HWMixerAttributes &mixer_attributes) {
+DisplayError DPUMultiCore::SetMixerAttributes(const HWMixerAttributes &mixer_attributes) {
   for (auto hw_intf : hw_intf_) {
     HWMixerAttributes dpu_mixer = mixer_attributes;
     dpu_mixer.width = dpu_mixer.width / hw_intf_.size();
@@ -692,8 +691,8 @@ DisplayError DPUCoreMux::SetMixerAttributes(const HWMixerAttributes &mixer_attri
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetMixerAttributes(DisplayDeviceContext *device_ctx,
-                                            DisplayClientContext *client_ctx) {
+DisplayError DPUMultiCore::GetMixerAttributes(DisplayDeviceContext *device_ctx,
+                                              DisplayClientContext *client_ctx) {
   DisplayError error = kErrorNone;
   std::map<uint32_t, HWMixerAttributes> mixer_attr_map;
 
@@ -731,7 +730,7 @@ DisplayError DPUCoreMux::GetMixerAttributes(DisplayDeviceContext *device_ctx,
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::DumpDebugData() {
+DisplayError DPUMultiCore::DumpDebugData() {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->DumpDebugData();
     if (error != kErrorNone) {
@@ -742,7 +741,7 @@ DisplayError DPUCoreMux::DumpDebugData() {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::SetDppsFeature(void *payload, size_t size) {
+DisplayError DPUMultiCore::SetDppsFeature(void *payload, size_t size) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->SetDppsFeature(payload, size);
     if (error != kErrorNone) {
@@ -753,7 +752,7 @@ DisplayError DPUCoreMux::SetDppsFeature(void *payload, size_t size) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::SetPPConfig(void *payload, size_t size) {
+DisplayError DPUMultiCore::SetPPConfig(void *payload, size_t size) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->SetPPConfig(payload, size);
     if (error != kErrorNone) {
@@ -764,15 +763,15 @@ DisplayError DPUCoreMux::SetPPConfig(void *payload, size_t size) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetDppsFeatureInfo(void *payload, size_t size) {
+DisplayError DPUMultiCore::GetDppsFeatureInfo(void *payload, size_t size) {
   return hw_intf_.at(core_ids_[0])->GetDppsFeatureInfo(payload, size);
 }
 
-DisplayError DPUCoreMux::HandleSecureEvent(SecureEvent secure_event,
-                                           std::map<uint32_t, HWQosData> &qos_data) {
+DisplayError DPUMultiCore::HandleSecureEvent(SecureEvent secure_event,
+                                             std::map<uint32_t, HWQosData> &qos_data) {
   for (int i = 0; i < hw_intf_.size(); i++) {
-    DisplayError error = hw_intf_.at(core_ids_[i])->HandleSecureEvent(secure_event,
-                                                                      qos_data.at(core_ids_[i]));
+    DisplayError error =
+        hw_intf_.at(core_ids_[i])->HandleSecureEvent(secure_event, qos_data.at(core_ids_[i]));
     if (error != kErrorNone) {
       return error;
     }
@@ -781,7 +780,7 @@ DisplayError DPUCoreMux::HandleSecureEvent(SecureEvent secure_event,
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::ControlIdlePowerCollapse(bool enable, bool synchronous) {
+DisplayError DPUMultiCore::ControlIdlePowerCollapse(bool enable, bool synchronous) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->ControlIdlePowerCollapse(enable, synchronous);
     if (error != kErrorNone) {
@@ -792,7 +791,7 @@ DisplayError DPUCoreMux::ControlIdlePowerCollapse(bool enable, bool synchronous)
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::SetDisplayDppsAdROI(void *payload) {
+DisplayError DPUMultiCore::SetDisplayDppsAdROI(void *payload) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->SetDisplayDppsAdROI(payload);
     if (error != kErrorNone) {
@@ -803,7 +802,7 @@ DisplayError DPUCoreMux::SetDisplayDppsAdROI(void *payload) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::SetDynamicDSIClock(uint64_t bit_clk_rate) {
+DisplayError DPUMultiCore::SetDynamicDSIClock(uint64_t bit_clk_rate) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->SetDynamicDSIClock(bit_clk_rate);
     if (error != kErrorNone) {
@@ -814,17 +813,17 @@ DisplayError DPUCoreMux::SetDynamicDSIClock(uint64_t bit_clk_rate) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetDynamicDSIClock(uint64_t *bit_clk_rate) {
+DisplayError DPUMultiCore::GetDynamicDSIClock(uint64_t *bit_clk_rate) {
   std::vector<uint64_t> bit_clk_rate_list;
   uint64_t bit_clk_rate_val = 0;
 
   for (auto hw_intf : hw_intf_) {
-     DisplayError error = hw_intf.second->GetDynamicDSIClock(&bit_clk_rate_val);
-     if (error != kErrorNone) {
-       return error;
-     }
+    DisplayError error = hw_intf.second->GetDynamicDSIClock(&bit_clk_rate_val);
+    if (error != kErrorNone) {
+      return error;
+    }
 
-     bit_clk_rate_list.push_back(bit_clk_rate_val);
+    bit_clk_rate_list.push_back(bit_clk_rate_val);
   }
 
   if (!AreAllEntriesSame<uint64_t>(bit_clk_rate_list)) {
@@ -835,14 +834,13 @@ DisplayError DPUCoreMux::GetDynamicDSIClock(uint64_t *bit_clk_rate) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetDisplayIdentificationData(uint8_t *out_port, uint32_t *out_data_size,
-                                                      uint8_t *out_data) {
+DisplayError DPUMultiCore::GetDisplayIdentificationData(uint8_t *out_port, uint32_t *out_data_size,
+                                                        uint8_t *out_data) {
   uint8_t out_port_temp = 0;
   *out_port = 0;
   for (auto hw_intf : hw_intf_) {
-    DisplayError error = hw_intf.second->GetDisplayIdentificationData(&out_port_temp,
-                                                                      out_data_size,
-                                                                      out_data);
+    DisplayError error =
+        hw_intf.second->GetDisplayIdentificationData(&out_port_temp, out_data_size, out_data);
     if (error != kErrorNone) {
       return error;
     }
@@ -851,7 +849,7 @@ DisplayError DPUCoreMux::GetDisplayIdentificationData(uint8_t *out_port, uint32_
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::SetFrameTrigger(FrameTriggerMode mode) {
+DisplayError DPUMultiCore::SetFrameTrigger(FrameTriggerMode mode) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->SetFrameTrigger(mode);
     if (error != kErrorNone) {
@@ -862,33 +860,33 @@ DisplayError DPUCoreMux::SetFrameTrigger(FrameTriggerMode mode) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::SetFrameTrigger(FrameTriggerMode mode, uint32_t core_id) {
+DisplayError DPUMultiCore::SetFrameTrigger(FrameTriggerMode mode, uint32_t core_id) {
   DisplayError error = hw_intf_.at(core_id)->SetFrameTrigger(mode);
   return error;
 }
 
-DisplayError DPUCoreMux::SetBLScale(uint32_t level) {
+DisplayError DPUMultiCore::SetBLScale(uint32_t level) {
   for (auto hw_intf : hw_intf_) {
-     DisplayError error = hw_intf.second->SetBLScale(level);
-     if (error != kErrorNone) {
-       return error;
-     }
+    DisplayError error = hw_intf.second->SetBLScale(level);
+    if (error != kErrorNone) {
+      return error;
+    }
   }
 
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetPanelBlMaxLvl(uint32_t *max_bl) {
+DisplayError DPUMultiCore::GetPanelBlMaxLvl(uint32_t *max_bl) {
   std::vector<uint32_t> max_bl_list;
   uint32_t max_bl_val = 0;
 
   for (auto hw_intf : hw_intf_) {
-     DisplayError error = hw_intf.second->GetPanelBlMaxLvl(&max_bl_val);
-     if (error != kErrorNone) {
-       return error;
-     }
+    DisplayError error = hw_intf.second->GetPanelBlMaxLvl(&max_bl_val);
+    if (error != kErrorNone) {
+      return error;
+    }
 
-     max_bl_list.push_back(max_bl_val);
+    max_bl_list.push_back(max_bl_val);
   }
 
   if (!AreAllEntriesSame<uint32_t>(max_bl_list)) {
@@ -899,33 +897,33 @@ DisplayError DPUCoreMux::GetPanelBlMaxLvl(uint32_t *max_bl) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetPanelBrightnessBasePath(std::string *base_path) const {
+DisplayError DPUMultiCore::GetPanelBrightnessBasePath(std::string *base_path) const {
   return hw_intf_.at(core_ids_[0])->GetPanelBrightnessBasePath(base_path);
 }
 
-DisplayError DPUCoreMux::SetBlendSpace(const PrimariesTransfer &blend_space) {
+DisplayError DPUMultiCore::SetBlendSpace(const PrimariesTransfer &blend_space) {
   for (auto hw_intf : hw_intf_) {
-     DisplayError error = hw_intf.second->SetBlendSpace(blend_space);
-     if (error != kErrorNone) {
-       return error;
-     }
+    DisplayError error = hw_intf.second->SetBlendSpace(blend_space);
+    if (error != kErrorNone) {
+      return error;
+    }
   }
 
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::EnableSelfRefresh(SelfRefreshState self_refresh_state) {
+DisplayError DPUMultiCore::EnableSelfRefresh(SelfRefreshState self_refresh_state) {
   for (auto hw_intf : hw_intf_) {
-     DisplayError error = hw_intf.second->EnableSelfRefresh(self_refresh_state);
-     if (error != kErrorNone) {
-       return error;
-     }
+    DisplayError error = hw_intf.second->EnableSelfRefresh(self_refresh_state);
+    if (error != kErrorNone) {
+      return error;
+    }
   }
 
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetFeatureSupportStatus(const HWFeature feature, uint32_t *status) {
+DisplayError DPUMultiCore::GetFeatureSupportStatus(const HWFeature feature, uint32_t *status) {
   std::vector<uint32_t> status_list;
   uint32_t status_val;
 
@@ -946,13 +944,13 @@ DisplayError DPUCoreMux::GetFeatureSupportStatus(const HWFeature feature, uint32
   return kErrorNone;
 }
 
-void DPUCoreMux::FlushConcurrentWriteback() {
+void DPUMultiCore::FlushConcurrentWriteback() {
   for (auto hw_intf : hw_intf_) {
-     hw_intf.second->FlushConcurrentWriteback();
+    hw_intf.second->FlushConcurrentWriteback();
   }
 }
 
-DisplayError DPUCoreMux::SetAlternateDisplayConfig(uint32_t *alt_config) {
+DisplayError DPUMultiCore::SetAlternateDisplayConfig(uint32_t *alt_config) {
   for (auto hw_intf : hw_intf_) {
     DisplayError error = hw_intf.second->SetAlternateDisplayConfig(alt_config);
     if (error != kErrorNone) {
@@ -963,7 +961,7 @@ DisplayError DPUCoreMux::SetAlternateDisplayConfig(uint32_t *alt_config) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::GetQsyncFps(uint32_t *qsync_fps) {
+DisplayError DPUMultiCore::GetQsyncFps(uint32_t *qsync_fps) {
   std::vector<uint32_t> qsync_fps_list;
   uint32_t qsync_fps_val;
 
@@ -984,27 +982,27 @@ DisplayError DPUCoreMux::GetQsyncFps(uint32_t *qsync_fps) {
   return kErrorNone;
 }
 
-DisplayError DPUCoreMux::CancelDeferredPowerMode() {
+DisplayError DPUMultiCore::CancelDeferredPowerMode() {
   for (auto hw_intf : hw_intf_) {
-     DisplayError error = hw_intf.second->CancelDeferredPowerMode();
-     if (error != kErrorNone) {
-       return error;
-     }
+    DisplayError error = hw_intf.second->CancelDeferredPowerMode();
+    if (error != kErrorNone) {
+      return error;
+    }
   }
 
   return kErrorNone;
 }
 
-PanelFeaturePropertyIntf* DPUCoreMux::GetPanelFeaturePropertyIntf() {
+PanelFeaturePropertyIntf *DPUMultiCore::GetPanelFeaturePropertyIntf() {
   return hw_intf_.at(core_ids_[0])->GetPanelFeaturePropertyIntf();
 }
 
-void DPUCoreMux::GetHWInterface(HWInterface **intf) {
+void DPUMultiCore::GetHWInterface(HWInterface **intf) {
   *intf = hw_intf_.at(core_ids_[0]);
 }
 
 template <typename T>
-bool DPUCoreMux::AreAllEntriesSame(std::vector<T>& entries) {
+bool DPUMultiCore::AreAllEntriesSame(std::vector<T> &entries) {
   if (!entries.size()) {
     return true;
   }
@@ -1019,13 +1017,13 @@ bool DPUCoreMux::AreAllEntriesSame(std::vector<T>& entries) {
   return true;
 }
 
-void DPUCoreMux::GetDRMDisplayToken(sde_drm::DRMDisplayToken *token) const {
+void DPUMultiCore::GetDRMDisplayToken(sde_drm::DRMDisplayToken *token) const {
   hw_intf_.at(core_ids_[0])->GetDRMDisplayToken(token);
 }
 
-DisplayError DPUCoreMux::GetFbConfig(uint32_t width, uint32_t height,
-                                     DisplayDeviceContext *device_ctx,
-                                     DisplayClientContext *client_ctx) {
+DisplayError DPUMultiCore::GetFbConfig(uint32_t width, uint32_t height,
+                                       DisplayDeviceContext *device_ctx,
+                                       DisplayClientContext *client_ctx) {
   DisplayError error = kErrorNone;
   client_ctx->fb_config.x_pixels = width;
   client_ctx->fb_config.y_pixels = height;
@@ -1033,9 +1031,9 @@ DisplayError DPUCoreMux::GetFbConfig(uint32_t width, uint32_t height,
   for (uint32_t i = 0; i < device_ctx->size(); i++) {
     device_ctx->at(core_ids_[i]).fb_config = client_ctx->fb_config;
 
-    uint32_t dpu_fb_width = client_ctx->fb_config.x_pixels *
-                           (FLOAT(device_ctx->at(core_ids_[i]).display_attributes.x_pixels) /
-                            client_ctx->display_attributes.x_pixels);
+    uint32_t dpu_fb_width =
+        client_ctx->fb_config.x_pixels * (device_ctx->at(core_ids_[i]).display_attributes.x_pixels /
+                                          client_ctx->display_attributes.x_pixels);
     device_ctx->at(core_ids_[i]).fb_config.x_pixels = dpu_fb_width;
   }
   return error;

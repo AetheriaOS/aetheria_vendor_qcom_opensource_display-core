@@ -41,27 +41,9 @@
 
 namespace sdm {
 
-enum class ColorConvertTaskCode : int32_t {
-  kCodeGetInstance,
-  kCodeBlit,
-  kCodeReset,
-  kCodeDestroyInstance,
-};
-
 struct ColorConvertGetInstanceContext
     : public SyncTask<ColorConvertTaskCode>::TaskContext {
   LayerBuffer *output_buffer = NULL;
-};
-
-struct ColorConvertBlitContext
-    : public SyncTask<ColorConvertTaskCode>::TaskContext {
-  void *src_hnd = nullptr;
-  void *dst_hnd = nullptr;
-  SDMRect src_rect = {};
-  SDMRect dst_rect = {};
-  shared_ptr<Fence> src_acquire_fence = nullptr;
-  shared_ptr<Fence> dst_acquire_fence = nullptr;
-  shared_ptr<Fence> release_fence = nullptr;
 };
 
 class SDMDisplayVirtualGPU

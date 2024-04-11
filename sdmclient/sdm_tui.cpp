@@ -134,8 +134,8 @@ DisplayError SDMTrustedUI::TUITransitionPrepare(int disp_id) {
     target_display = disp_->GetActiveBuiltinDisplay();
   }
 
-  if (target_display != qdutils::DISPLAY_PRIMARY &&
-      target_display != qdutils::DISPLAY_BUILTIN_2) {
+  if (target_display != qdutilsDisplayType::DISPLAY_PRIMARY &&
+      target_display != qdutilsDisplayType::DISPLAY_BUILTIN_2) {
     DLOGE("Display %" PRIu64 " not supported", target_display);
     return kErrorNotSupported;
   }
@@ -157,9 +157,9 @@ DisplayError SDMTrustedUI::TUITransitionPrepare(int disp_id) {
   disp_->TeardownPluggableDisplays();
 
   std::vector<DisplayMapInfo> map_info = {
-      disp_->GetDisplayMapInfo(qdutils::DISPLAY_PRIMARY)[0]};
-  auto &map_info_builtin = disp_->GetDisplayMapInfo(qdutils::DISPLAY_BUILTIN_2);
-  auto &map_info_virtual = disp_->GetDisplayMapInfo(qdutils::DISPLAY_VIRTUAL);
+      disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_PRIMARY)[0]};
+  auto &map_info_builtin = disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_BUILTIN_2);
+  auto &map_info_virtual = disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_VIRTUAL);
 
   std::copy(map_info_builtin.begin(), map_info_builtin.end(),
             std::back_inserter(map_info));
@@ -293,8 +293,8 @@ DisplayError SDMTrustedUI::TUITransitionEndLocked(int disp_id) {
     target_display = disp_->GetActiveBuiltinDisplay();
   }
 
-  if (target_display != qdutils::DISPLAY_PRIMARY &&
-      target_display != qdutils::DISPLAY_BUILTIN_2) {
+  if (target_display != qdutilsDisplayType::DISPLAY_PRIMARY &&
+      target_display != qdutilsDisplayType::DISPLAY_BUILTIN_2) {
     DLOGE("Display %" PRIu64 " not supported", target_display);
     return kErrorNotSupported;
   }
@@ -354,16 +354,16 @@ DisplayError SDMTrustedUI::TUITransitionUnPrepare(int disp_id) {
     target_display = disp_->GetActiveBuiltinDisplay();
   }
 
-  if (target_display != qdutils::DISPLAY_PRIMARY &&
-      target_display != qdutils::DISPLAY_BUILTIN_2) {
+  if (target_display != qdutilsDisplayType::DISPLAY_PRIMARY &&
+      target_display != qdutilsDisplayType::DISPLAY_BUILTIN_2) {
     DLOGE("Display %" PRIu64 " not supported", target_display);
     return kErrorNotSupported;
   }
 
   std::vector<DisplayMapInfo> map_info = {
-      disp_->GetDisplayMapInfo(qdutils::DISPLAY_PRIMARY)[0]};
-  auto &map_info_builtin = disp_->GetDisplayMapInfo(qdutils::DISPLAY_BUILTIN_2);
-  auto &map_info_virtual = disp_->GetDisplayMapInfo(qdutils::DISPLAY_VIRTUAL);
+      disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_PRIMARY)[0]};
+  auto &map_info_builtin = disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_BUILTIN_2);
+  auto &map_info_virtual = disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_VIRTUAL);
 
   std::copy(map_info_builtin.begin(), map_info_builtin.end(),
             std::back_inserter(map_info));

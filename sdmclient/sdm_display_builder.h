@@ -6,7 +6,6 @@
 #define __SDM_DISPLAY_BUILDER_H__
 
 #include <core/core_interface.h>
-#include <display_config.h>
 
 #include <map>
 #include <vector>
@@ -95,7 +94,7 @@ class SDMDisplayBuilder {
   uint32_t GetVirtualDisplayCount();
   void SetLuminance(float min_lum, float max_lum);
   void SetProperties(int32_t enable_primary_reconfig_req) {
-    enable_primary_reconfig_req_ = enable_primary_reconfig_req_;
+    enable_primary_reconfig_req_ = enable_primary_reconfig_req;
   }
 
   bool IsBuiltInDisplay(uint64_t disp_id);

@@ -40,16 +40,18 @@
 #include <thread>
 
 #include "sdm_hotplug_cb_intf.h"
+#include "sdm_compositor_callbacks.h"
 
 namespace sdm {
 
 class SDMHotPlug {
 public:
-  explicit SDMHotPlug(SDMHotPlugCbIntf *cb) : cb_(cb) {}
-  ~SDMHotPlug() {}
+ explicit SDMHotPlug(SDMHotPlugCbIntf *cb, SDMCompositorCallbacks *callbacks)
+     : cb_(cb), callbacks_(callbacks) {}
+ ~SDMHotPlug() {}
 
-  void Init();
-  void Deinit();
+ void Init();
+ void Deinit();
 
 private:
   void ParseEvent(char *uevent_data, int length);
@@ -69,6 +71,7 @@ private:
   bool hpd_thread_should_terminate_ = false;
 
   SDMHotPlugCbIntf *cb_ = nullptr;
+  SDMCompositorCallbacks *callbacks_ = nullptr;
 };
 
 } // namespace sdm

@@ -1,7 +1,5 @@
 /*
-* Changes from Qualcomm Innovation Center are provided under the following license:
-*
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -34,92 +32,80 @@ namespace sdm {
 
 class DPUCoreMux {
  public:
-  DisplayError Destroy();
-
-  DPUCoreMux(DisplayId display_id, SDMDisplayType type,
-             sdm::MultiCoreInstance<uint32_t, HWInfoInterface *> hw_info_intf,
-             BufferAllocator *buffer_allocator);
-  DisplayError Init();
-  DisplayError Deinit();
-  DisplayError GetDisplayId(int32_t *display_id);
-  DisplayError GetActiveConfig(uint32_t *active_config);
-  DisplayError GetDefaultConfig(uint32_t *default_config);
-  DisplayError GetNumDisplayAttributes(uint32_t *count);
-  DisplayError GetDisplayAttributes(uint32_t index,
-                                    DisplayDeviceContext *device_ctx,
-                                    DisplayClientContext *client_ctx);
-  DisplayError GetHWPanelInfo(DisplayDeviceContext *device_ctx,
-                              DisplayClientContext *client_ctx);
-  DisplayError SetDisplayAttributes(uint32_t index);
-  DisplayError SetDisplayAttributes(const HWDisplayAttributes &display_attributes);
-  DisplayError GetConfigIndex(char *mode, uint32_t *index);
-  DisplayError PowerOn(std::map<uint32_t, HWQosData> &qos_data, SyncPoints *sync_points);
-  DisplayError PowerOff(bool teardown, SyncPoints *sync_points);
-  DisplayError Doze(std::map<uint32_t, HWQosData> &qos_data, SyncPoints *sync_points);
-  DisplayError DozeSuspend(std::map<uint32_t, HWQosData> &qos_data, SyncPoints *sync_points);
-  DisplayError Standby(SyncPoints *sync_points);
-  DisplayError Validate(std::map<uint32_t, HWLayersInfo> &hw_layers_info);
-  DisplayError Commit(std::map<uint32_t, HWLayersInfo> &hw_layers_info);
-  DisplayError Flush(std::map<uint32_t, HWLayersInfo> &hw_layers_info);
-  DisplayError GetPPFeaturesVersion(PPFeatureVersion *vers, uint32_t core_id);
-  DisplayError SetPPFeature(PPFeatureInfo *feature, uint32_t &core_id);
-  DisplayError SetVSyncState(bool enable);
-  void SetIdleTimeoutMs(uint32_t timeout_ms);
-  DisplayError SetDisplayMode(const HWDisplayMode hw_display_mode);
-  DisplayError SetRefreshRate(uint32_t refresh_rate);
-  DisplayError SetPanelBrightness(int level);
-  DisplayError GetHWScanInfo(HWScanInfo *scan_info);
-  DisplayError GetVideoFormat(uint32_t config_index, uint32_t *video_format);
-  DisplayError GetMaxCEAFormat(uint32_t *max_cea_format);
-  DisplayError SetCursorPosition(std::map<uint32_t, HWLayersInfo> &hw_layers_info, int x, int y);
-  DisplayError OnMinHdcpEncryptionLevelChange(uint32_t min_enc_level);
-  DisplayError GetPanelBrightness(int *level);
-  DisplayError SetAutoRefresh(bool enable);
-  DisplayError SetScaleLutConfig(HWScaleLutInfo *lut_info);
-  DisplayError UnsetScaleLutConfig();
-  DisplayError SetMixerAttributes(const HWMixerAttributes &mixer_attributes);
-  DisplayError GetMixerAttributes(DisplayDeviceContext *device_ctx,
-                                  DisplayClientContext *client_ctx);
-  DisplayError DumpDebugData();
-  DisplayError SetDppsFeature(void *payload, size_t size);
-  DisplayError GetDppsFeatureInfo(void *payload, size_t size);
-  DisplayError HandleSecureEvent(SecureEvent secure_event, std::map<uint32_t, HWQosData> &qos_data);
-  DisplayError ControlIdlePowerCollapse(bool enable, bool synchronous);
-  DisplayError SetDisplayDppsAdROI(void *payload);
-  DisplayError SetDynamicDSIClock(uint64_t bit_clk_rate);
-  DisplayError GetDynamicDSIClock(uint64_t *bit_clk_rate);
-  DisplayError GetDisplayIdentificationData(uint8_t *out_port, uint32_t *out_data_size,
-                                            uint8_t *out_data);
-  DisplayError SetFrameTrigger(FrameTriggerMode mode, uint32_t core_id);
-  DisplayError SetFrameTrigger(FrameTriggerMode mode);
-  DisplayError SetBLScale(uint32_t level);
-  DisplayError GetPanelBlMaxLvl(uint32_t *max_bl);
-  DisplayError GetPanelBrightnessBasePath(std::string *base_path) const;
-  DisplayError SetBlendSpace(const PrimariesTransfer &blend_space);
-  DisplayError EnableSelfRefresh(SelfRefreshState self_refresh_state);
-  PanelFeaturePropertyIntf *GetPanelFeaturePropertyIntf();
-  DisplayError GetFeatureSupportStatus(const HWFeature feature, uint32_t *status);
-  void FlushConcurrentWriteback();
-  DisplayError SetAlternateDisplayConfig(uint32_t *alt_config);
-  DisplayError GetQsyncFps(uint32_t *qsync_fps);
-  DisplayError CancelDeferredPowerMode();
-  template<typename T>
-  bool AreAllEntriesSame(std::vector<T>& vec);
-  void GetHWInterface(HWInterface **intf);
-  void GetDRMDisplayToken(sde_drm::DRMDisplayToken *token) const;
-  DisplayError SetPPConfig(void *payload, size_t size);
-  DisplayError GetFbConfig(uint32_t width, uint32_t height,
-                           DisplayDeviceContext *device_ctx,
-                           DisplayClientContext *client_ctx);
-
- private:
-  std::map<uint32_t, HWInterface*> hw_intf_;
-  std::vector<uint32_t> core_ids_;
-  DisplayId display_id_ = {};
-  bool dpu_ctl_op_sync_ = false;
-  std::vector<uint32_t> op_sync_sequence_;
-
-  void SetOpSyncHint(bool dpu_ctl_op_sync);
+  virtual DisplayError Destroy() = 0;
+  virtual DisplayError Init() = 0;
+  virtual ~DPUCoreMux(){};
+  virtual DisplayError GetDisplayId(int32_t *display_id) = 0;
+  virtual DisplayError GetActiveConfig(uint32_t *active_config) = 0;
+  virtual DisplayError GetDefaultConfig(uint32_t *default_config) = 0;
+  virtual DisplayError GetNumDisplayAttributes(uint32_t *count) = 0;
+  virtual DisplayError GetDisplayAttributes(uint32_t index, DisplayDeviceContext *device_ctx,
+                                            DisplayClientContext *client_ctx) = 0;
+  virtual DisplayError GetHWPanelInfo(DisplayDeviceContext *device_ctx,
+                                      DisplayClientContext *client_ctx) = 0;
+  virtual DisplayError SetDisplayAttributes(uint32_t index) = 0;
+  virtual DisplayError SetDisplayAttributes(const HWDisplayAttributes &display_attributes) = 0;
+  virtual DisplayError GetConfigIndex(char *mode, uint32_t *index) = 0;
+  virtual DisplayError PowerOn(std::map<uint32_t, HWQosData> &qos_data,
+                               SyncPoints *sync_points) = 0;
+  virtual DisplayError PowerOff(bool teardown, SyncPoints *sync_points) = 0;
+  virtual DisplayError Doze(std::map<uint32_t, HWQosData> &qos_data, SyncPoints *sync_points) = 0;
+  virtual DisplayError DozeSuspend(std::map<uint32_t, HWQosData> &qos_data,
+                                   SyncPoints *sync_points) = 0;
+  virtual DisplayError Standby(SyncPoints *sync_points) = 0;
+  virtual DisplayError Validate(std::map<uint32_t, HWLayersInfo> &hw_layers_info) = 0;
+  virtual DisplayError Commit(std::map<uint32_t, HWLayersInfo> &hw_layers_info) = 0;
+  virtual DisplayError Flush(std::map<uint32_t, HWLayersInfo> &hw_layers_info) = 0;
+  virtual DisplayError GetPPFeaturesVersion(PPFeatureVersion *vers, uint32_t core_id) = 0;
+  virtual DisplayError SetPPFeature(PPFeatureInfo *feature, uint32_t &core_id) = 0;
+  virtual DisplayError SetVSyncState(bool enable) = 0;
+  virtual void SetIdleTimeoutMs(uint32_t timeout_ms) = 0;
+  virtual DisplayError SetDisplayMode(const HWDisplayMode hw_display_mode) = 0;
+  virtual DisplayError SetRefreshRate(uint32_t refresh_rate) = 0;
+  virtual DisplayError SetPanelBrightness(int level) = 0;
+  virtual DisplayError GetHWScanInfo(HWScanInfo *scan_info) = 0;
+  virtual DisplayError GetVideoFormat(uint32_t config_index, uint32_t *video_format) = 0;
+  virtual DisplayError GetMaxCEAFormat(uint32_t *max_cea_format) = 0;
+  virtual DisplayError SetCursorPosition(std::map<uint32_t, HWLayersInfo> &hw_layers_info, int x,
+                                         int y) = 0;
+  virtual DisplayError OnMinHdcpEncryptionLevelChange(uint32_t min_enc_level) = 0;
+  virtual DisplayError GetPanelBrightness(int *level) = 0;
+  virtual DisplayError SetAutoRefresh(bool enable) = 0;
+  virtual DisplayError SetScaleLutConfig(HWScaleLutInfo *lut_info) = 0;
+  virtual DisplayError UnsetScaleLutConfig() = 0;
+  virtual DisplayError SetMixerAttributes(const HWMixerAttributes &mixer_attributes) = 0;
+  virtual DisplayError GetMixerAttributes(DisplayDeviceContext *device_ctx,
+                                          DisplayClientContext *client_ctx) = 0;
+  virtual DisplayError DumpDebugData() = 0;
+  virtual DisplayError SetDppsFeature(void *payload, size_t size) = 0;
+  virtual DisplayError GetDppsFeatureInfo(void *payload, size_t size) = 0;
+  virtual DisplayError HandleSecureEvent(SecureEvent secure_event,
+                                         std::map<uint32_t, HWQosData> &qos_data) = 0;
+  virtual DisplayError ControlIdlePowerCollapse(bool enable, bool synchronous) = 0;
+  virtual DisplayError SetDisplayDppsAdROI(void *payload) = 0;
+  virtual DisplayError SetDynamicDSIClock(uint64_t bit_clk_rate) = 0;
+  virtual DisplayError GetDynamicDSIClock(uint64_t *bit_clk_rate) = 0;
+  virtual DisplayError GetDisplayIdentificationData(uint8_t *out_port, uint32_t *out_data_size,
+                                                    uint8_t *out_data) = 0;
+  virtual DisplayError SetFrameTrigger(FrameTriggerMode mode, uint32_t core_id) = 0;
+  virtual DisplayError SetFrameTrigger(FrameTriggerMode mode) = 0;
+  virtual DisplayError SetBLScale(uint32_t level) = 0;
+  virtual DisplayError GetPanelBlMaxLvl(uint32_t *max_bl) = 0;
+  virtual DisplayError GetPanelBrightnessBasePath(std::string *base_path) const = 0;
+  virtual DisplayError SetBlendSpace(const PrimariesTransfer &blend_space) = 0;
+  virtual DisplayError EnableSelfRefresh(SelfRefreshState self_refresh_state) = 0;
+  virtual PanelFeaturePropertyIntf *GetPanelFeaturePropertyIntf() = 0;
+  virtual DisplayError GetFeatureSupportStatus(const HWFeature feature, uint32_t *status) = 0;
+  virtual void FlushConcurrentWriteback() = 0;
+  virtual DisplayError SetAlternateDisplayConfig(uint32_t *alt_config) = 0;
+  virtual DisplayError GetQsyncFps(uint32_t *qsync_fps) = 0;
+  virtual DisplayError CancelDeferredPowerMode() = 0;
+  virtual void GetHWInterface(HWInterface **intf) = 0;
+  virtual void GetDRMDisplayToken(sde_drm::DRMDisplayToken *token) const = 0;
+  virtual DisplayError SetPPConfig(void *payload, size_t size) = 0;
+  virtual DisplayError GetFbConfig(uint32_t width, uint32_t height,
+                                   DisplayDeviceContext *device_ctx,
+                                   DisplayClientContext *client_ctx) = 0;
 };
 
 }  // namespace sdm

@@ -33,9 +33,7 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
-#include <cutils/properties.h>
 #include <stdarg.h>
-#include <sync/sync.h>
 #include <sys/mman.h>
 #include <utils/constants.h>
 #include <utils/debug.h>
@@ -114,7 +112,7 @@ SDMDisplayBuiltIn::SDMDisplayBuiltIn(CoreInterface *core_intf, BufferAllocator *
 
 DisplayError SDMDisplayBuiltIn::Init() {
   cpu_hint_ = new CPUHint();
-  if (cpu_hint_->Init(static_cast<SDMDebugHandler *>(SDMDebugHandler::Get())) !=
+  if (cpu_hint_->Init(static_cast<SDMDebugHandler *>(SDMDebugHandler::Get()), callbacks_) !=
       kErrorNone) {
     delete cpu_hint_;
     cpu_hint_ = NULL;
@@ -204,7 +202,7 @@ DisplayError SDMDisplayBuiltIn::Init() {
 
 void SDMDisplayBuiltIn::Dump(std::ostringstream *os) {
   SDMDisplay::Dump(os);
-  *os << histogram.Dump();
+  *os << callbacks_->DumpHistogram(id_);
 }
 
 void SDMDisplayBuiltIn::ValidateUiScaling() {
@@ -319,6 +317,49 @@ bool SDMDisplayBuiltIn::CanSkipCommit() {
   pending_refresh_ = false;
 
   return skip_commit;
+}
+
+DisplayError SDMDisplayBuiltIn::CommitStitchLayers() {
+  if (disable_layer_stitch_) {
+    return kErrorNone;
+  }
+
+  if (!display_intf_->IsValidated() || skip_commit_) {
+    return kErrorNone;
+  }
+
+  LayerStitchContext ctx = {};
+  Layer *stitch_layer = stitch_target_->GetSDMLayer();
+  LayerBuffer &output_buffer = stitch_layer->input_buffer;
+  for (auto &layer : layer_stack_.layers) {
+    LayerComposition &composition = layer->composition;
+    if (composition != kCompositionStitch) {
+      continue;
+    }
+
+    SDMStitchParams params = {};
+    // Stitch target doesn't have an input fence.
+    // Render all layers at specified destination.
+    LayerBuffer &input_buffer = layer->input_buffer;
+    params.src_hnd = reinterpret_cast<void *>(input_buffer.buffer_id);
+    params.dst_hnd = reinterpret_cast<void *>(output_buffer.buffer_id);
+    SetRect(layer->stitch_info.dst_rect, &params.dst_rect);
+    SetRect(layer->stitch_info.slice_rect, &params.scissor_rect);
+    params.src_acquire_fence = input_buffer.acquire_fence;
+
+    ctx.stitch_params.push_back(params);
+  }
+
+  if (!ctx.stitch_params.size()) {
+    // No layers marked for stitch.
+    return kErrorNone;
+  }
+
+  layer_stitch_task_.PerformTask(LayerStitchTaskCode::kCodeStitch, &ctx);
+  // Set release fence.
+  output_buffer.acquire_fence = ctx.release_fence;
+
+  return kErrorNone;
 }
 
 DisplayError SDMDisplayBuiltIn::SetPowerMode(SDMPowerMode mode, bool teardown) {
@@ -492,9 +533,7 @@ DisplayError SDMDisplayBuiltIn::RestoreColorTransform() {
   return status;
 }
 
-DisplayError
-SDMDisplayBuiltIn::SetColorTransform(const float *matrix,
-                                     android_color_transform_t hint) {
+DisplayError SDMDisplayBuiltIn::SetColorTransform(const float *matrix, SDMColorTransform hint) {
   if (!matrix) {
     return kErrorNotSupported;
   }
@@ -937,11 +976,11 @@ SDMDisplayBuiltIn::SetDisplayedContentSamplingEnabledVndService(bool enabled) {
   std::unique_lock<decltype(sampling_mutex)> lk(sampling_mutex);
   vndservice_sampling_vote = enabled;
   if (api_sampling_vote || vndservice_sampling_vote) {
-    histogram.start();
+    callbacks_->StartHistogram(id_, 0);
     display_intf_->colorSamplingOn();
   } else {
     display_intf_->colorSamplingOff();
-    histogram.stop();
+    callbacks_->StopHistogram(id_, false);
   }
   return kErrorNone;
 }
@@ -957,29 +996,28 @@ DisplayError SDMDisplayBuiltIn::SetDisplayedContentSamplingEnabled(
 
   auto start = api_sampling_vote || vndservice_sampling_vote;
   if (start && max_frames == 0) {
-    histogram.start();
+    callbacks_->StartHistogram(id_, 0);
     display_intf_->colorSamplingOn();
   } else if (start) {
-    histogram.start(max_frames);
+    callbacks_->StartHistogram(id_, max_frames);
     display_intf_->colorSamplingOn();
   } else {
     display_intf_->colorSamplingOff();
-    histogram.stop();
+    callbacks_->StopHistogram(id_, false);
   }
   return kErrorNone;
 }
 
 DisplayError SDMDisplayBuiltIn::GetDisplayedContentSamplingAttributes(
     int32_t *format, int32_t *dataspace, uint8_t *supported_components) {
-  return (static_cast<DisplayError>(
-      histogram.getAttributes(format, dataspace, supported_components)));
+  return callbacks_->GetHistogramAttributes(id_, format, dataspace, supported_components);
 }
 
 DisplayError SDMDisplayBuiltIn::GetDisplayedContentSample(
     uint64_t max_frames, uint64_t timestamp, uint64_t *numFrames,
     int32_t samples_size[NUM_HISTOGRAM_COLOR_COMPONENTS],
     uint64_t *samples[NUM_HISTOGRAM_COLOR_COMPONENTS]) {
-  histogram.collect(max_frames, timestamp, samples_size, samples, numFrames);
+  callbacks_->CollectHistogram(id_, max_frames, timestamp, samples_size, samples, numFrames);
   return kErrorNone;
 }
 
@@ -1191,37 +1229,27 @@ bool SDMDisplayBuiltIn::HasSmartPanelConfig(void) {
 DisplayError SDMDisplayBuiltIn::Deinit() {
   // Destory color convert instance. This destroys thread and underlying GL
   // resources.
-  /*aparmar
-  if (gl_layer_stitch_) {
-    layer_stitch_task_.PerformTask(LayerStitchTaskCode::kCodeDestroyInstance,
-  nullptr);
-  }*/
+  callbacks_->DestroyLayerStitch(id_);
 
-  histogram.stop();
+  callbacks_->StopHistogram(id_, true);
   return SDMDisplay::Deinit();
 }
 
-void SDMDisplayBuiltIn::OnTask(
-    const LayerStitchTaskCode &task_code,
-    SyncTask<LayerStitchTaskCode>::TaskContext *task_context) {
-  // cb_->OnTask(task_code, task_context);
-
-  /*aparmar: move it to compositor
-    switch (task_code) {
-      case LayerStitchTaskCode::kCodeGetInstance: {
-        gl_layer_stitch_ = GLLayerStitch::GetInstance(false);
-      } break;
-      case LayerStitchTaskCode::kCodeStitch: {
-        DTRACE_SCOPED();
-        LayerStitchContext *ctx = reinterpret_cast<LayerStitchContext
-    *>(task_context); gl_layer_stitch_->Blit(ctx->stitch_params,
-    &(ctx->release_fence)); } break; case
-    LayerStitchTaskCode::kCodeDestroyInstance: { if (gl_layer_stitch_) {
-          GLLayerStitch::Destroy(gl_layer_stitch_);
-        }
-      } break;
-    }
-  */
+void SDMDisplayBuiltIn::OnTask(const LayerStitchTaskCode &task_code,
+                               SyncTask<LayerStitchTaskCode>::TaskContext *task_context) {
+  switch (task_code) {
+    case LayerStitchTaskCode::kCodeGetInstance: {
+      callbacks_->InitLayerStitch(id_);
+    } break;
+    case LayerStitchTaskCode::kCodeStitch: {
+      DTRACE_SCOPED();
+      LayerStitchContext *ctx = reinterpret_cast<LayerStitchContext *>(task_context);
+      callbacks_->StitchLayers(id_, ctx);
+    } break;
+    case LayerStitchTaskCode::kCodeDestroyInstance: {
+      callbacks_->DestroyLayerStitch(id_);
+    } break;
+  }
 }
 
 bool SDMDisplayBuiltIn::InitLayerStitch() {
@@ -1243,12 +1271,7 @@ bool SDMDisplayBuiltIn::InitLayerStitch() {
   }
 
   // Initialize stitch context. This will be non-secure.
-  layer_stitch_task_.PerformTask(LayerStitchTaskCode::kCodeGetInstance,
-                                 nullptr);
-  if (/*aparmar: gl_layer_stitch_ == nullptr*/ false) {
-    DLOGE("Failed to get LayerStitch Instance");
-    return false;
-  }
+  layer_stitch_task_.PerformTask(LayerStitchTaskCode::kCodeGetInstance, nullptr);
 
   if (!AllocateStitchBuffer()) {
     return true;
@@ -1280,7 +1303,7 @@ bool SDMDisplayBuiltIn::AllocateStitchBuffer() {
   config.height = fb_config_.y_pixels * kBufferHeightFactor;
 
   // By default UBWC is enabled and below property is global enable/disable for
-  // all buffers allocated through gralloc , including framebuffer targets.
+  // all buffers allocated through snapalloc , including framebuffer targets.
   int ubwc_disabled = 0;
   SDMDebugHandler::Get()->GetProperty(DISABLE_UBWC_PROP, &ubwc_disabled);
   config.format = ubwc_disabled ? kFormatRGBA8888 : kFormatRGBA8888Ubwc;
@@ -1341,7 +1364,7 @@ DisplayError SDMDisplayBuiltIn::HistogramEvent(int fd, uint32_t blob_id) {
   uint32_t panel_width = 0;
   uint32_t panel_height = 0;
   GetPanelResolution(&panel_width, &panel_height);
-  histogram.notify_histogram_event(fd, blob_id, panel_width, panel_height);
+  callbacks_->NotifyHistogram(id_, fd, blob_id, panel_width, panel_height);
   return kErrorNone;
 }
 
@@ -1401,7 +1424,6 @@ bool SDMDisplayBuiltIn::NeedsLargeCompPerfHint() {
   }
 
   auto it = mixed_mode_threshold_.find(active_refresh_rate_);
-  ;
   if (it != mixed_mode_threshold_.end()) {
     if (gpu_layer_count < it->second) {
       DLOGV_IF(kTagResources,
@@ -1661,10 +1683,10 @@ void SDMDisplayBuiltIn::HandleLargeCompositionHint(bool release) {
     // 100 milliseconds to avoid resending hints in animation launch use cases
     // and others.
     if (hint_release_start_time_ == 0) {
-      hint_release_start_time_ = systemTime(SYSTEM_TIME_MONOTONIC);
+      hint_release_start_time_ = callbacks_->SystemTime(SYSTEM_TIME_MONOTONIC);
     }
 
-    nsecs_t current_time = systemTime(SYSTEM_TIME_MONOTONIC);
+    nsecs_t current_time = callbacks_->SystemTime(SYSTEM_TIME_MONOTONIC);
     if (nanoseconds_to_milliseconds(current_time - hint_release_start_time_) >=
         elapse_time_threshold_) {
       cpu_hint_->ReqHintRelease();
@@ -1698,16 +1720,10 @@ DisplayError SDMDisplayBuiltIn::SetSsrcMode(const std::string &mode) {
 }
 
 DisplayError SDMDisplayBuiltIn::SetupVRRConfig() {
-  DisplayError error = kErrorNone;
-  uint32_t avr_step = variable_config_map_.at(active_config_index_).avr_step;
-
-  if (avr_step > 0) {
-    // Enable Variable Refresh Rate State
-    DLOGI("Enable VRR State for Config %d with AVR Step %d fps", active_config_index_, avr_step);
-    error = display_intf_->SetVRRState(true);
-    if (error != kErrorNone) {
-      return error;
-    }
+  // Enable Variable Refresh Rate state
+  DisplayError error = display_intf_->SetVRRState(true);
+  if (error != kErrorNone) {
+    return error;
   }
 
   for (auto &[config_id, config] : variable_config_map_) {

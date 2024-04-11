@@ -15,17 +15,12 @@ cc_library_shared {
         "sdmclient_interface_headers",
     ],
     shared_libs: [
-        "libhistogram",
         "libutils",
-        "libcutils",
-        "libsync",
         "libc++",
         "libsdmcore",
         "libdisplaydebug",
         "libsdmutils",
-        "libgpu_tonemapper",
         "libdrm",
-        "libhardware_legacy",
         "libtinyxml2",
     ],
     cflags: [

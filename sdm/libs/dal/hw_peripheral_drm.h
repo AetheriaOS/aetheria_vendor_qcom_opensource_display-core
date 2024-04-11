@@ -115,6 +115,7 @@ class HWPeripheralDRM : public HWDeviceDRM, public PanelFeaturePropertyIntf {
   virtual DisplayError UpdateTransferTime(uint32_t transfer_time);
   void SetDestScalarData(const HWLayersInfo &hw_layer_info);
   virtual bool IsAVRStepSupported(uint32_t config_index);
+  virtual bool IsVRRSupported();
 
  private:
   void InitDestScaler();

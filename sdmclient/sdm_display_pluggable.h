@@ -58,7 +58,7 @@ public:
                                        SDMRenderIntent *out_intents);
  virtual DisplayError SetColorMode(SDMColorMode mode);
  virtual DisplayError SetColorModeWithRenderIntent(SDMColorMode mode, SDMRenderIntent intent);
- virtual DisplayError SetColorTransform(const float *matrix, android_color_transform_t hint);
+ virtual DisplayError SetColorTransform(const float *matrix, SDMColorTransform hint);
  virtual DisplayError PreValidateDisplay(bool *exit_validate);
  virtual DisplayError PostCommitLayerStack(shared_ptr<Fence> *out_retire_fence);
 

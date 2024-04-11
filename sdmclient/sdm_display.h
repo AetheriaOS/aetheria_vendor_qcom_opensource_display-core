@@ -37,7 +37,6 @@
 #define __SDM_DISPLAY_H__
 
 #include "display_event_handler.h"
-#include "histogram_collector.h"
 #include "sdm_layers.h"
 #include <algorithm>
 #include <bitset>
@@ -51,6 +50,7 @@
 #include <sys/stat.h>
 #include <utility>
 #include <vector>
+#include <climits>
 
 #include "sdm_compositor_callbacks.h"
 #include "sdm_layer_builder.h"
@@ -119,8 +119,7 @@ public:
                                             SDMRenderIntent intent);
   DisplayError SetColorModeById(int32_t color_mode_id);
   DisplayError SetColorModeFromClientApi(std::string mode_string);
-  virtual DisplayError SetColorTransform(const float *matrix,
-                                         android_color_transform_t hint);
+  virtual DisplayError SetColorTransform(const float *matrix, SDMColorTransform hint);
   virtual DisplayError RestoreColorTransform();
   virtual SDMColorMode GetCurrentColorMode() { return current_color_mode_; }
   virtual SDMRenderIntent GetCurrentRenderIntent() {
@@ -337,12 +336,10 @@ public:
     return kErrorNotSupported;
   }
   virtual DisplayError RestoreColorTransform() { return kErrorNotSupported; }
-  virtual DisplayError SetColorTransform(const float *matrix,
-                                         android_color_transform_t hint) {
+  virtual DisplayError SetColorTransform(const float *matrix, SDMColorTransform hint) {
     return kErrorNotSupported;
   }
-  virtual DisplayError HandleColorModeTransform(android_color_mode_t mode,
-                                                android_color_transform_t hint,
+  virtual DisplayError HandleColorModeTransform(SDMColorMode mode, SDMColorTransform hint,
                                                 const double *matrix) {
     return kErrorNotSupported;
   }
