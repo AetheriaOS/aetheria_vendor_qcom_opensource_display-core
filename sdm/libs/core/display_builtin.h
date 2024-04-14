@@ -239,6 +239,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError SetABCState(bool state) override;
   DisplayError SetABCReconfig() override;
   DisplayError SetABCMode(const string &mode_name) override;
+  DisplayError SetPanelFeatureConfig(int32_t type, void *data) override;
 
   // Implement the HWEventHandlers
   DisplayError VSync(int64_t timestamp) override;

@@ -184,6 +184,7 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(SetVRRState(bool));
   MAKE_NO_OP(PanelBacklightInfo(const std::string &client_name, bool enable,
                                 SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf));
+  MAKE_NO_OP(SetPanelFeatureConfig(int32_t, void *));
 
  protected:
   DisplayConfigVariableInfo default_variable_config_ = {};

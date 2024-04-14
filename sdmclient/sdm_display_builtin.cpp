@@ -1782,4 +1782,8 @@ int SDMDisplayBuiltIn::GetNotifyEptConfig() {
   return notify_ept_heads_up_config_;
 }
 
+DisplayError SDMDisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) {
+  return display_intf_->SetPanelFeatureConfig(type, data);
+}
+
 } // namespace sdm

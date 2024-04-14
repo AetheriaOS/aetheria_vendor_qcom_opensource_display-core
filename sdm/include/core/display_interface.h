@@ -357,6 +357,14 @@ struct PanelFeatureInfo {
   uint32_t fps = 0;
 };
 
+/*! @brief This enum represents the panel feature cmd types supported by the vendService cmd.
+
+  @sa DisplayInterface::PanelFeatureVendorServiceType
+*/
+enum PanelFeatureVendorServiceType {
+  PanelFeatureVendorServiceTypeMax,
+};
+
 /*! @brief Display device event handler implemented by the client.
 
   @details This class declares prototype for display device event handler methods which must be
@@ -1434,6 +1442,15 @@ class DisplayInterface {
    @return \link DisplayError \endlink
   */
   virtual DisplayError SetABCMode(const string &mode_name) = 0;
+
+  /*! @brief Method to set panel feature configurations
+
+   @param[in] type : Operation type
+   @param[in] data : Configuration or operation data
+
+   @return \link DisplayError \endlink
+  */
+  virtual DisplayError SetPanelFeatureConfig(int32_t type, void *data) = 0;
 
  protected:
   virtual ~DisplayInterface() { }

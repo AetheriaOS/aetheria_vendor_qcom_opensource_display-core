@@ -4155,4 +4155,10 @@ DisplayError DisplayBuiltIn::SetABCMode(const string &mode_name) {
   return kErrorNone;
 }
 
+DisplayError DisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) {
+  DisplayError ret = kErrorParameters;
+  DLOGI("type %d", type);
+  return ret;
+}
+
 }  // namespace sdm

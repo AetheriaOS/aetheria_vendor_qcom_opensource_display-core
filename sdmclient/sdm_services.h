@@ -54,82 +54,61 @@ namespace sdm {
 
 enum {
   SDM_SERVICE_COMMAND_LIST_START = 1,
-  SDM_SERVICE_GET_PANEL_BRIGHTNESS =
-      2, // Provides ability to get the panel brightness
-  SDM_SERVICE_SET_PANEL_BRIGHTNESS =
-      3, // Provides ability to set the panel brightness
-  SDM_SERVICE_CONNECT_SDM_CLIENT = 4, // Connect to qservice
-  SDM_SERVICE_SCREEN_REFRESH = 5,     // Refresh screen through SF invalidate
-  SDM_SERVICE_GET_DISPLAY_VISIBLE_REGION = 11, // Get the visibleRegion for dpy
-  SDM_SERVICE_SET_SECONDARY_DISPLAY_STATUS =
-      12, // Sets secondary display status
-  SDM_SERVICE_SET_MAX_PIPES_PER_MIXER =
-      13,                            // Set max pipes per mixer for MDPComp
-  SDM_SERVICE_DYNAMIC_DEBUG = 15,    // Enable more logging on the fly
-  SDM_SERVICE_SET_IDLE_TIMEOUT = 16, // Set idle timeout for GPU fallback
-  SDM_SERVICE_CONFIGURE_DYN_REFRESH_RATE =
-      18, //  Enable/Disable/Set refresh rate dynamically
-  SDM_SERVICE_CONTROL_PARTIAL_UPDATE =
-      19, // Provides ability to enable/disable partial update
-  SDM_SERVICE_TOGGLE_SCREEN_UPDATES =
-      20, // Provides ability to set the panel brightness
-  SDM_SERVICE_SET_FRAME_DUMP_CONFIG =
-      21, // Provides ability to set the frame dump config
-  SDM_SERVICE_CONNECT_HDMI_CLIENT = 23, // Connect HDMI CEC HAL Client
-  SDM_SERVICE_QDCM_SVC_CMDS = 24,       // request QDCM services.
-  SDM_SERVICE_SET_ACTIVE_CONFIG = 25,   // Set a specified display config
-  SDM_SERVICE_GET_ACTIVE_CONFIG = 26,   // Get the current config index
-  SDM_SERVICE_GET_CONFIG_COUNT =
-      27, // Get the number of supported display configs
-  SDM_SERVICE_GET_DISPLAY_ATTRIBUTES_FOR_CONFIG =
-      28, // Get attr for specified config
-  SDM_SERVICE_SET_DISPLAY_MODE =
-      29, // Set display mode to command or video mode
-  SDM_SERVICE_SET_CAMERA_STATUS =
-      30, // To notify display when camera is on and off
+  SDM_SERVICE_GET_PANEL_BRIGHTNESS = 2,           // Provides ability to get the panel brightness
+  SDM_SERVICE_SET_PANEL_BRIGHTNESS = 3,           // Provides ability to set the panel brightness
+  SDM_SERVICE_CONNECT_SDM_CLIENT = 4,             // Connect to qservice
+  SDM_SERVICE_SCREEN_REFRESH = 5,                 // Refresh screen through SF invalidate
+  SDM_SERVICE_GET_DISPLAY_VISIBLE_REGION = 11,    // Get the visibleRegion for dpy
+  SDM_SERVICE_SET_SECONDARY_DISPLAY_STATUS = 12,  // Sets secondary display status
+  SDM_SERVICE_SET_MAX_PIPES_PER_MIXER = 13,       // Set max pipes per mixer for MDPComp
+  SDM_SERVICE_DYNAMIC_DEBUG = 15,                 // Enable more logging on the fly
+  SDM_SERVICE_SET_IDLE_TIMEOUT = 16,              // Set idle timeout for GPU fallback
+  SDM_SERVICE_CONFIGURE_DYN_REFRESH_RATE = 18,    //  Enable/Disable/Set refresh rate dynamically
+  SDM_SERVICE_CONTROL_PARTIAL_UPDATE = 19,  // Provides ability to enable/disable partial update
+  SDM_SERVICE_TOGGLE_SCREEN_UPDATES = 20,   // Provides ability to set the panel brightness
+  SDM_SERVICE_SET_FRAME_DUMP_CONFIG = 21,   // Provides ability to set the frame dump config
+  SDM_SERVICE_CONNECT_HDMI_CLIENT = 23,     // Connect HDMI CEC HAL Client
+  SDM_SERVICE_QDCM_SVC_CMDS = 24,           // request QDCM services.
+  SDM_SERVICE_SET_ACTIVE_CONFIG = 25,       // Set a specified display config
+  SDM_SERVICE_GET_ACTIVE_CONFIG = 26,       // Get the current config index
+  SDM_SERVICE_GET_CONFIG_COUNT = 27,        // Get the number of supported display configs
+  SDM_SERVICE_GET_DISPLAY_ATTRIBUTES_FOR_CONFIG = 28,  // Get attr for specified config
+  SDM_SERVICE_SET_DISPLAY_MODE = 29,                   // Set display mode to command or video mode
+  SDM_SERVICE_SET_CAMERA_STATUS = 30,  // To notify display when camera is on and off
   SDM_SERVICE_MIN_HDCP_ENCRYPTION_LEVEL_CHANGED = 31,
-  SDM_SERVICE_GET_BW_TRANSACTION_STATUS =
-      32, // Client can query BW transaction status.
-  SDM_SERVICE_SET_LAYER_MIXER_RESOLUTION =
-      33, // Enables client to set layer mixer resolution.
-  SDM_SERVICE_SET_COLOR_MODE = 34, // Overrides the QDCM mode on the display
-  SDM_SERVICE_SET_COLOR_MODE_BY_ID =
-      36, // Overrides the QDCM mode using the given mode ID
+  SDM_SERVICE_GET_BW_TRANSACTION_STATUS = 32,   // Client can query BW transaction status.
+  SDM_SERVICE_SET_LAYER_MIXER_RESOLUTION = 33,  // Enables client to set layer mixer resolution.
+  SDM_SERVICE_SET_COLOR_MODE = 34,              // Overrides the QDCM mode on the display
+  SDM_SERVICE_SET_COLOR_MODE_BY_ID = 36,        // Overrides the QDCM mode using the given mode ID
   SDM_SERVICE_GET_COMPOSER_STATUS =
-      37, // Get composer init status-true if primary display init is done
-  SDM_SERVICE_SET_QSYNC_MODE =
-      38, // Set qsync mode. 0 - (none)disable qsync, 1 - continuous mode.
-  SDM_SERVICE_SET_COLOR_MODE_WITH_RENDER_INTENT =
-      39,                       // Overrides the QDCM mode with render intent
-  SDM_SERVICE_SET_IDLE_PC = 40, // Enable/disable Idle power collapse
-  SDM_SERVICE_SET_DPPS_AD4_ROI_CONFIG = 41, // Set ad4 roi config for debug
-  SDM_SERVICE_SET_DSI_CLK = 42,             // Set DSI Clk.
-  SDM_SERVICE_GET_DSI_CLK = 43,             // Get DSI Clk.
-  SDM_SERVICE_GET_SUPPORTED_DSI_CLK = 44,   // Get supported DSI Clk.
-  SDM_SERVICE_SET_COLOR_MODE_FROM_CLIENT =
-      45, // Overrides the QDCM mode using the given mode ID
-  SDM_SERVICE_SET_FRAME_TRIGGER_MODE = 46, // Set frame trigger mode for debug
-  SDM_SERVICE_SET_PANEL_LUMINANCE = 47,    // Set Panel Luminance attributes.
-  SDM_SERVICE_SET_BRIGHTNESS_SCALE = 48,   // Set brightness scale ratio
-  SDM_SERVICE_SET_COLOR_SAMPLING_ENABLED =
-      49, // Toggle the collection of display color stats
-  SDM_SERVICE_SET_VSYNC_STATE = 50, // Enable/disable Vsync
-  SDM_SERVICE_NOTIFY_TUI_TRANSITION =
-      51, // Notify TUI transition prepare/start/stop
-  SDM_SERVICE_GET_DISPLAY_PORT_ID = 52, // Get the port id for a given display
-  SDM_SERVICE_SET_NOISE_PLUGIN_OVERRIDE = 53, // Override NoisePlugIn parameters
-  SDM_SERVICE_SET_DIMMING_ENABLE = 54,        // Set display dimming enablement
-  SDM_SERVICE_SET_DIMMING_MIN_BL =
-      55, // Set display dimming minimal backlight value
-  SDM_SERVICE_DUMP_CODE_COVERAGE =
-      56, // Dump the code coverage data for userspace projects
-  SDM_SERVICE_UPDATE_TRANSFER_TIME = 57,    // Update transfer time
-  SDM_SERVICE_SET_JITTER_CONFIG = 58,       // Watchdog TE Jitter Configuration
-  SDM_SERVICE_RETRIEVE_DEMURATN_FILES = 59, // Retrieve DemuraTn files from TVM
-  SDM_SERVICE_SET_DEMURA_STATE = 60,        // Enable/disable demura feature
-  SDM_SERVICE_SET_DEMURA_CONFIG = 61, // Set the demura configuration index
-  SDM_SERVICE_SET_BPP_MODE = 62,      // Set Panel bpp to 24bpp or 30bpp
-  SDM_SERVICE_PERFORM_CAC_CONFIG = 63,   // Set CAC Configuration for the display
+      37,                           // Get composer init status-true if primary display init is done
+  SDM_SERVICE_SET_QSYNC_MODE = 38,  // Set qsync mode. 0 - (none)disable qsync, 1 - continuous mode.
+  SDM_SERVICE_SET_COLOR_MODE_WITH_RENDER_INTENT = 39,  // Overrides the QDCM mode with render intent
+  SDM_SERVICE_SET_IDLE_PC = 40,                        // Enable/disable Idle power collapse
+  SDM_SERVICE_SET_DPPS_AD4_ROI_CONFIG = 41,            // Set ad4 roi config for debug
+  SDM_SERVICE_SET_DSI_CLK = 42,                        // Set DSI Clk.
+  SDM_SERVICE_GET_DSI_CLK = 43,                        // Get DSI Clk.
+  SDM_SERVICE_GET_SUPPORTED_DSI_CLK = 44,              // Get supported DSI Clk.
+  SDM_SERVICE_SET_COLOR_MODE_FROM_CLIENT = 45,  // Overrides the QDCM mode using the given mode ID
+  SDM_SERVICE_SET_FRAME_TRIGGER_MODE = 46,      // Set frame trigger mode for debug
+  SDM_SERVICE_SET_PANEL_LUMINANCE = 47,         // Set Panel Luminance attributes.
+  SDM_SERVICE_SET_BRIGHTNESS_SCALE = 48,        // Set brightness scale ratio
+  SDM_SERVICE_SET_COLOR_SAMPLING_ENABLED = 49,  // Toggle the collection of display color stats
+  SDM_SERVICE_SET_VSYNC_STATE = 50,             // Enable/disable Vsync
+  SDM_SERVICE_NOTIFY_TUI_TRANSITION = 51,       // Notify TUI transition prepare/start/stop
+  SDM_SERVICE_GET_DISPLAY_PORT_ID = 52,         // Get the port id for a given display
+  SDM_SERVICE_SET_NOISE_PLUGIN_OVERRIDE = 53,   // Override NoisePlugIn parameters
+  SDM_SERVICE_SET_DIMMING_ENABLE = 54,          // Set display dimming enablement
+  SDM_SERVICE_SET_DIMMING_MIN_BL = 55,          // Set display dimming minimal backlight value
+  SDM_SERVICE_DUMP_CODE_COVERAGE = 56,        // Dump the code coverage data for userspace projects
+  SDM_SERVICE_UPDATE_TRANSFER_TIME = 57,      // Update transfer time
+  SDM_SERVICE_SET_JITTER_CONFIG = 58,         // Watchdog TE Jitter Configuration
+  SDM_SERVICE_RETRIEVE_DEMURATN_FILES = 59,   // Retrieve DemuraTn files from TVM
+  SDM_SERVICE_SET_DEMURA_STATE = 60,          // Enable/disable demura feature
+  SDM_SERVICE_SET_DEMURA_CONFIG = 61,         // Set the demura configuration index
+  SDM_SERVICE_SET_BPP_MODE = 62,              // Set Panel bpp to 24bpp or 30bpp
+  SDM_SERVICE_PERFORM_CAC_CONFIG = 63,        // Set CAC Configuration for the display
+  SDM_SERVICE_SET_PANEL_FEATURE_CONFIG = 64,  // Common function, Set cfg for panel features
   SDM_SERVICE_COMMAND_LIST_END = 400,
 };
 
@@ -333,6 +312,7 @@ private:
   DisplayError DisplayBWTransactionPending(SDMParcel *input_parcel,
                                            SDMParcel *output_parcel);
   DisplayError GetDisplayPortId(SDMParcel *input_parcel, SDMParcel *output_parcel);
+  DisplayError SetPanelFeatureConfig(SDMParcel *input_parcel, SDMParcel *output_parcel);
 
   typedef DisplayError (SDMServices::*VndCmdSetHandler)(
       SDMParcel *input_parcel);
@@ -396,6 +376,7 @@ private:
       {SDM_SERVICE_SET_DEMURA_STATE, &SDMServices::SetDemuraState},
       {SDM_SERVICE_SET_DEMURA_CONFIG, &SDMServices::SetDemuraConfig},
       {SDM_SERVICE_GET_DISPLAY_PORT_ID, &SDMServices::GetDisplayPortId},
+      {SDM_SERVICE_SET_PANEL_FEATURE_CONFIG, &SDMServices::SetPanelFeatureConfig},
   };
 
   int bw_mode_release_fd_ = -1;
