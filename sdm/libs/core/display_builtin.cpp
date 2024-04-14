@@ -4156,9 +4156,45 @@ DisplayError DisplayBuiltIn::SetABCMode(const string &mode_name) {
 }
 
 DisplayError DisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) {
-  DisplayError ret = kErrorParameters;
-  DLOGI("type %d", type);
+  DisplayError ret = kErrorNone;
+
+  switch (type) {
+    case kTypeDemuraTnCWBSamplingPeriod:
+      ret = SetDemuraTnCWBSamplingPeriod(data);
+      break;
+    default:
+      DLOGE("Invalid type %d", type);
+      ret = kErrorParameters;
+      break;
+  }
   return ret;
+}
+
+DisplayError DisplayBuiltIn::SetDemuraTnCWBSamplingPeriod(void *data) {
+  int ret = 0;
+  int *period_ptr = nullptr;
+  GenericPayload payload = {};
+
+  if (!data || !demuratn_ || !demuratn_enabled_) {
+    DLOGE("Data %pK demuratn_ %pK demuratn_enabled_ %d", data, demuratn_.get(), demuratn_enabled_);
+    return kErrorUndefined;
+  }
+
+  ret = payload.CreatePayload<int>(period_ptr);
+  if (ret) {
+    DLOGE("Failed to create the payload, ret %d", ret);
+    return kErrorUndefined;
+  }
+  *period_ptr = *(reinterpret_cast<int *>(data));
+
+  ret = demuratn_->SetParameter(kDemuraTnCoreUvmParamCWBSamplingPeriod, payload);
+  if (ret) {
+    DLOGE("Set CWB sampling period failed ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  DLOGI("Set CWB sampling period %d success", *period_ptr);
+  return kErrorNone;
 }
 
 }  // namespace sdm

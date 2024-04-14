@@ -362,6 +362,7 @@ struct PanelFeatureInfo {
   @sa DisplayInterface::PanelFeatureVendorServiceType
 */
 enum PanelFeatureVendorServiceType {
+  kTypeDemuraTnCWBSamplingPeriod,
   PanelFeatureVendorServiceTypeMax,
 };
 
