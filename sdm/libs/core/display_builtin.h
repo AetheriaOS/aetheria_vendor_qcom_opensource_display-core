@@ -310,6 +310,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError SetupAiqe();
   DisplayError SetAVRStepState(bool enable);
   DisplayError SetDemuraTnCWBSamplingPeriod(void *data);
+  DisplayError SetDemuraTnEventsCtrl(void *data);
 
   const uint32_t kPuTimeOutMs = 1000;
   std::vector<HWEvent> event_list_;
