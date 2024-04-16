@@ -674,6 +674,12 @@ enum struct DRMOps {
    *      uint32_t - 0 for default 1 for video
    */
   CONNECTOR_SET_USECASE_IDX,
+  /*
+   * Op: Sets Brightness on connector
+   * Arg: uint32_t - Connector ID
+   *      uint32_t - Brightness Level
+   */
+  CONNECTOR_SET_BRIGHTNESS,
 };
 
 enum struct DRMRotation {

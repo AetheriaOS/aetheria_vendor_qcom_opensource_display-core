@@ -713,6 +713,10 @@ DisplayError HWDeviceDRM::Init() {
     DLOGI("aspect_ratio_threshold_: %f", aspect_ratio_threshold_);
   }
 
+  value = 0;
+  Debug::GetProperty(ENABLE_BRIGHTNESS_DRM_PROP, &value);
+  enable_brightness_drm_prop_ = (value == 1);
+
   return kErrorNone;
 }
 
@@ -1620,6 +1624,13 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
     // Used in 1 cases:
     // 1. Since driver doesnt clear the SSPP luts during the adb shell stop/start, clear once
     drm_atomic_intf_->Perform(sde_drm::DRMOps::PLANES_RESET_LUT, token_.crtc_id);
+  }
+
+  if (enable_brightness_drm_prop_ && cached_brightness_level_ != -1) {
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_BRIGHTNESS, token_.conn_id,
+                              cached_brightness_level_);
+    current_brightness_ = cached_brightness_level_;
+    cached_brightness_level_ = -1;
   }
 
   for (uint32_t i = 0; i < hw_layer_count; i++) {

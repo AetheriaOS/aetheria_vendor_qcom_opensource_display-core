@@ -367,6 +367,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   CacConfig cac_config_ = {};
   BufferInfo output_buffer_info_ = {};
   EventProxyInfo event_proxy_info_ = {};
+  bool enable_brightness_drm_prop_ = false;
 
   DynLib ssrc_lib_;
   std::shared_ptr<aiqe::SsrcFeatureInterface> ssrc_feature_interface_;
