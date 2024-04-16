@@ -954,7 +954,28 @@ void HWDeviceDRM::PopulateHWPanelInfo() {
         display_attributes_[index].x_pixels / 2;
   }
 
-  hw_panel_info_.partial_update = connector_info_.modes[index].num_roi;
+  int value = 0;
+  bool enable_ai_scaler = false;
+  if (Debug::GetProperty(ENABLE_AI_SCALER_PROP, &value) == kErrorNone) {
+    enable_ai_scaler = (value == 1);
+  }
+
+  bool enable_abc = false;
+  if (Debug::GetProperty(ENABLE_ABC, &value) == kErrorNone) {
+    enable_abc = (value == 1);
+  }
+
+  bool enable_ssrc = false;
+  if (Debug::GetProperty(AIQE_SSRC_ENABLE, &value) == kErrorNone) {
+    enable_ssrc = (value == 1);
+  }
+
+  if (enable_ai_scaler || enable_abc || enable_ssrc) {
+    hw_panel_info_.partial_update = false;
+  } else {
+    hw_panel_info_.partial_update = connector_info_.modes[index].num_roi;
+  }
+
   hw_panel_info_.left_roi_count = UINT32(connector_info_.modes[index].num_roi);
   hw_panel_info_.right_roi_count = UINT32(connector_info_.modes[index].num_roi);
   hw_panel_info_.left_align = connector_info_.modes[index].xstart;
