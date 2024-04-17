@@ -520,9 +520,9 @@ int HWDeviceDRM::Registry::MapBufferToFbId(Layer *layer, const LayerBuffer &buff
     // Create and cache the fb_id in map
     std::vector<std::shared_ptr<LayerBufferObject>> fb_id_vec;
     for (int i = 0; i < fb_id.size(); i++) {
-      std::shared_ptr<LayerBufferObject> bo = std::make_shared<FrameBufferObject>(fb_id[i],
-                                              core_id_, buffer.format, buffer.width, buffer.height,
-                                              secure_present);
+      std::shared_ptr<LayerBufferObject> bo =
+          std::make_shared<FrameBufferObject>(fb_id[i], core_id_, buffer.format, buffer.width,
+                                              buffer.height, false /* shallow */, secure_present);
       fb_id_vec.push_back(bo);
     }
 
