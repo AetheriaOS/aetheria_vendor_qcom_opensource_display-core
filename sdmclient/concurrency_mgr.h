@@ -39,7 +39,6 @@
 #include <core/display_interface.h>
 #include <core/ipc_interface.h>
 #include <core/socket_handler.h>
-#include <display_config.h>
 #include <utils/constants.h>
 #include <utils/locker.h>
 
@@ -122,7 +121,8 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   DisplayError CreatePrimaryDisplay();
 
   ConcurrencyMgr();
-  DisplayError Init(BufferAllocator *buffer_allocator, SocketHandler *socket_handler) override;
+  DisplayError Init(BufferAllocator *buffer_allocator, SocketHandler *socket_handler,
+                    DebugCallbackIntf *debug) override;
   DisplayError Deinit();
   void RegisterCompositorCallback(SDMCompositorCbIntf *cb, bool enable);
 
@@ -380,7 +380,7 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   bool IsModeSwitchAllowed(uint64_t disp_id, int32_t config) override;
   DisplayError GetActiveBuiltinDisplay(uint64_t *disp_id) override;
 
-  void RegisterSideBandCallback(SDMSideBandCompositorCbIntf *cb) override;
+  void RegisterSideBandCallback(SDMSideBandCompositorCbIntf *cb, bool enable) override;
 
   void GetCapabilities(uint32_t *outCount, int32_t *outCapabilities);
   void Dump(uint32_t *out_size, char *out_buffer);
@@ -481,6 +481,7 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   DisplayError SetCameraSmoothInfo(SDMCameraSmoothOp op, int32_t fps) override;
   DisplayError NotifyTUIDone(int ret, int disp_id,
                              SDMTUIEventType event_type) override;
+  DisplayError SetContentFps(const std::string &name, int32_t fps) override;
   int GetDisplayConfigGroup(uint64_t display, DisplayConfigGroupInfo variable_config);
 
   // SDMDisplayEventHandler
@@ -521,12 +522,17 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   bool IsClientConnected() { return client_connected_; }
   Display GetVsyncSource() override { return vsync_source_; }
   bool VsyncCallbackRegistered() override { return client_connected_; }
+  DisplayError SetupVRRConfig(uint64_t display_id);
+  DisplayError NotifyExpectedPresent(Display display, uint64_t expected_present_time,
+                                     uint32_t frame_interval_ns);
+  DisplayError SetFrameIntervalNs(Display display, uint32_t frameIntervalNs);
+  int GetNotifyEptConfig(Display display);
+  std::mutex *GetLumMutex() { return &mutex_lum_; }
 
   DisplayError SetSsrcMode(uint64_t display_id, const std::string &mode_name);
   DisplayError EnableCopr(uint64_t display_id, bool enable);
   DisplayError GetCoprStatus(uint64_t display_id, std::vector<int32_t> *copr_status);
 
-  static const int pluggable_lock_index_ = kNumDisplays;
   static const int locker_count_ = pluggable_lock_index_ + 1;
   static Locker locker_[locker_count_];
   static Locker display_config_locker_;
@@ -549,7 +555,7 @@ private:
   void SetNewThrottlingRate(uint32_t new_rate);
 
   void ResetPanel();
-  DisplayError InitSubModules();
+  DisplayError InitSubModules(DebugCallbackIntf *debug);
 
   void SendHotplug(Display display, bool state);
   DisplayError Hotplug(Display display, bool state);
@@ -652,7 +658,7 @@ private:
   Locker primary_display_lock_;
   bool primary_pending_ = true;
 
-  std::map<hwc2_display_t, std::future<DisplayError>> commit_done_future_;
+  std::map<uint64_t, std::future<DisplayError>> commit_done_future_;
   bool disable_get_screen_decorator_support_ = false;
 
   SDMHotPlug *hpd_ = nullptr;
@@ -678,7 +684,6 @@ private:
 
   Locker client_lock_;
 
-  SDMSideBandCompositorCbIntf *sideband_cb_ = nullptr;
   std::shared_ptr<ISnapMapper> snapmapper_ = nullptr;
 };
 } // namespace sdm

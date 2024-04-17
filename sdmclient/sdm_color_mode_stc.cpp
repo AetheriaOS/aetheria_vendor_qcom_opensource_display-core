@@ -33,9 +33,7 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
-#include <cutils/properties.h>
 #include <stdarg.h>
-#include <sync/sync.h>
 #include <sys/mman.h>
 #include <utils/constants.h>
 #include <utils/debug.h>
@@ -44,6 +42,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <iomanip>
 
 #include "concurrency_mgr.h"
 #include "sdm_color_mode_stc.h"
@@ -256,9 +255,7 @@ DisplayError SDMColorModeStc::GetRenderIntents(SDMColorMode mode,
   return kErrorNone;
 }
 
-DisplayError
-SDMColorModeStc::SetColorTransform(const float *matrix,
-                                   android_color_transform_t hint) {
+DisplayError SDMColorModeStc::SetColorTransform(const float *matrix, SDMColorTransform hint) {
   if (!matrix) {
     DLOGE("Invalid parameters : matrix %pK", matrix);
     return kErrorParameters;

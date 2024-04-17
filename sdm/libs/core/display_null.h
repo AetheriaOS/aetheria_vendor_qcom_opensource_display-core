@@ -88,6 +88,10 @@ class DisplayNull : public DisplayInterface {
   virtual DisplayError PerformCacConfig(CacConfig config, bool enable) {
     return kErrorNotSupported;
   }
+  virtual DisplayError NotifyExpectedPresent(uint64_t expected_present_time,
+                                             uint32_t frame_interval_ns) {
+    return kErrorNotSupported;
+  }
 
   MAKE_NO_OP(CommitOrPrepare(LayerStack *))
   MAKE_NO_OP(PrePrepare(LayerStack *))
@@ -170,7 +174,11 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(GetPanelFeatureInfo(PanelFeatureInfo *info));
   MAKE_NO_OP(PanelOprInfo(const std::string &client_name, bool enable,
                           SdmDisplayCbInterface<PanelOprPayload> *cb_intf));
+  MAKE_NO_OP(SetPaHistCollection(const std::string &client_name, bool enable,
+                                 SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf));
+  MAKE_NO_OP(GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf));
   MAKE_NO_OP(SetSsrcMode(const std::string &mode));
+  MAKE_NO_OP(SetVRRState(bool));
 
  protected:
   DisplayConfigVariableInfo default_variable_config_ = {};

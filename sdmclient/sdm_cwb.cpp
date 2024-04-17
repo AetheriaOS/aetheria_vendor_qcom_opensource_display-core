@@ -49,10 +49,9 @@ DisplayError SDMConcurrentWriteBack::PostBuffer(const CwbConfig &cwb_config,
   auto &session_map = display_cwb_session_map_[dpy_index];
   std::shared_ptr<QueueNode> node = nullptr;
   uint64_t node_handle_id = 0;
-  auto err = kErrorNone;
   SnapHandle *handle = reinterpret_cast<SnapHandle *>(hdl);
-  snapmapper_->GetMetadata(*handle, MetadataType::BUFFER_ID, &node_handle_id);
-  if (err != Error::NONE || node_handle_id == 0) {
+  auto snap_err = snapmapper_->GetMetadata(*handle, MetadataType::BUFFER_ID, &node_handle_id);
+  if (snap_err != Error::NONE || node_handle_id == 0) {
     error = kErrorParameters;
     DLOGE("Buffer handle id retrieval failed!");
   }

@@ -173,6 +173,10 @@ class HWInterface {
   virtual void HandleCwbTeardown(bool sync_teardown) = 0;
   virtual void SetDestScalarData(const HWLayersInfo &hw_layer_info) = 0;
   virtual void GetDRMDisplayToken(sde_drm::DRMDisplayToken *token) const = 0;
+  virtual bool IsAVRStepSupported(uint32_t config_index) = 0;
+  virtual DisplayError NotifyExpectedPresent(uint64_t expected_present_time,
+                                             uint32_t frame_interval_ns) = 0;
+  virtual bool IsVRRSupported() = 0;
 
  protected:
   virtual ~HWInterface() { }

@@ -33,7 +33,7 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
-#include <sdm_display_virtual_dpu.h>
+#include "sdm_display_virtual_dpu.h"
 #include <BufferDescriptor.h>
 
 #define __CLASS__ "SDMDisplayVirtualDPU"

@@ -31,14 +31,16 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
-#include <hardware_legacy/uevent.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <utils/constants.h>
 #include <utils/debug.h>
 #include <utils/utils.h>
+#include <unistd.h>
+#include <pthread.h>
 
 #include "sdm_hotplug.h"
+#include "sdm_common.h"
 
 #define __CLASS__ "SDMHotPlug"
 #define SDM_UEVENT_DRM_EXT_HOTPLUG "mdss_mdp/drm/card"
@@ -144,7 +146,7 @@ void SDMHotPlug::ListenEvent() {
   }
 
   while (1) {
-    char uevent_data[PAGE_SIZE] = {};
+    char uevent_data[get_page_size()] = {};
 
     // keep last 2 zeros to ensure double 0 termination
     int length = uevent_next_event(uevent_data, INT32(sizeof(uevent_data)) - 2);

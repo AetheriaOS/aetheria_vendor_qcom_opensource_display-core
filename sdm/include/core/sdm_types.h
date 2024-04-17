@@ -75,6 +75,9 @@
 #include <utility>
 #include <string>
 
+#include <utils/sync_task.h>
+#include <utils/fence.h>
+
 namespace sdm {
 // clang-format off
 
@@ -257,6 +260,7 @@ struct SDMRegion {
 typedef uint64_t Display;
 typedef uint32_t Config;
 typedef int64_t LayerId;
+typedef int64_t nsecs_t;
 
 static const int kNumBuiltIn = 4;
 static const int kNumPluggable = 4;
@@ -528,6 +532,73 @@ enum SDMLayerTypes {
   kLayerApp = 1,
   kLayerGame = 2,
   kLayerBrowser = 3,
+};
+
+// GL callbacks, moved here to be accessible from cb intf
+enum class ColorConvertTaskCode : int32_t {
+  kCodeGetInstance,
+  kCodeBlit,
+  kCodeReset,
+  kCodeDestroyInstance,
+};
+
+struct ColorConvertBlitContext
+    : public SyncTask<ColorConvertTaskCode>::TaskContext {
+  void *src_hnd = nullptr;
+  void *dst_hnd = nullptr;
+  SDMRect src_rect = {};
+  SDMRect dst_rect = {};
+  shared_ptr<Fence> src_acquire_fence = nullptr;
+  shared_ptr<Fence> dst_acquire_fence = nullptr;
+  shared_ptr<Fence> release_fence = nullptr;
+};
+
+struct SDMStitchParams {
+  void *src_hnd = nullptr;
+  void *dst_hnd = nullptr;
+  SDMRect src_rect;
+  SDMRect dst_rect;
+  SDMRect scissor_rect;
+  shared_ptr<Fence> src_acquire_fence = nullptr;
+  shared_ptr<Fence> dst_acquire_fence = nullptr;
+};
+
+enum class LayerStitchTaskCode : int32_t {
+  kCodeGetInstance,
+  kCodeStitch,
+  kCodeDestroyInstance,
+};
+
+struct LayerStitchContext : public SyncTask<LayerStitchTaskCode>::TaskContext {
+  std::vector<SDMStitchParams> stitch_params;
+  shared_ptr<Fence> src_acquire_fence = nullptr;
+  shared_ptr<Fence> dst_acquire_fence = nullptr;
+  shared_ptr<Fence> release_fence = nullptr;
+};
+
+enum qdutilsDisplayType {
+  DISPLAY_PRIMARY = 0,    // = SDM_DISPLAY_PRIMARY
+  DISPLAY_EXTERNAL = 1,   // = SDM_DISPLAY_EXTERNAL
+  DISPLAY_VIRTUAL = 2,    // = SDM_DISPLAY_VIRTUAL
+
+  // Additional displays only for vendor client (e.g. pp) reference
+  DISPLAY_BUILTIN_2 = 3,
+  DISPLAY_EXTERNAL_2 = 4,
+  DISPLAY_VIRTUAL_2 = 5,
+};
+
+enum MetadataOps {
+  DISABLE_METADATA_DYN_REFRESH_RATE = 0,
+  ENABLE_METADATA_DYN_REFRESH_RATE,
+  SET_BINDER_DYNAMIC_REFRESH_RATE,
+};
+
+enum {
+  SYSTEM_TIME_REALTIME = 0,   // system-wide realtime clock
+  SYSTEM_TIME_MONOTONIC = 1,  // monotonic time since unspecified starting point
+  SYSTEM_TIME_PROCESS = 2,    // high-resolution per-process clock
+  SYSTEM_TIME_THREAD = 3,     // high-resolution per-thread clock
+  SYSTEM_TIME_BOOTTIME = 4,   // same as SYSTEM_TIME_MONOTONIC, but including CPU suspend time
 };
 
 }  // namespace sdm

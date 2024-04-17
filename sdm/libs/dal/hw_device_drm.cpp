@@ -492,10 +492,8 @@ int HWDeviceDRM::Registry::MapBufferToFbId(Layer *layer, const LayerBuffer &buff
     uint32_t fb_id_size = is_cac_buffer ? 4 : 1;
     auto it = layer->buffer_map->buffer_map.find(handle_id);
     if (it != layer->buffer_map->buffer_map.end()) {
-      std::unordered_map<uint32_t,
-           std::vector<std::shared_ptr<LayerBufferObject>>> dpu_buffer_map = it->second;
-      auto itr = dpu_buffer_map.find(core_id_);
-      if (itr != dpu_buffer_map.end()) {
+      auto itr = it->second.find(core_id_);
+      if (itr != it->second.end()) {
         FrameBufferObject *fb_obj = static_cast<FrameBufferObject*>(itr->second[kCacNone].get());
         if (fb_obj->IsEqual(buffer.format, buffer.width, buffer.height, secure_present) &&
             (it->second.size() >= fb_id_size)) {
@@ -591,27 +589,22 @@ void HWDeviceDRM::Registry::Clear() {
   output_buffer_map_.clear();
 }
 
-std::vector<uint32_t> HWDeviceDRM::Registry::GetFbId(Layer *layer, uint64_t handle_id) {
+void HWDeviceDRM::Registry::GetFbId(Layer *layer, uint64_t handle_id,
+                                    std::vector<uint32_t> *fb_id_vec) {
   auto it = layer->buffer_map->buffer_map.find(handle_id);
-  std::vector<uint32_t> fb_id_vec;
   if (it != layer->buffer_map->buffer_map.end()) {
-    std::unordered_map<uint32_t,
-                       std::vector<std::shared_ptr<LayerBufferObject>>> dpu_buffer_map = it->second;
-    auto itr = dpu_buffer_map.find(core_id_);
-    if (itr != dpu_buffer_map.end()) {
-      std::vector<std::shared_ptr<LayerBufferObject>> fb_obj_vec = itr->second;
-      for (int i = 0; i < fb_obj_vec.size(); i++) {
-        FrameBufferObject *fb_obj = static_cast<FrameBufferObject*>(fb_obj_vec[i].get());
-         fb_id_vec.push_back(fb_obj->GetFbId());
+    auto itr = it->second.find(core_id_);
+    if (itr != it->second.end()) {
+      for (int i = 0; i < itr->second.size(); i++) {
+        FrameBufferObject *fb_obj = static_cast<FrameBufferObject *>(itr->second[i].get());
+        fb_id_vec->push_back(fb_obj->GetFbId());
       }
     }
   }
 
-  if (fb_id_vec.size() == 0) {
-    fb_id_vec.push_back(0);  // failure case
+  if (fb_id_vec->size() == 0) {
+    fb_id_vec->push_back(0);  // failure case
   }
-
-  return fb_id_vec;
 }
 
 uint32_t HWDeviceDRM::Registry::GetOutputFbId(uint64_t handle_id) {
@@ -927,19 +920,22 @@ DisplayError HWDeviceDRM::PopulateDisplayAttributes(uint32_t index) {
                    &display_attributes_[index].topology_num_split);
   display_attributes_[index].is_device_split = (display_attributes_[index].topology_num_split > 1);
   display_attributes_[index].allowed_mode_switch = connector_info_.modes[index].allowed_mode_switch;
+  display_attributes_[index].avr_step = connector_info_.modes[index].avr_step_fps;
+  display_attributes_[index].early_ept_timeout = connector_info_.modes[index].early_ept_timeout;
 
   DLOGI(
       "Display %d-%d attributes[%d]: WxH: %dx%d, DPI: %fx%f, FPS: %d, LM_SPLIT: %d, V_BACK_PORCH:"
       " %d, V_FRONT_PORCH: %d [RFI Adjusted : %s], V_PULSE_WIDTH: %d, V_TOTAL: %d, H_TOTAL: %d,"
-      " CLK: %dKHZ, TOPOLOGY: %d [SPLIT NUMBER: %d], HW_SPLIT: %d", display_id_, disp_type_,
-      index, display_attributes_[index].x_pixels, display_attributes_[index].y_pixels,
-      display_attributes_[index].x_dpi, display_attributes_[index].y_dpi,
-      display_attributes_[index].fps, display_attributes_[index].is_device_split,
-      display_attributes_[index].v_back_porch, display_attributes_[index].v_front_porch,
-      adjusted ? "True" : "False", display_attributes_[index].v_pulse_width,
-      display_attributes_[index].v_total, display_attributes_[index].h_total,
-      display_attributes_[index].clock_khz, display_attributes_[index].topology,
-      display_attributes_[index].topology_num_split, mixer_attributes_.split_type);
+      " CLK: %dKHZ, TOPOLOGY: %d [SPLIT NUMBER: %d], HW_SPLIT: %d, AVR_STEP: %d",
+      display_id_, disp_type_, index, display_attributes_[index].x_pixels,
+      display_attributes_[index].y_pixels, display_attributes_[index].x_dpi,
+      display_attributes_[index].y_dpi, display_attributes_[index].fps,
+      display_attributes_[index].is_device_split, display_attributes_[index].v_back_porch,
+      display_attributes_[index].v_front_porch, adjusted ? "True" : "False",
+      display_attributes_[index].v_pulse_width, display_attributes_[index].v_total,
+      display_attributes_[index].h_total, display_attributes_[index].clock_khz,
+      display_attributes_[index].topology, display_attributes_[index].topology_num_split,
+      mixer_attributes_.split_type, display_attributes_[index].avr_step);
 
   return kErrorNone;
 }
@@ -1563,19 +1559,35 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
       DRMRect conn_rects[kNumMaxROIs] = {{0, 0, display_attributes_[index].x_pixels,
                                           display_attributes_[index].y_pixels}};
       DRMRect spr_rects[kNumMaxROIs] = {{0, 0, mixer_attributes_.width, mixer_attributes_.height}};
+      DestScaleInfoMap &dest_scale_info_map = hw_layers_info->dest_scale_info_map;
+
+      if (dest_scale_info_map.size() && hw_layers_info->left_frame_roi.size() != 1) {
+        DLOGE("left_frame_roi size %d, only 1 ROI supported in PU+DS case",
+              hw_layers_info->left_frame_roi.size());
+      }
 
       for (uint32_t i = 0; i < hw_layers_info->left_frame_roi.size(); i++) {
         auto &roi = hw_layers_info->left_frame_roi.at(i);
         // TODO(user): In multi PU, stitch ROIs vertically adjacent and upate plane destination
+
+        LayerRect panel_roi = {};
+        if (dest_scale_info_map.size() && dest_scale_info_map[0]->scale_data.enable.scale) {
+          for (uint32_t i = 0; i < dest_scale_info_map.size(); i++) {
+            panel_roi = Union(panel_roi, dest_scale_info_map[i]->panel_roi);
+          }
+        } else {
+          panel_roi = roi;
+          panel_roi.top += FLOAT(hw_layers_info->common_info->spr_overfetch_lines.top);
+        }
+
         crtc_rects[i].left = UINT32(roi.left);
         crtc_rects[i].right = UINT32(roi.right);
         crtc_rects[i].top = UINT32(roi.top);
         crtc_rects[i].bottom = UINT32(roi.bottom);
-        conn_rects[i].left = UINT32(roi.left);
-        conn_rects[i].right = UINT32(roi.right);
-        conn_rects[i].top = UINT32(roi.top +
-                            FLOAT(hw_layers_info->common_info->spr_overfetch_lines.top));
-        conn_rects[i].bottom = UINT32(roi.bottom);
+        conn_rects[i].left = UINT32(panel_roi.left);
+        conn_rects[i].right = UINT32(panel_roi.right);
+        conn_rects[i].top = UINT32(panel_roi.top);
+        conn_rects[i].bottom = UINT32(panel_roi.bottom);
         spr_rects[i].left = UINT32(roi.left);
         spr_rects[i].right = UINT32(roi.right);
         spr_rects[i].top = UINT32(roi.top +
@@ -1649,7 +1661,8 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
         input_buffer = &hw_rotator_session->output_buffer;
       }
 
-      std::vector<uint32_t> fb_id = registry_.GetFbId(&layer, input_buffer->handle_id);
+      std::vector<uint32_t> fb_id = {};
+      registry_.GetFbId(&layer, input_buffer->handle_id, &fb_id);
 
       if (pipe_info->valid && fb_id[pipe_info->cac_color]) {
         uint32_t pipe_id = pipe_info->pipe_id;
@@ -1871,7 +1884,7 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
     SetQOSData(qos_data);
   }
 
-  if (hw_layers_info->common_info->hw_avr_info.update) {
+  if (hw_layers_info->common_info->hw_avr_info.update.test(kUpdateAVRModeFlag)) {
     sde_drm::DRMQsyncMode mode = sde_drm::DRMQsyncMode::NONE;
     if (hw_layers_info->common_info->hw_avr_info.mode == kContinuousMode) {
       mode = sde_drm::DRMQsyncMode::CONTINUOUS;
@@ -1879,6 +1892,13 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
       mode = sde_drm::DRMQsyncMode::ONESHOT;
     }
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_QSYNC_MODE, token_.conn_id, mode);
+  }
+
+  if (hw_layers_info->common_info->hw_avr_info.update.test(kUpdateAVRStepFlag)) {
+    sde_drm::DRMAvrStepState state = hw_layers_info->common_info->hw_avr_info.step_enabled
+                                         ? sde_drm::DRMAvrStepState::ENABLE
+                                         : sde_drm::DRMAvrStepState::DISABLE;
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_AVR_STEP_STATE, token_.conn_id, state);
   }
 
   // dpps commit feature ops doesn't use the obj id, set it as -1
@@ -2146,7 +2166,8 @@ DisplayError HWDeviceDRM::DefaultCommit(HWLayersInfo *hw_layers_info) {
   res_mgr->GetMode(&mode);
 
   uint64_t handle_id = hw_layers_info->hw_layers.at(0).input_buffer.handle_id;
-  std::vector<uint32_t> fb_id = registry_.GetFbId(&hw_layers_info->hw_layers.at(0), handle_id);
+  std::vector<uint32_t> fb_id = {};
+  registry_.GetFbId(&hw_layers_info->hw_layers.at(0), handle_id, &fb_id);
   ret = drmModeSetCrtc(dev_fd, crtc_id, fb_id[kCacNone], 0 /* x */, 0 /* y */, &connector_id,
                        1 /* num_connectors */, &mode);
   if (ret < 0) {
@@ -3724,6 +3745,23 @@ void HWDeviceDRM::HandleCwbTeardown(bool sync_teardown) {
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_CRTC, cwb_config_[core_id_].token.conn_id, 0);
     TeardownConcurrentWriteback();
   }
+}
+
+DisplayError HWDeviceDRM::NotifyExpectedPresent(uint64_t expected_present_time,
+                                                uint32_t frame_interval_ns) {
+#ifdef DRM_IOCTL_MSM_EARLY_EPT
+  int ret = -1;
+  struct drm_msm_display_early_ept early_ept_cfg = {};
+  early_ept_cfg.connector_id = token_.conn_id;
+  early_ept_cfg.flags = DRM_MSM_EARLY_EPT;
+  early_ept_cfg.ept_ns = expected_present_time;
+  early_ept_cfg.frame_interval = frame_interval_ns;
+  ret = drmIoctl(dev_fd_, DRM_IOCTL_MSM_EARLY_EPT, &early_ept_cfg);
+  if (ret < 0) {
+    return kErrorHardware;
+  }
+#endif
+  return kErrorNone;
 }
 
 }  // namespace sdm

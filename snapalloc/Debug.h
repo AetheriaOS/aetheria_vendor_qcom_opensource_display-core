@@ -3,26 +3,36 @@
 #ifndef __DEBUG_H__
 #define __DEBUG_H__
 
-#include <debug_handler.h>
 #include <display_properties.h>
 #include <errno.h>
+#include <string>
+
+#include "debug_callback_intf.h"
 
 #define PROPERTY_VALUE_MAX 255
 
+using ::sdm::DebugCallbackIntf;
+
+// TODO: add macro that can be used to simplify log function
+
 namespace snapalloc {
-using display::DebugHandler;
 class Debug {
  public:
-  static inline DebugHandler *Get() { return DebugHandler::Get(); }
-  static int GetProperty(const char *property_name, char *value);
-  static int GetProperty(const char *property_name, int *value);
-  static bool IsAhardwareBufferDisabled();
-  static bool IsUBWCDisabled();
-  static bool IsSecurePreviewBufferFormatEnabled(std::string *secure_preview_buffer_format);
-  static bool IsSecurePreviewOnlyEnabled();
-  static bool UseDMABufHeaps();
-  static bool UseSystemHeapForSensors();
-  static bool HwSupportsUBWCP();
+  static Debug *GetInstance();
+  void RegisterDebugCallback(DebugCallbackIntf *cb);
+  int GetProperty(const char *property_name, char *value);
+  int GetProperty(const char *property_name, int *value);
+  bool IsAhardwareBufferDisabled();
+  bool IsUBWCDisabled();
+  bool IsSecurePreviewBufferFormatEnabled(std::string *secure_preview_buffer_format);
+  bool IsSecurePreviewOnlyEnabled();
+  bool UseDMABufHeaps();
+  bool UseSystemHeapForSensors();
+  bool HwSupportsUBWCP();
+  void Log(sdm::DebugLogType type, const char *fmt, ...);
+
+ private:
+  DebugCallbackIntf *debug_callback_ = nullptr;
 };
 }  // namespace snapalloc
 #endif  // __DEBUG_H__

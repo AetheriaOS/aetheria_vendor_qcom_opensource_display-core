@@ -63,6 +63,13 @@
 * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/*
+ * Changes from Qualcomm Innovation Center are provided under the following license:
+ *
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
+
 #include <drm_logger.h>
 
 #include "drm_atomic_req.h"
@@ -193,7 +200,10 @@ int DRMAtomicReq::Perform(DRMOps opcode, uint32_t obj_id, ...) {
     case DRMOps::CONNECTOR_WB_USAGE_TYPE:
     case DRMOps::CONNECTOR_SET_CACHE_STATE:
     case DRMOps::CONNECTOR_SET_EPT:
-    case DRMOps::CONNECTOR_SET_BPP_MODE: {
+    case DRMOps::CONNECTOR_SET_BPP_MODE:
+    case DRMOps::CONNECTOR_SET_AVR_STEP_STATE:
+    case DRMOps::CONNECTOR_SET_FRAME_INTERVAL:
+    case DRMOps::CONNECTOR_SET_USECASE_IDX: {
       drm_mgr_->GetConnectorMgr()->Perform(opcode, obj_id, drm_atomic_req_, args);
     } break;
     case DRMOps::DPPS_CACHE_FEATURE: {

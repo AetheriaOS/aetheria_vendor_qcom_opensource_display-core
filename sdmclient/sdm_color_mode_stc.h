@@ -56,8 +56,7 @@ public:
   DisplayError GetColorModes(uint32_t *out_num_modes, SDMColorMode *out_modes);
   DisplayError GetRenderIntents(SDMColorMode mode, uint32_t *out_num_intents,
                                 SDMRenderIntent *out_intents);
-  DisplayError SetColorTransform(const float *matrix,
-                                 android_color_transform_t hint);
+  DisplayError SetColorTransform(const float *matrix, SDMColorTransform hint);
   DisplayError ApplyCurrentColorModeWithRenderIntent(bool hdr_present);
   DisplayError CacheColorModeWithRenderIntent(SDMColorMode mode,
                                               SDMRenderIntent intent);

@@ -39,6 +39,8 @@
 #include <utils/locker.h>
 
 #include <vector>
+#include <core/buffer_allocator.h>
+#include <core/socket_handler.h>
 
 #include "sdm_color_manager.h"
 #include "sdm_display.h"
@@ -181,8 +183,9 @@ public:
     kCwbFlagAvoidRefresh,
   };
 
-  explicit SDMServices(SDMServicesCbIntf *cb, BufferAllocator *buffer_allocator):
-        cb_(cb), buffer_allocator_(buffer_allocator) {}
+  explicit SDMServices(SDMServicesCbIntf *cb, BufferAllocator *buffer_allocator,
+                       SocketHandler *socket_handler)
+      : cb_(cb), buffer_allocator_(buffer_allocator), socket_handler_(socket_handler) {}
 
   void Init(SDMDisplayBuilder *disp, BufferAllocator *buffer_allocator,
             Locker *locker, SDMTrustedUI *tui);
@@ -343,36 +346,30 @@ private:
       {SDM_SERVICE_SET_FRAME_DUMP_CONFIG, &SDMServices::SetFrameDumpConfig},
       {SDM_SERVICE_SET_MAX_PIPES_PER_MIXER, &SDMServices::SetMaxMixerStages},
       {SDM_SERVICE_SET_DISPLAY_MODE, &SDMServices::SetDisplayMode},
-      {SDM_SERVICE_CONFIGURE_DYN_REFRESH_RATE,
-       &SDMServices::ConfigureRefreshRate},
-      {SDM_SERVICE_SET_NOISE_PLUGIN_OVERRIDE,
-       &SDMServices::SetNoisePlugInOverride},
+      {SDM_SERVICE_CONFIGURE_DYN_REFRESH_RATE, &SDMServices::ConfigureRefreshRate},
+      {SDM_SERVICE_SET_NOISE_PLUGIN_OVERRIDE, &SDMServices::SetNoisePlugInOverride},
       {SDM_SERVICE_SET_ACTIVE_CONFIG, &SDMServices::SetActiveConfigIndex},
       {SDM_SERVICE_SET_CAMERA_STATUS, &SDMServices::SetCameraLaunchStatus},
-      {SDM_SERVICE_SET_LAYER_MIXER_RESOLUTION,
-       &SDMServices::SetMixerResolution},
+      {SDM_SERVICE_SET_LAYER_MIXER_RESOLUTION, &SDMServices::SetMixerResolution},
       {SDM_SERVICE_SET_COLOR_MODE, &SDMServices::SetColorModeOverride},
       {SDM_SERVICE_SET_COLOR_MODE_WITH_RENDER_INTENT,
        &SDMServices::SetColorModeWithRenderIntentOverride},
       {SDM_SERVICE_SET_COLOR_MODE_BY_ID, &SDMServices::SetColorModeById},
       {SDM_SERVICE_SET_QSYNC_MODE, &SDMServices::SetQSyncMode},
-      {SDM_SERVICE_SET_COLOR_SAMPLING_ENABLED,
-       &SDMServices::setColorSamplingEnabled},
+      {SDM_SERVICE_SET_COLOR_SAMPLING_ENABLED, &SDMServices::setColorSamplingEnabled},
       {SDM_SERVICE_SET_IDLE_PC, &SDMServices::SetIdlePC},
       {SDM_SERVICE_SET_DPPS_AD4_ROI_CONFIG, &SDMServices::SetAd4RoiConfig},
       {SDM_SERVICE_SET_DSI_CLK, &SDMServices::SetDsiClk},
-      {SDM_SERVICE_SET_PANEL_LUMINANCE,
-       &SDMServices::SetPanelLuminanceAttributes},
-      {SDM_SERVICE_SET_COLOR_MODE_FROM_CLIENT,
-       &SDMServices::SetColorModeFromClient},
+      {SDM_SERVICE_SET_PANEL_LUMINANCE, &SDMServices::SetPanelLuminanceAttributes},
+      {SDM_SERVICE_SET_COLOR_MODE_FROM_CLIENT, &SDMServices::SetColorModeFromClient},
       {SDM_SERVICE_SET_FRAME_TRIGGER_MODE, &SDMServices::SetFrameTriggerMode},
-      {SDM_SERVICE_SET_BRIGHTNESS_SCALE,
-       &SDMServices::ProcessDisplayBrightnessScale},
+      {SDM_SERVICE_SET_BRIGHTNESS_SCALE, &SDMServices::ProcessDisplayBrightnessScale},
 #ifdef PROFILE_COVERAGE_DATA
       {SDM_SERVICE_DUMP_CODE_COVERAGE, &SDMServices::DumpCodeCoverage},
 #endif
-     {SDM_SERVICE_UPDATE_TRANSFER_TIME, &SDMServices::UpdateTransferTime},
-     {SDM_SERVICE_PERFORM_CAC_CONFIG, &SDMServices::PerformCacConfig},
+      {SDM_SERVICE_UPDATE_TRANSFER_TIME, &SDMServices::UpdateTransferTime},
+      {SDM_SERVICE_PERFORM_CAC_CONFIG, &SDMServices::PerformCacConfig},
+      {SDM_SERVICE_SET_BPP_MODE, &SDMServices::SetBppMode},
   };
 
   std::unordered_map<uint32_t, VndCmdGetHandler> vnd_handlers_get_ = {
@@ -409,6 +406,7 @@ private:
   Locker *locker_ = nullptr;
   SDMColorManager *color_mgr_ = nullptr;
   BufferAllocator *buffer_allocator_ = nullptr;
+  SocketHandler *socket_handler_ = nullptr;
 };
 
 } // namespace sdm

@@ -55,6 +55,8 @@ void SnapConstraintManager::Init() {
 
   VideoConstraintProvider *video_provider = VideoConstraintProvider::GetInstance(format_data_map_);
   providers_.push_back(video_provider);
+
+  debug_ = Debug::GetInstance();
 }
 
 bool SnapConstraintManager::CanAllocateZSLForSecureCamera() {
@@ -64,7 +66,7 @@ bool SnapConstraintManager::CanAllocateZSLForSecureCamera() {
     return can_allocate;
   }
   std::string secure_preview_buffer_format_prop;
-  Debug::IsSecurePreviewBufferFormatEnabled(&secure_preview_buffer_format_prop);
+  debug_->IsSecurePreviewBufferFormatEnabled(&secure_preview_buffer_format_prop);
   if (!(secure_preview_buffer_format_prop.compare("420_sp") == 0)) {
     can_allocate = false;
   }

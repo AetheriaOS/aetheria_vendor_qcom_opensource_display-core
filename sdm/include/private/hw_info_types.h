@@ -797,9 +797,16 @@ struct HWAIScalerInfo {
 
 typedef std::map<uint32_t, HWAIScalerInfo *> AIScalerInfoMap;
 
+enum {
+  kUpdateAVRModeFlag,
+  kUpdateAVRStepFlag,
+  kUpdateAVRFlagMax,
+};
+
 struct HWAVRInfo {
-  bool update = false;                // Update avr setting.
+  std::bitset<kUpdateAVRFlagMax> update = {};
   HWAVRModes mode = kContinuousMode;  // Specifies the AVR mode
+  bool step_enabled = false;
 };
 
 struct HWPipeCscInfo {
@@ -1021,6 +1028,7 @@ struct CommonStackInfo {
   shared_ptr<Fence> sync_handle = nullptr;
   SprOverfetchLines spr_overfetch_lines = {};
   uint64_t expected_present_time = 0;
+  uint32_t frame_interval = 0;
 };
 
 struct LayerStackInfo {
@@ -1112,6 +1120,14 @@ struct DispLayerStack {
   LayerStack *stack = NULL;          // Input layer stack. Set by the caller.
   LayerStackInfo stack_info = {};    // Composition layer stack as seen by client
   std::map<uint32_t, HWLayersInfo> info;
+
+  void Clear() {
+    stack = NULL;
+    stack_info = {};
+    for (auto it = info.begin(); it != info.end(); it++) {
+      info[it->first] = {};
+    }
+  }
 };
 
 struct HWDisplayAttributes : DisplayConfigVariableInfo {

@@ -6,7 +6,6 @@
 #define __SDM_DISPLAY_BUILDER_H__
 
 #include <core/core_interface.h>
-#include <display_config.h>
 
 #include <map>
 #include <vector>
@@ -22,6 +21,8 @@
 // #include "sdm_compositor_cb_intf.h"
 
 namespace sdm {
+
+static const int pluggable_lock_index_ = kNumDisplays;
 
 struct DisplayMapInfo {
   Display client_id = kNumDisplays;                 // mapped sf id for this display
@@ -93,7 +94,7 @@ class SDMDisplayBuilder {
   uint32_t GetVirtualDisplayCount();
   void SetLuminance(float min_lum, float max_lum);
   void SetProperties(int32_t enable_primary_reconfig_req) {
-    enable_primary_reconfig_req_ = enable_primary_reconfig_req_;
+    enable_primary_reconfig_req_ = enable_primary_reconfig_req;
   }
 
   bool IsBuiltInDisplay(uint64_t disp_id);

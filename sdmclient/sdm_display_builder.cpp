@@ -23,28 +23,27 @@ std::map<Display, DisplayMapInfo *> &SDMDisplayBuilder::GetActiveDisplays() {
 int SDMDisplayBuilder::GetDisplayIndex(int dpy) {
   DisplayMapInfo *map_info = nullptr;
   switch (dpy) {
-  case qdutils::DISPLAY_PRIMARY:
-    map_info = &map_info_primary_[0];
-    break;
-  case qdutils::DISPLAY_EXTERNAL:
-    map_info = map_info_pluggable_.size() ? &map_info_pluggable_[0] : nullptr;
-    break;
-  case qdutils::DISPLAY_EXTERNAL_2:
-    map_info =
-        (map_info_pluggable_.size() > 1) ? &map_info_pluggable_[1] : nullptr;
-    break;
-  case qdutils::DISPLAY_VIRTUAL:
-    map_info = map_info_virtual_.size() ? &map_info_virtual_[0] : nullptr;
-    break;
-  case qdutils::DISPLAY_VIRTUAL_2:
-    map_info = (map_info_virtual_.size() > 1) ? &map_info_virtual_[1] : nullptr;
-    break;
-  case qdutils::DISPLAY_BUILTIN_2:
-    map_info = map_info_builtin_.size() ? &map_info_builtin_[0] : nullptr;
-    break;
-  default:
-    DLOGW("Unknown display %d.", dpy);
-    break;
+    case qdutilsDisplayType::DISPLAY_PRIMARY:
+      map_info = &map_info_primary_[0];
+      break;
+    case qdutilsDisplayType::DISPLAY_EXTERNAL:
+      map_info = map_info_pluggable_.size() ? &map_info_pluggable_[0] : nullptr;
+      break;
+    case qdutilsDisplayType::DISPLAY_EXTERNAL_2:
+      map_info = (map_info_pluggable_.size() > 1) ? &map_info_pluggable_[1] : nullptr;
+      break;
+    case qdutilsDisplayType::DISPLAY_VIRTUAL:
+      map_info = map_info_virtual_.size() ? &map_info_virtual_[0] : nullptr;
+      break;
+    case qdutilsDisplayType::DISPLAY_VIRTUAL_2:
+      map_info = (map_info_virtual_.size() > 1) ? &map_info_virtual_[1] : nullptr;
+      break;
+    case qdutilsDisplayType::DISPLAY_BUILTIN_2:
+      map_info = map_info_builtin_.size() ? &map_info_builtin_[0] : nullptr;
+      break;
+    default:
+      DLOGW("Unknown display %d.", dpy);
+      break;
   }
 
   if (!map_info) {
@@ -68,22 +67,22 @@ bool SDMDisplayBuilder::IsHDRDisplay(uint32_t client_id) {
 std::vector<DisplayMapInfo> &
 SDMDisplayBuilder::GetDisplayMapInfo(int display_id) {
   switch (display_id) {
-  case qdutils::DISPLAY_PRIMARY:
-    return map_info_primary_;
+    case qdutilsDisplayType::DISPLAY_PRIMARY:
+      return map_info_primary_;
 
-  case qdutils::DISPLAY_EXTERNAL:
-  case qdutils::DISPLAY_EXTERNAL_2:
-    return map_info_pluggable_;
+    case qdutilsDisplayType::DISPLAY_EXTERNAL:
+    case qdutilsDisplayType::DISPLAY_EXTERNAL_2:
+      return map_info_pluggable_;
 
-  case qdutils::DISPLAY_VIRTUAL:
-  case qdutils::DISPLAY_VIRTUAL_2:
-    return map_info_virtual_;
+    case qdutilsDisplayType::DISPLAY_VIRTUAL:
+    case qdutilsDisplayType::DISPLAY_VIRTUAL_2:
+      return map_info_virtual_;
 
-  case qdutils::DISPLAY_BUILTIN_2:
-    return map_info_builtin_;
+    case qdutilsDisplayType::DISPLAY_BUILTIN_2:
+      return map_info_builtin_;
 
-  default:
-    DLOGW("Unknown display %d", display_id);
+    default:
+      DLOGW("Unknown display %d", display_id);
   }
 
   return map_info_primary_;
@@ -124,7 +123,7 @@ void SDMDisplayBuilder::Init(Locker *locker) {
   DLOGI("enable_primary_reconfig_req_: %d", enable_primary_reconfig_req_);
 
   DisplayMapInfo primary_info{};
-  primary_info.client_id = qdutils::DISPLAY_PRIMARY;
+  primary_info.client_id = qdutilsDisplayType::DISPLAY_PRIMARY;
   map_info_primary_.push_back(primary_info);
 
   HWDisplayInterfaceInfo hw_disp_info = {};
@@ -172,14 +171,20 @@ void SDMDisplayBuilder::Init(Locker *locker) {
   if (kPluggable == hw_disp_info.type) {
     // If primary is a pluggable display, we have already used one pluggable
     // display interface.
-    max_pluggable--;
+    // max_pluggable/builtin can both be initialized to 0 in case of invalid panel node
+    // check to avoid overflow
+    if (max_pluggable) {
+      max_pluggable--;
+    }
   } else {
-    max_builtin--;
+    if (max_builtin) {
+      max_builtin--;
+    }
   }
 
   // Init slots in accordance to h/w capability.
   uint32_t disp_count = UINT32(std::min(max_pluggable, kNumPluggable));
-  Display base_id = qdutils::DISPLAY_EXTERNAL;
+  Display base_id = qdutilsDisplayType::DISPLAY_EXTERNAL;
   map_info_pluggable_.resize(disp_count);
   for (auto &map_info : map_info_pluggable_) {
     map_info.client_id = base_id++;
@@ -576,11 +581,11 @@ bool SDMDisplayBuilder::IsHWDisplayConnected(Display client_id) {
 }
 
 int SDMDisplayBuilder::HandlePluggableDisplays(bool delay_hotplug) {
-  hwc2_display_t virtual_display_index =
-      (hwc2_display_t)GetDisplayIndex(qdutils::DISPLAY_VIRTUAL);
+  SCOPE_LOCK(locker_[pluggable_lock_index_]);
+  uint64_t virtual_display_index = (uint64_t)GetDisplayIndex(qdutilsDisplayType::DISPLAY_VIRTUAL);
   std::bitset<kSecureMax> secure_sessions = 0;
 
-  hwc2_display_t active_builtin_disp_id = GetActiveBuiltinDisplay();
+  uint64_t active_builtin_disp_id = GetActiveBuiltinDisplay();
   auto disp = cb_->GetDisplayFromClientId(active_builtin_disp_id);
 
   if (active_builtin_disp_id < kNumDisplays) {
@@ -660,8 +665,6 @@ int SDMDisplayBuilder::HandleConnectedDisplays(HWDisplaysInfo *displays_info,
                                                bool delay_hotplug) {
   int status = 0;
   Display client_id = 0;
-
-  Display active_builtin = GetActiveBuiltinDisplay();
 
   for (auto &iter : *displays_info) {
     auto &info = iter.second;
@@ -1006,6 +1009,7 @@ void SDMDisplayBuilder::DestroyNonPluggableDisplayLocked(
 }
 
 void SDMDisplayBuilder::RemoveDisconnectedPluggableDisplays() {
+  SCOPE_LOCK(locker_[pluggable_lock_index_]);
   HWDisplaysInfo hw_displays_info = {};
   DisplayError error = core_intf_->GetDisplaysStatus(&hw_displays_info);
   if (error != kErrorNone) {
@@ -1021,13 +1025,13 @@ void SDMDisplayBuilder::SetLuminance(float min_lum, float max_lum) {
 }
 
 bool SDMDisplayBuilder::IsBuiltInDisplay(uint64_t disp_id) {
-  auto &map_primary = GetDisplayMapInfo(qdutils::DISPLAY_PRIMARY)[0];
+  auto &map_primary = GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_PRIMARY)[0];
   if ((map_primary.client_id == disp_id) &&
       (map_primary.disp_type == kBuiltIn)) {
     return true;
   }
 
-  for (auto &info : GetDisplayMapInfo(qdutils::DISPLAY_BUILTIN_2)) {
+  for (auto &info : GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_BUILTIN_2)) {
     if (disp_id == info.client_id) {
       return true;
     }
@@ -1051,7 +1055,7 @@ DisplayError SDMDisplayBuilder::GetDisplayHwId(uint64_t disp_id,
   }
 
   // Supported for Built-In displays only.
-  auto &map_info = GetDisplayMapInfo(qdutils::DISPLAY_PRIMARY)[0];
+  auto &map_info = GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_PRIMARY)[0];
   if ((map_info.client_id == disp_id) &&
       (map_info.disp_type == sdm::kBuiltIn)) {
     if (map_info.sdm_id >= 0) {
@@ -1062,7 +1066,7 @@ DisplayError SDMDisplayBuilder::GetDisplayHwId(uint64_t disp_id,
     }
   }
 
-  for (auto &info : GetDisplayMapInfo(qdutils::DISPLAY_BUILTIN_2)) {
+  for (auto &info : GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_BUILTIN_2)) {
     if (disp_id == info.client_id) {
       if (info.sdm_id >= 0) {
         *disp_hw_id = static_cast<uint32_t>(info.sdm_id);

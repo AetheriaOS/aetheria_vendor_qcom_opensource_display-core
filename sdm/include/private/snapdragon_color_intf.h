@@ -279,7 +279,7 @@ const std::string kIgcDitherCap = "HwCapIgcDither";
 struct PostBlendInverseGammaHwConfig {
   uint32_t inverse_gamma_version = sizeof(struct GammaPostBlendConfig);
   uint32_t num_of_entries = 257;
-  uint32_t entries_width = 16;
+  uint32_t entries_width = 12;
   std::vector<ScHwCapsType> hw_caps;
   PostBlendInverseGammaHwConfig(){};
   PostBlendInverseGammaHwConfig(const std::vector<ScHwCapsType> &caps) {

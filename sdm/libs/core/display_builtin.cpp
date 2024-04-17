@@ -23,7 +23,7 @@
 */
 
 /*
-* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
+* Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -196,9 +196,8 @@ DisplayError DisplayBuiltIn::SetupAiqe() {
 DisplayError DisplayBuiltIn::Init() {
   ClientLock lock(disp_mutex_);
 
-  DisplayError error = kErrorNone;
-
-  dpu_core_mux_ = new DPUCoreMux(display_id_info_, kBuiltIn, hw_info_intf_, buffer_allocator_);
+  DisplayError error = DPUCoreFactory::Create(display_id_info_, kBuiltIn, hw_info_intf_,
+                                              buffer_allocator_, &dpu_core_mux_);
   if (error != kErrorNone) {
     DLOGE("Failed to create hardware interface on. Error = %d", error);
     return error;
@@ -439,7 +438,7 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
     }
   } else {
     if (CanSkipDisplayPrepare(layer_stack)) {
-      UpdateQsyncMode();
+      UpdateQsyncConfig();
       return kErrorNone;
     }
   }
@@ -507,7 +506,7 @@ DisplayError DisplayBuiltIn::Prepare(LayerStack *layer_stack) {
     return error;
   }
 
-  UpdateQsyncMode();
+  UpdateQsyncConfig();
 
   CacheFrameROI();
 
@@ -544,8 +543,9 @@ void DisplayBuiltIn::CacheFrameROI() {
   }
 }
 
-void DisplayBuiltIn::UpdateQsyncMode() {
-  if (!client_ctx_.hw_panel_info.qsync_support) {
+void DisplayBuiltIn::UpdateQsyncConfig() {
+  // QSync and AVR Step features are de-coupled on CMD Mode panel.
+  if ((client_ctx_.hw_panel_info.mode == kModeVideo) && !client_ctx_.hw_panel_info.qsync_support) {
     return;
   }
 
@@ -568,13 +568,16 @@ void DisplayBuiltIn::UpdateQsyncMode() {
              display_type_, mode);
   }
 
-  disp_layer_stack_->stack_info.common_info.hw_avr_info.update = (mode != active_qsync_mode_) ||
-                                                                needs_avr_update_;
+  disp_layer_stack_->stack_info.common_info.hw_avr_info.update = needs_avr_update_;
+  if (mode != active_qsync_mode_) {
+    disp_layer_stack_->stack_info.common_info.hw_avr_info.update.set(kUpdateAVRModeFlag);
+  }
   disp_layer_stack_->stack_info.common_info.hw_avr_info.mode = GetAvrMode(mode);
+  disp_layer_stack_->stack_info.common_info.hw_avr_info.step_enabled = avr_step_enabled_;
 
-  DLOGV_IF(kTagDisplay, "display %d-%d update: %d mode: %d",
-           display_id_, display_type_, disp_layer_stack_->stack_info.common_info.hw_avr_info.update,
-           mode);
+  DLOGV_IF(kTagDisplay, "display %d-%d update: %d mode: %d AVR Step state: %d", display_id_,
+           display_type_, disp_layer_stack_->stack_info.common_info.hw_avr_info.update, mode,
+           avr_step_enabled_);
 
   // Store active mode.
   active_qsync_mode_ = mode;
@@ -741,6 +744,8 @@ DisplayError DisplayBuiltIn::SetupDemura() {
 #endif
   input_cfg.panel_id = panel_id_;
   DLOGI("panel id %lx\n", input_cfg.panel_id);
+  input_cfg.panel_name = client_ctx_.hw_panel_info.panel_name;
+  input_cfg.display_intf = this;
   std::unique_ptr<DemuraIntf> demura =
       pf_factory_->CreateDemuraIntf(input_cfg, prop_intf_, buffer_allocator_, spr_);
   if (!demura) {
@@ -1421,14 +1426,14 @@ void DisplayBuiltIn::HandleQsyncPostCommit() {
   } else if (qsync_mode_ == kQsyncModeOneShotContinuous) {
     // No action needed.
   } else if (qsync_mode_ == kQSyncModeContinuous) {
-      if (!avoid_qsync_mode_change_) {
-        needs_avr_update_ = false;
-      } else if (needs_avr_update_) {
-        validated_ = false;
-        event_handler_->Refresh();
-      }
+    if (!avoid_qsync_mode_change_) {
+      needs_avr_update_.reset();
+    } else if (needs_avr_update_.any()) {
+      validated_ = false;
+      event_handler_->Refresh();
+    }
   } else if (qsync_mode_ == kQSyncModeNone) {
-    needs_avr_update_ = false;
+    needs_avr_update_.reset();
   }
 
   avoid_qsync_mode_change_ = false;
@@ -1500,7 +1505,7 @@ DisplayError DisplayBuiltIn::SetDisplayState(DisplayState state, bool teardown,
   if (state == kStateOff) {
     vsync_enable_ = false;
     if (qsync_mode_ != kQSyncModeNone) {
-      needs_avr_update_ = true;
+      needs_avr_update_.set(kUpdateAVRModeFlag);
     }
   }
 
@@ -1791,7 +1796,7 @@ void DisplayBuiltIn::SetVsyncStatus(bool enable) {
 
 void DisplayBuiltIn::IdleTimeout() {
   DTRACE_SCOPED();
-  if (state_ == kStateOff) {
+  if ((state_ == kStateOff) || avr_step_enabled_) {
     return;
   }
 
@@ -2506,7 +2511,7 @@ DisplayError DisplayBuiltIn::SetQSyncMode(QSyncMode qsync_mode) {
   }
 
   qsync_mode_ = qsync_mode;
-  needs_avr_update_ = true;
+  needs_avr_update_.set(kUpdateAVRModeFlag);
   validated_ = false;
   event_handler_->Refresh();
   return kErrorNone;
@@ -2632,7 +2637,7 @@ bool DisplayBuiltIn::CanCompareFrameROI(LayerStack *layer_stack) {
     DisablePartialUpdateOneFrameInternal();
   }
 
-  if (!partial_update_control_ || disable_pu_one_frame_ || disable_pu_on_dest_scaler_) {
+  if (!partial_update_control_ || disable_pu_one_frame_) {
     return false;
   }
 
@@ -2869,6 +2874,14 @@ DisplayError DisplayBuiltIn::BuildLayerStackStats(LayerStack *layer_stack) {
 
 DisplayError DisplayBuiltIn::SetActiveConfig(uint32_t index) {
   deferred_config_.MarkDirty();
+
+  if (vrr_enabled_) {
+    // Set VRR State
+    bool enable = hw_intf_->IsAVRStepSupported(index);
+    SetQSyncMode(enable ? kQSyncModeContinuous : kQSyncModeNone);
+    SetAVRStepState(enable);
+  }
+
   auto error = DisplayBase::SetActiveConfig(index);
   shared_ptr<Fence> release_fence = nullptr;
   HWDMSType dms_type = client_ctx_.hw_panel_info.dms_type;
@@ -2961,12 +2974,9 @@ DisplayError DisplayBuiltIn::ReconfigureDisplay() {
   client_ctx_.hw_panel_info = hw_panel_info;
   device_ctx_ = device_ctx;
 
-  // TODO(user): Temporary changes, to be removed when DRM driver supports
-  // Partial update with Destination scaler enabled.
-  SetPUonDestScaler();
-  if (client_ctx_.hw_panel_info.partial_update && !disable_pu_on_dest_scaler_) {
-    // If current panel supports Partial Update and destination scalar isn't enabled, then add
-    // a pending PU request to be served in the first PU enable frame after the modeset frame.
+  if (client_ctx_.hw_panel_info.partial_update) {
+    // If current panel supports Partial Update, then add a pending PU request
+    // to be served in the first PU enable frame after the modeset frame.
     // Because if first PU enable frame, after transition, has a partial Frame-ROI and
     // is followed by Skip Validate frames, then it can benefit those frames.
     pu_pending_ = true;
@@ -3776,6 +3786,16 @@ DisplayBuiltIn::PanelOprInfo(const std::string &client_name, bool enable,
   return event_proxy_info_.PanelOprInfo(client_name, enable, cb_intf);
 }
 
+DisplayError DisplayBuiltIn::SetPaHistCollection(
+    const std::string &client_name, bool enable,
+    SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf) {
+  return event_proxy_info_.SetPaHistCollection(client_name, enable, cb_intf);
+}
+
+DisplayError DisplayBuiltIn::GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf) {
+  return event_proxy_info_.GetPaHistBins(buf);
+}
+
 DisplayError EventProxyInfo::Init(const std::string &panel_name,
                                   DisplayInterface *intf,
                                   DynLib &extension_lib) {
@@ -3864,6 +3884,65 @@ EventProxyInfo::PanelOprInfo(const std::string &client_name, bool enable,
   return kErrorNone;
 }
 
+DisplayError EventProxyInfo::SetPaHistCollection(
+    const std::string &client_name, bool enable,
+    SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf) {
+  if (!event_proxy_intf_.get()) {
+    DLOGW("Event proxy intf is not available");
+    return kErrorParameters;
+  }
+
+  PaHistCollectionParam *param = nullptr;
+  GenericPayload payload;
+  int ret = payload.CreatePayload(param);
+  if (ret || !param) {
+    DLOGE("Failed to create payload for pa hist, ret %d", ret);
+    return kErrorParameters;
+  }
+
+  param->name = client_name;
+  param->enable = enable;
+  param->cb_intf = cb_intf;
+
+  ret = event_proxy_intf_->SetParameter(kSetPaHistCollection, payload);
+  if (ret) {
+    DLOGE("Failed to set pa hist enablement, ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  return kErrorNone;
+}
+
+DisplayError EventProxyInfo::GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf) {
+  PaHistBinsParam *param = nullptr;
+  GenericPayload payload;
+
+  if (!event_proxy_intf_.get()) {
+    DLOGW("Event proxy intf is not available");
+    return kErrorParameters;
+  }
+
+  if (!buf) {
+    DLOGE("Invalid pa hist bins buf");
+    return kErrorParameters;
+  }
+
+  int ret = payload.CreatePayload(param);
+  if (ret || !param) {
+    DLOGE("Failed to create payload for pa hist bins, ret %d", ret);
+    return kErrorParameters;
+  }
+
+  param->buf = buf;
+  ret = event_proxy_intf_->GetParameter(kGetPaHistBins, &payload);
+  if (ret) {
+    DLOGE("Failed to get pa hist bins, ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  return kErrorNone;
+}
+
 DisplayError DisplayBuiltIn::SetSsrcMode(const std::string &mode) {
   DisplayError ret = kErrorNotSupported;
 
@@ -3885,6 +3964,50 @@ DisplayError DisplayBuiltIn::SetSsrcMode(const std::string &mode) {
   }
 
   return ret;
+}
+
+DisplayError DisplayBuiltIn::SetAVRStepState(bool enable) {
+  ClientLock lock(disp_mutex_);
+
+  if (enable && (client_ctx_.hw_panel_info.mode == kModeVideo)) {
+    if (!client_ctx_.hw_panel_info.qsync_support || (qsync_mode_ == kQSyncModeNone)) {
+      DLOGW("AVR Step feature is not supported without QSync on VID mode");
+      return kErrorNotSupported;
+    }
+  }
+
+  if (avr_step_enabled_ == enable) {
+    DLOGI("AVR Step already set in requested state %d", enable);
+    return kErrorNone;
+  }
+
+  avr_step_enabled_ = enable;
+  needs_avr_update_.set(kUpdateAVRStepFlag);
+  validated_ = false;
+  event_handler_->Refresh();
+  DLOGI("AVR Step state set to %d successfully", avr_step_enabled_);
+
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetVRRState(bool state) {
+  if (!hw_intf_->IsVRRSupported()) {
+    return kErrorNotSupported;
+  }
+
+  uint32_t active_index = 0;
+  dpu_core_mux_->GetActiveConfig(&active_index);
+  if (hw_intf_->IsAVRStepSupported(active_index)) {
+    DLOGI("Set VRR state %d in config %d", state, active_index);
+    SetQSyncMode(state ? kQSyncModeContinuous : kQSyncModeNone);
+    DisplayError error = SetAVRStepState(state);
+    if (error != kErrorNone) {
+      return error;
+    }
+  }
+
+  vrr_enabled_ = state;
+  return kErrorNone;
 }
 
 }  // namespace sdm

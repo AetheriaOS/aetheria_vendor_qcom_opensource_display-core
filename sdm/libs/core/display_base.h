@@ -23,7 +23,7 @@
 */
 
 /*
-* ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
+* Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
 *
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -58,6 +58,7 @@
 
 #include "comp_manager.h"
 #include "color_manager.h"
+#include "dpu_core_factory.h"
 #include "dpu_core_mux.h"
 
 using aiqe::GetABCFeatureFactIntf;
@@ -281,7 +282,18 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) {
     return kErrorNotSupported;
   }
+  virtual DisplayError SetPaHistCollection(
+      const std::string &client_name, bool enable,
+      SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf) {
+    return kErrorNotSupported;
+  }
+  virtual DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf) {
+    return kErrorNotSupported;
+  }
   virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
+  virtual DisplayError SetVRRState(bool state) { return kErrorNotSupported; }
+  virtual DisplayError NotifyExpectedPresent(uint64_t expected_present_time,
+                                             uint32_t frame_interval_ns);
 
  protected:
   struct DisplayMutex {
@@ -340,7 +352,6 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   DisplayError GetValueOfModeAttribute(const AttrVal &attr, const std::string &type,
                                        std::string *value);
   bool IsSupportColorModeAttribute(const std::string &color_mode);
-  void SetPUonDestScaler();
   void ClearColorInfo();
   void GetColorPrimaryTransferFromAttributes(const AttrVal &attr,
       std::vector<PrimariesTransfer> *supported_pt);
@@ -409,10 +420,6 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   bool partial_update_control_ = true;
   HWEventsInterface *hw_events_intf_ = NULL;
   bool disable_pu_one_frame_ = false;
-  // TODO(user): Temporary changes, to be removed when DRM driver supports
-  // Partial update with Destination scaler enabled.
-  bool disable_pu_on_dest_scaler_ = false;
-  bool de_enabled_ = false;
   bool pu_pending_ = false;
   uint32_t num_color_modes_ = 0;
   std::vector<SDEDisplayMode> color_modes_;
@@ -439,7 +446,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   bool vsync_enable_pending_ = false;
   HWPowerState pending_power_state_ = kPowerStateNone;
   QSyncMode qsync_mode_ = kQSyncModeNone;
-  bool needs_avr_update_ = false;
+  std::bitset<kUpdateAVRFlagMax> needs_avr_update_ = {};
 
   static Locker display_power_reset_lock_;
   static bool display_power_reset_pending_;

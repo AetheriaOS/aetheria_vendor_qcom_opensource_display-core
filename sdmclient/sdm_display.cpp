@@ -33,12 +33,11 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
-#include <cutils/properties.h>
 #include <errno.h>
 #include <math.h>
-#include <sync/sync.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/mman.h>
 #include <utils/constants.h>
 #include <utils/debug.h>
 #include <utils/formats.h>
@@ -374,9 +373,7 @@ DisplayError SDMColorModeMgr::RestoreColorTransform() {
   return kErrorNone;
 }
 
-DisplayError
-SDMColorModeMgr::SetColorTransform(const float *matrix,
-                                   android_color_transform_t /*hint*/) {
+DisplayError SDMColorModeMgr::SetColorTransform(const float *matrix, SDMColorTransform /*hint*/) {
   DTRACE_SCOPED();
   auto status = kErrorNone;
   double color_matrix[kColorTransformMatrixCount] = {0};
@@ -598,15 +595,15 @@ DisplayError SDMDisplay::Init() {
   const std::string snapalloc_lib_name = "vendor.qti.hardware.display.snapalloc-impl.so";
   void *snap_impl_lib_ = ::dlopen(snapalloc_lib_name.c_str(), RTLD_NOW);
   if (!snap_impl_lib_) {
-    ALOGE("Dlopen error for snapalloc impl: %s", dlerror());
+    DLOGE("Dlopen error for snapalloc impl: %s", dlerror());
     return kErrorPermission;
   }
-  
-  std::shared_ptr<ISnapMapper> (*LINK_FETCH_ISnapMapper)() = nullptr;
+
+  std::shared_ptr<ISnapMapper> (*LINK_FETCH_ISnapMapper)(DebugCallbackIntf *) = nullptr;
   *reinterpret_cast<void **>(&LINK_FETCH_ISnapMapper) =
       ::dlsym(snap_impl_lib_, "FETCH_ISnapMapper");
   if (LINK_FETCH_ISnapMapper) {
-    snapmapper_ = LINK_FETCH_ISnapMapper();
+    snapmapper_ = LINK_FETCH_ISnapMapper(nullptr);
   } else {
     DLOGE("Failed to get snapalloc instance");
   }
@@ -690,8 +687,8 @@ void SDMDisplay::PopulateSDMExtendedDisplayResolution() {
         info = config.second;
         info.x_pixels = extended_display_resolutions.at(res_index).first;
         info.y_pixels = extended_display_resolutions.at(res_index).second;
-        info.x_dpi *= (info.x_pixels / panel_width);
-        info.y_dpi *= (info.y_pixels / panel_height);
+        info.x_dpi *= ((float)info.x_pixels / panel_width);
+        info.y_dpi *= ((float)info.y_pixels / panel_height);
         info.h_total -= (panel_width - info.x_pixels);
         info.v_total -= (panel_height - info.y_pixels);
         info.is_virtual_config = true;
@@ -756,6 +753,11 @@ DisplayError SDMDisplay::Deinit() {
     delete color_mode_;
   }
 
+  SDMLayerBuilder *layer_builder = SDMLayerBuilder::GetInstance();
+  layer_builder->DeInit(id_);
+  layer_builder = nullptr;
+  SDMLayerBuilder::PutInstance();
+
   return kErrorNone;
 }
 
@@ -780,8 +782,10 @@ void SDMDisplay::BuildLayerStack() {
   layer_stack_.flags.layer_id_support = true;
   layer_stack_.solid_fill_enabled = solid_fill_enable_;
   layer_stack_.tonemapper_active = false;
+  bool video_layer_updating = false;
+  bool ui_layer_updating = false;
 
-  DTRACE_SCOPED();  
+  DTRACE_SCOPED();
   // Add one layer for fb target
   for (auto sdm_layer : sdm_layer_stack_->layer_set_) {
     // Reset layer data which SDM may change
@@ -811,15 +815,23 @@ void SDMDisplay::BuildLayerStack() {
     bool is_video = false;
     SnapHandle *hdl = (SnapHandle *) layer->input_buffer.buffer_id;
     if (hdl) {
-      uint32_t buffer_type;
+      // BUFFER_TYPE returns 1 for YUV (which is == BUFFER_TYPE_VIDEO), 0 otherwise
+      uint32_t buffer_type = 0;
       snapmapper_->GetMetadata(*hdl, MetadataType::BUFFER_TYPE, &buffer_type);
-      if (buffer_type == BUFFER_TYPE_VIDEO) {
+      if (buffer_type) {
         layer_stack_.flags.video_present = true;
         is_video = true;
+        if (IsLayerUpdating(sdm_layer)) {
+          video_layer_updating |= true;
+        }
+      } else {
+        if (IsLayerUpdating(sdm_layer)) {
+          ui_layer_updating |= true;
+        }
       }
 
       // TZ Protected Buffer - L1
-      // Gralloc Usage Protected Buffer - L3 - which needs to be treated as Secure & avoid fallback
+      // Snapalloc Usage Protected Buffer - L3 - which needs to be treated as Secure & avoid fallback
       BufferUsage handle_flags;
       snapmapper_->GetMetadata(*hdl, MetadataType::USAGE, &handle_flags);
       if (handle_flags & BufferUsage::PROTECTED) {
@@ -965,16 +977,18 @@ void SDMDisplay::BuildLayerStack() {
   SetClientTargetDataSpace(static_cast<int32_t>(client_target_dataspace));
   layer_stack_.layers.push_back(sdm_client_target);
 
+  layer_stack_.flags.only_video_updating = video_layer_updating && !ui_layer_updating;
   layer_stack_.elapse_timestamp = elapse_timestamp_;
   layer_stack_.expected_present_time = expected_present_time_;
+  layer_stack_.frame_interval_ns = frame_interval_ns_;
 
   layer_stack_.client_incompatible =
       dump_frame_count_ && (dump_output_to_file_ || dump_input_layers_);
   DLOGV_IF(kTagClient, "layer_stack_.client_incompatible : %d",
            layer_stack_.client_incompatible);
-  ATRACE_INT("HDRPresent ", layer_stack_.flags.hdr_present ? 1 : 0);
-  ATRACE_INT("FrontBufferPresent ",
-             layer_stack_.flags.front_buffer_layer_present ? 1 : 0);
+  SDMDebugHandler::ATRACE_INT("HDRPresent ", layer_stack_.flags.hdr_present ? 1 : 0);
+  SDMDebugHandler::ATRACE_INT("FrontBufferPresent ",
+                              layer_stack_.flags.front_buffer_layer_present ? 1 : 0);
 }
 
 void SDMDisplay::BuildSolidFillStack() {
@@ -1008,7 +1022,7 @@ DisplayError SDMDisplay::SetLayerType(LayerId layer_id, SDMLayerTypes type) {
 
 DisplayError SDMDisplay::SetVsyncEnabled(bool enabled) {
   DLOGV("Display ID: %" PRId64 " enabled: %d", id_, enabled);
-  ATRACE_INT("SetVsyncState ", enabled);
+  SDMDebugHandler::ATRACE_INT("SetVsyncState ", enabled);
   DisplayError error = kErrorNone;
 
   if (shutdown_pending_ || !event_handler_->VsyncCallbackRegistered()) {
@@ -1081,7 +1095,7 @@ DisplayError SDMDisplay::SetPowerMode(SDMPowerMode mode, bool teardown) {
   }
   shared_ptr<Fence> release_fence = nullptr;
 
-  ATRACE_INT("SetPowerMode ", state);
+  SDMDebugHandler::ATRACE_INT("SetPowerMode ", state);
   DisplayError error =
       display_intf_->SetDisplayState(state, teardown, &release_fence);
 
@@ -1166,6 +1180,12 @@ DisplayError SDMDisplay::GetDisplayConfigs(std::vector<int32_t> *out_configs) {
     out_configs->at(i++) = info.first;
   }
 
+  return kErrorNone;
+}
+
+DisplayError SDMDisplay::NotifyExpectedPresent(uint64_t expected_present_time,
+                                               uint32_t frame_interval_ns) {
+  display_intf_->NotifyExpectedPresent(expected_present_time, frame_interval_ns);
   return kErrorNone;
 }
 
@@ -1477,7 +1497,7 @@ DisplayError SDMDisplay::VSync(const DisplayEventVSync &vsync) {
   if (GetDisplayVsyncPeriod(false, &vsync_period) != kErrorNone) {
     vsync_period = 0;
   }
-  ATRACE_INT("VsyncPeriod", INT32(vsync_period));
+  SDMDebugHandler::ATRACE_INT("VsyncPeriod", INT32(vsync_period));
   callbacks_->OnVsync(id_, vsync.timestamp, vsync_period);
 
   return kErrorNone;
@@ -1489,13 +1509,8 @@ DisplayError SDMDisplay::Refresh() {
 }
 
 DisplayError SDMDisplay::CECMessage(char *message) {
-  /* aparmar
-    if (qservice_) {
-      qservice_->onCECMessageReceived(message, 0);
-    } else {
-      DLOGW("Qservice instance not available.");
-    }
-  */
+  callbacks_->OnCECMessageReceived(message, 0);
+
   return kErrorNone;
 }
 
@@ -1872,7 +1887,6 @@ DisplayError SDMDisplay::CommitLayerStack(void) {
   }
 
   DisplayError error = kErrorUndefined;
-  int status = 0;
   error = display_intf_->Commit(&layer_stack_);
 
   if (error == kErrorNone) {
@@ -1951,7 +1965,6 @@ SDMDisplay::PostCommitLayerStack(shared_ptr<Fence> *out_retire_fence) {
     pending_first_commit_config_ = false;
     SetActiveConfig(pending_first_commit_config_index_);
   }
-  virtual_config_fps_switch_ = false;
 
   return status;
 }
@@ -2278,13 +2291,13 @@ DisplayError SDMDisplay::SetFrameBufferResolution(uint32_t x_pixels,
 
   int aligned_width;
   int aligned_height;
-  uint32_t usage = GRALLOC_USAGE_HW_FB;
+  uint32_t usage = BufferUsage::COMPOSER_CLIENT_TARGET;
   int format = static_cast<int>(SDMPixelFormat::PIXEL_FORMAT_RGBA_8888);
   int ubwc_disabled = 0;
   int flags = 0;
 
   // By default UBWC is enabled and below property is global enable/disable for
-  // all buffers allocated through gralloc , including framebuffer targets.
+  // all buffers allocated through snapalloc , including framebuffer targets.
   SDMDebugHandler::Get()->GetProperty(DISABLE_UBWC_PROP, &ubwc_disabled);
   if (!ubwc_disabled) {
     usage |= BufferUsage::QTI_ALLOC_UBWC;
@@ -2634,8 +2647,7 @@ DisplayError SDMDisplay::GetAllDisplayAttributes(
   int index = 0;
 
   for (auto &config : variable_config_map_) {
-    info->insert(std::make_pair(index, config.second));
-    index++;
+    info->insert(std::make_pair(config.first, config.second));
   }
 
   return kErrorNone;
@@ -2914,6 +2926,7 @@ void SDMDisplay::UpdateActiveConfig() {
 
   // Reset pending config.
   pending_config_ = false;
+  virtual_config_fps_switch_ = false;
 }
 
 int32_t
@@ -2983,10 +2996,17 @@ DisplayError SDMDisplay::SetActiveConfigWithConstraints(
     return kErrorNotSupported;
   }
 
+  DisplayConfigVariableInfo info_client_requested = {};
+  GetDisplayAttributesForConfig(INT(config), &info_client_requested);
   Config real_config_for_fps_switch = config;
   if (IsVirtualConfig(config) || IsVirtualConfig(active_config_index_)) {
     DisplayError error = SetFBForExtendedResolution(config, &real_config_for_fps_switch);
     if (!virtual_config_fps_switch_) {
+      if ((error == kErrorNone) && (info_client_requested.x_pixels != fb_width_ ||
+                                    info_client_requested.y_pixels != fb_height_)) {
+        fb_width_ = info_client_requested.x_pixels;
+        fb_height_ = info_client_requested.y_pixels;
+      }
       return error;
     } else {
       config = real_config_for_fps_switch;
@@ -3034,17 +3054,27 @@ DisplayError SDMDisplay::SetActiveConfigWithConstraints(
           vsync_period_change_constraints->desiredTimeNanos);
 
   out_timeline->refreshRequired = true;
-  if (is_client_up_ &&
-      (info.x_pixels != fb_width_ || info.y_pixels != fb_height_)) {
-    out_timeline->refreshRequired = false;
-    fb_width_ = info.x_pixels;
-    fb_height_ = info.y_pixels;
+  if (is_client_up_) {
+    if (virtual_config_fps_switch_) {
+      if (info_client_requested.x_pixels != fb_width_ ||
+          info_client_requested.y_pixels != fb_height_) {
+        out_timeline->refreshRequired = false;
+        fb_width_ = info_client_requested.x_pixels;
+        fb_height_ = info_client_requested.y_pixels;
+      }
+    } else {
+      if (info.x_pixels != fb_width_ || info.y_pixels != fb_height_) {
+        out_timeline->refreshRequired = false;
+        fb_width_ = info.x_pixels;
+        fb_height_ = info.y_pixels;
+      }
+    }
   }
   return kErrorNone;
 }
 
 void SDMDisplay::ProcessActiveConfigChange() {
-  if (!IsActiveConfigReadyToSubmit(systemTime(SYSTEM_TIME_MONOTONIC))) {
+  if (!IsActiveConfigReadyToSubmit(callbacks_->SystemTime(SYSTEM_TIME_MONOTONIC))) {
     return;
   }
 
@@ -3079,7 +3109,7 @@ SDMDisplay::GetVsyncPeriodByActiveConfig(bool get_real_config,
 
 bool SDMDisplay::GetTransientVsyncPeriod(VsyncPeriodNanos *vsync_period) {
   std::lock_guard<std::mutex> lock(transient_refresh_rate_lock_);
-  auto now = systemTime(SYSTEM_TIME_MONOTONIC);
+  auto now = callbacks_->SystemTime(SYSTEM_TIME_MONOTONIC);
 
   while (!transient_refresh_rate_info_.empty()) {
     if (IsActiveConfigApplied(
@@ -3113,7 +3143,7 @@ SDMDisplay::RequestActiveConfigChange(Config config,
 
 std::tuple<int64_t, int64_t> SDMDisplay::EstimateVsyncPeriodChangeTimeline(
     VsyncPeriodNanos current_vsync_period, int64_t desired_time) {
-  const auto now = systemTime(SYSTEM_TIME_MONOTONIC);
+  const auto now = callbacks_->SystemTime(SYSTEM_TIME_MONOTONIC);
   const auto delta = desired_time - now;
   const auto refresh_rate_activate_period =
       current_vsync_period * vsyncs_to_apply_rate_change_;
@@ -3154,6 +3184,7 @@ void SDMDisplay::SubmitActiveConfigChange(
   pending_refresh_rate_config_ = UINT_MAX;
   pending_refresh_rate_refresh_time_ = INT64_MAX;
   pending_refresh_rate_applied_time_ = INT64_MAX;
+  virtual_config_fps_switch_ = false;
 }
 
 bool SDMDisplay::IsActiveConfigReadyToSubmit(int64_t time) {
@@ -4023,8 +4054,6 @@ DisplayError SDMDisplay::GetSDMActiveConfig(bool get_real_config, Config *config
   if (is_current_config_virtual) {
     *config_index = active_config_index_;
 
-    uint32_t real_config_width = variable_config_map_[real_config].x_pixels;
-    uint32_t real_config_height = variable_config_map_[real_config].y_pixels;
     uint32_t real_config_fps = variable_config_map_[real_config].fps;
 
     uint32_t virtual_config_width = variable_config_map_[active_config_index_].x_pixels;
@@ -4063,15 +4092,18 @@ DisplayError SDMDisplay::SetFBForExtendedResolution(Config config,
   uint32_t new_config_height = variable_config_map_[config].y_pixels;
   uint32_t new_config_fps = variable_config_map_[config].fps;
 
-  // Resize fb with the new resolution to enable dest scaler.
-  int status = SetFrameBufferResolution(new_config_width, new_config_height);
-  if (status) {
-    return kErrorParameters;
-  }
-
   uint32_t hwc_active_config_width = variable_config_map_[active_config_index_].x_pixels;
   uint32_t hwc_active_config_height = variable_config_map_[active_config_index_].y_pixels;
   uint32_t hwc_active_config_fps = variable_config_map_[active_config_index_].fps;
+
+  // Resize fb with the new resolution to enable dest scaler.
+  if ((new_config_width != hwc_active_config_width) ||
+      (new_config_height != hwc_active_config_height)) {
+    int status = SetFrameBufferResolution(new_config_width, new_config_height);
+    if (status) {
+      return kErrorParameters;
+    }
+  }
 
   SetActiveConfigIndex(config);
 

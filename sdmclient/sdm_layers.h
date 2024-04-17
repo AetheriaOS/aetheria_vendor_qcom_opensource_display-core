@@ -55,7 +55,6 @@
 #include <core/layer_buffer.h>
 #include <core/layer_stack.h>
 #include <utils/utils.h>
-#include <QtiGrallocDefs.h>
 
 #include <map>
 #include <set>
