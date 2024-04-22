@@ -453,7 +453,14 @@ Error SnapConstraintManager::AlignmentToAlignedConstraints(BufferDescriptor desc
               ALIGN(desc.width * (format_data.planes[0].sample_increment_bits / 8),
                     alignment.planes[i].stride.horizontal_stride_align);
         }
-        plane.scanline.scanline = ALIGN(desc.height, alignment.planes[i].scanline.scanline_align);
+        if ((IsYuv(desc.format)) &&
+            ((alignment.planes[i].components[0] == PLANE_LAYOUT_COMPONENT_TYPE_CB) ||
+             (alignment.planes[i].components[0] == PLANE_LAYOUT_COMPONENT_TYPE_CR))) {
+          plane.scanline.scanline =
+              ALIGN(((desc.height + 1) >> 1), alignment.planes[i].scanline.scanline_align);
+        } else {
+          plane.scanline.scanline = ALIGN(desc.height, alignment.planes[i].scanline.scanline_align);
+        }
       }
 
       plane.size_align = alignment.planes[i].size_align;
