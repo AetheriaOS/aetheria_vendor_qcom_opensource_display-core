@@ -1318,6 +1318,12 @@ DisplayError HWDeviceDRM::PowerOn(const HWQosData &qos_data, SyncPoints *sync_po
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::ON);
   drm_atomic_intf_->Perform(DRMOps::CRTC_GET_RELEASE_FENCE, token_.crtc_id, &release_fence_fd);
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_GET_RETIRE_FENCE, token_.conn_id, &retire_fence_fd);
+  if (enable_brightness_drm_prop_ && cached_brightness_level_ != -1) {
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_BRIGHTNESS, token_.conn_id,
+                              cached_brightness_level_);
+    current_brightness_ = cached_brightness_level_;
+    cached_brightness_level_ = -1;
+  }
 
   // On the first boot up of the display, make the power call synchronous. This is only applicable
   // to pluggable displays. Check HWPeripheralDRM::PowerOn. For builtin first power call defered
@@ -1448,6 +1454,12 @@ DisplayError HWDeviceDRM::Doze(const HWQosData &qos_data, SyncPoints *sync_point
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::DOZE);
   drm_atomic_intf_->Perform(DRMOps::CRTC_GET_RELEASE_FENCE, token_.crtc_id, &release_fence_fd);
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_GET_RETIRE_FENCE, token_.conn_id, &retire_fence_fd);
+  if (enable_brightness_drm_prop_ && cached_brightness_level_ != -1) {
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_BRIGHTNESS, token_.conn_id,
+                              cached_brightness_level_);
+    current_brightness_ = cached_brightness_level_;
+    cached_brightness_level_ = -1;
+  }
 
   bool is_synchronous = false;
   if (hw_panel_info_.dpu_ctl_op_sync && core_id_ != 0) {
