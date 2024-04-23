@@ -3160,7 +3160,7 @@ int DisplayBuiltIn::SetDemuraIntfStatus(bool enable, int current_idx) {
       return ret;
     }
 
-    config_mode_name->modeinfo = "normal_on_udc_off";
+    config_mode_name->modeinfo = "";
     if ((ret = demura_->SetParameter(kDemuraFeatureParamConfigIdx, config_pl))) {
       DLOGE("Failed to set Config Idx, error = %d", ret);
       return ret;
@@ -4160,6 +4160,11 @@ DisplayError DisplayBuiltIn::SetABCState(bool state) {
   // Update dispay abc state for current display
   comp_manager_->SetDemuraStatusForDisplay(display_id_, state);
   abc_enabled_ = state;
+
+  if (abc_enabled_ && (SetABCMode("normal_on_udc_off") != kErrorNone)) {
+    DLOGE("Failed to set mode to normal_on_udc_off");
+    return kErrorUndefined;
+  }
 
   needs_validate_ = true;
   // Disable Partial Update for one frame.
