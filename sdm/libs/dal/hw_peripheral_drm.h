@@ -143,7 +143,7 @@ class HWPeripheralDRM : public HWDeviceDRM, public PanelFeaturePropertyIntf {
   };
 
   sde_drm_dest_scaler_data sde_dest_scalar_data_ = {};
-  struct drm_msm_ai_scaler sde_ai_scaler_cfg_;
+  struct drm_msm_ai_scaler sde_ai_scaler_cfg_ = {};
   std::vector<SDEScaler> scalar_data_ = {};
   sde_drm::DRMIdlePCState idle_pc_state_ = sde_drm::DRMIdlePCState::NONE;
   bool idle_pc_enabled_ = true;

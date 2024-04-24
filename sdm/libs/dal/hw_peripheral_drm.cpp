@@ -688,7 +688,7 @@ DisplayError HWPeripheralDRM::PowerOn(const HWQosData &qos_data, SyncPoints *syn
     needs_ds_update_ = true;
   }
 
-  if (sde_ai_scaler_cfg_.flags) {
+  if (ai_scaler_blocks_used_ && sde_ai_scaler_cfg_.config) {
     PanelFeaturePropertyInfo payload{};
     int rc;
     payload.prop_id = kPanelFeatureAIScalerCfg;
