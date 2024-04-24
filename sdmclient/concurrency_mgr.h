@@ -130,6 +130,8 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
 
   bool GetComposerStatus() override;
 
+  void CompositorSync(CompositorSyncType sync_type) override;
+
   DisplayError PostBuffer(const CwbConfig &cwb_config, void *buffer,
                           int32_t display_type);
 

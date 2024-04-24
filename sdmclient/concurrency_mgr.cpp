@@ -1216,6 +1216,14 @@ void ConcurrencyMgr::Refresh(uint64_t display) {
   client_pending_refresh_.set(UINT32(display));
 }
 
+void ConcurrencyMgr::CompositorSync(CompositorSyncType sync_type) {
+  if (sync_type == CompositorSyncTypeAcquire) {
+    command_seq_mutex_.lock();
+  } else {
+    command_seq_mutex_.unlock();
+  }
+}
+
 void ConcurrencyMgr::PerformDisplayPowerReset() {
   disp_->RemoveDisconnectedPluggableDisplays();
 
