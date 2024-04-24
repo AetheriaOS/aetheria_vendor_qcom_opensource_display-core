@@ -2792,11 +2792,11 @@ DisplayError SDMDisplay::GetDisplayIdentificationData(uint8_t *out_port,
   DisplayError ret = display_intf_->GetDisplayIdentificationData(
       out_port, out_data_size, out_data);
   if (ret != kErrorNone) {
-    DLOGE("Failed due to SDM/Driver (err = %d, disp id = %" PRIu64 " %d-%d",
-          ret, id_, sdm_id_, type_);
+    DLOGW("Failed due to SDM/Driver (err = %d, disp id = %" PRIu64 " %d-%d", ret, id_, sdm_id_,
+          type_);
   }
 
-  return ret;
+  return kErrorNone;
 }
 
 DisplayError SDMDisplay::SetDisplayElapseTime(uint64_t time) {
