@@ -233,6 +233,11 @@ int GraphicsConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferCo
       plane_layout.scanline.scanline = static_cast<uint64_t>(aligned_h);
     } else if (IsGpuDepthStencil(snap_format)) {
       ALOGD_IF(DEBUG, "Querying graphics for GpuDepthStencil case");
+      // Depth formats are not supported by graphics when CPU bits are set
+      if (CpuCanAccess(desc.usage)) {
+        return Error::UNSUPPORTED;
+      }
+
       aligned_h = 0;
       aligned_w = 0;
       AlignGpuDepthStencilFormat(desc.width, desc.height, format, tile_enabled,
