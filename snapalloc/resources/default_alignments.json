@@ -818,6 +818,24 @@
                         }
                     ]
                 }
+            },
+            {
+                "format" : "R_8",
+                "constraints" : {
+                    "size_align_bytes" : 1,
+                    "planes" : [
+                        {
+                            "components": [
+                                {
+                                    "component_type" : "R"
+                                }
+                            ],
+                            "horiz_stride_align_bytes" : 256,
+                            "scanline_align" : 1,
+                            "size_align_bytes" : 1
+                        }
+                    ]
+                }
             }
         ]
     }

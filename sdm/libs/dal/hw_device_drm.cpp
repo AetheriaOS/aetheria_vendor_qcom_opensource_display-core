@@ -520,9 +520,9 @@ int HWDeviceDRM::Registry::MapBufferToFbId(Layer *layer, const LayerBuffer &buff
     // Create and cache the fb_id in map
     std::vector<std::shared_ptr<LayerBufferObject>> fb_id_vec;
     for (int i = 0; i < fb_id.size(); i++) {
-      std::shared_ptr<LayerBufferObject> bo = std::make_shared<FrameBufferObject>(fb_id[i],
-                                              core_id_, buffer.format, buffer.width, buffer.height,
-                                              secure_present);
+      std::shared_ptr<LayerBufferObject> bo =
+          std::make_shared<FrameBufferObject>(fb_id[i], core_id_, buffer.format, buffer.width,
+                                              buffer.height, false /* shallow */, secure_present);
       fb_id_vec.push_back(bo);
     }
 
@@ -2979,12 +2979,10 @@ void HWDeviceDRM::SetUcscTonemapFeatures(HWPipeInfo *pipe_info) {
   for (auto &it : pipe_info->ucsc_write_op) {
     switch (it.first) {
       case kUcscUnmult:
-        if (it.second != kNoOp) {
-          DLOGV_IF(kTagDriverConfig, "Call Perform UCSC UNMULT Op = %s, display: %d-%d",
-                   (it.second == kSet) ? "Set" : "Reset", display_id_, disp_type_);
-          drm_atomic_intf_->Perform(DRMOps::PLANE_SET_UCSC_UNMULT_CONFIG, pipe_info->pipe_id,
-                                    pipe_info->ucsc_config.unmult_en);
-        }
+        DLOGV_IF(kTagDriverConfig, "Call Perform UCSC UNMULT enable = %d, display: %d-%d",
+                 pipe_info->ucsc_config.unmult_en, display_id_, disp_type_);
+        drm_atomic_intf_->Perform(DRMOps::PLANE_SET_UCSC_UNMULT_CONFIG, pipe_info->pipe_id,
+                                  pipe_info->ucsc_config.unmult_en);
         break;
       case kUcscIgc:
         if (it.second != kNoOp) {

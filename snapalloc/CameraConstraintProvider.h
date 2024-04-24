@@ -48,6 +48,7 @@ typedef enum : unsigned int {
   CAMERA_PIXEL_FORMAT_RAW_OPAQUE = 0x24,                 // Opaque RAW format
   CAMERA_PIXEL_FORMAT_RAW10 = 0x25,                      // Opaque RAW10 bit format
   CAMERA_PIXEL_FORMAT_RAW12 = 0x26,                      // Opaque RAW12 bit format
+  CAMERA_PIXEL_FORMAT_RAW14 = 0x144,                     // Opaque RAW14 bit format
 } CamxPixelFormat;
 
 // Camera Result Codes
@@ -233,7 +234,10 @@ class CameraConstraintProvider : public SnapConstraintProvider {
            CAMERA_PIXEL_FORMAT_RAW10},
           {{.format = vendor_qti_hardware_display_common_PixelFormat::RAW12,
             .modifier = PIXEL_FORMAT_MODIFIER_NONE},
-           CAMERA_PIXEL_FORMAT_RAW12}};
+           CAMERA_PIXEL_FORMAT_RAW12},
+          {{.format = vendor_qti_hardware_display_common_PixelFormat::RAW14,
+            .modifier = PIXEL_FORMAT_MODIFIER_NONE},
+           CAMERA_PIXEL_FORMAT_RAW14}};
 };
 }  // namespace snapalloc
 
