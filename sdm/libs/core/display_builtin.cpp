@@ -268,6 +268,12 @@ DisplayError DisplayBuiltIn::Init() {
   Debug::Get()->GetProperty(DEFER_FPS_FRAME_COUNT, &value);
   deferred_config_.frame_count = (value > 0) ? UINT32(value) : 0;
 
+  if (event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this, extension_lib_) !=
+      kErrorNone) {
+    DLOGW("Failed to initialize event proxy info");
+    event_proxy_info_.Deinit();
+  }
+
   if (pf_factory_ && prop_intf_) {
     // Get status of RC enablement property. Default RC is disabled.
     int rc_prop_value = 0;
@@ -358,12 +364,6 @@ DisplayError DisplayBuiltIn::Init() {
 
   left_frame_roi_.resize(core_count_);
   right_frame_roi_.resize(core_count_);
-
-  if (event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this,
-                             extension_lib_) != kErrorNone) {
-    DLOGW("Failed to initialize event proxy info");
-    event_proxy_info_.Deinit();
-  }
 
   return error;
 }
@@ -1003,7 +1003,7 @@ DisplayError DisplayBuiltIn::SetupABCFeature() {
   }
 
   std::unique_ptr<DemuraIntf> abc_intf =
-      abc_factory_->CreateABCIntf(input_cfg, prop_intf_, buffer_allocator_);
+      abc_factory_->CreateABCIntf(input_cfg, prop_intf_, buffer_allocator_, this);
   if (!abc_intf) {
     DLOGE("Unable to create abc_intf on Display %d-%d", display_id_, display_type_);
     return kErrorMemory;
@@ -3795,6 +3795,12 @@ DisplayError DisplayBuiltIn::GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *
   return event_proxy_info_.GetPaHistBins(buf);
 }
 
+DisplayError DisplayBuiltIn::PanelBacklightInfo(
+    const std::string &client_name, bool enable,
+    SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) {
+  return event_proxy_info_.PanelBacklightInfo(client_name, enable, cb_intf);
+}
+
 DisplayError EventProxyInfo::Init(const std::string &panel_name,
                                   DisplayInterface *intf,
                                   DynLib &extension_lib) {
@@ -3936,6 +3942,35 @@ DisplayError EventProxyInfo::GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *
   ret = event_proxy_intf_->GetParameter(kGetPaHistBins, &payload);
   if (ret) {
     DLOGE("Failed to get pa hist bins, ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  return kErrorNone;
+}
+
+DisplayError EventProxyInfo::PanelBacklightInfo(
+    const std::string &client_name, bool enable,
+    SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) {
+  if (!event_proxy_intf_.get()) {
+    DLOGW("Event proxy intf is not available");
+    return kErrorParameters;
+  }
+
+  PanelBacklightInfoParam *backlight_info = nullptr;
+  GenericPayload payload;
+  int ret = payload.CreatePayload(backlight_info);
+  if (ret || !backlight_info) {
+    DLOGE("Failed to create payload for backlight info, ret %d", ret);
+    return kErrorParameters;
+  }
+
+  backlight_info->name = client_name;
+  backlight_info->enable = enable;
+  backlight_info->cb_intf = cb_intf;
+
+  ret = event_proxy_intf_->SetParameter(kSetPanelBLInfoEnable, payload);
+  if (ret) {
+    DLOGE("Failed to set panel backlight info enablement, ret %d", ret);
     return kErrorUndefined;
   }
 
