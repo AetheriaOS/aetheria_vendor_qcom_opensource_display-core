@@ -28,8 +28,8 @@
 */
 
 /*
- * Changes from Qualcomm Innovation Center are provided under the following license:
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
@@ -49,6 +49,8 @@ struct UsageHints {
     struct {
       uint32_t trusted_ui : 1;  //!< Transfer memory from secure display heap to TUI carveout heap
                                 //!<.when this bit is set
+      uint32_t tui_demura : 2;  //!< Transfer memory from secure display heap to demura carveout
+                                //!<heap. when this bit is set
     };
     uint64_t hints;
   };
