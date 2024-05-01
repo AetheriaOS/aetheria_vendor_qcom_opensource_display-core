@@ -389,6 +389,9 @@ class HWDeviceDRM : public HWInterface {
   bool force_tonemapping_ = false;
   uint32_t ai_scaler_blocks_used_ = 0;  // AI scaler blocks in use by this HWDeviceDRM instance.
   static std::atomic<uint32_t> hw_ai_scaler_blocks_used_;
+  bool enable_brightness_drm_prop_ = false;
+  int cached_brightness_level_ = -1;
+  int current_brightness_ = -1;
 
  private:
   void GetCWBCapabilities();

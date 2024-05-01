@@ -266,6 +266,7 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "avr_step_state") { return DRMProperty::AVR_STEP_STATE; }
   if (name == "frame_interval") { return DRMProperty::FRAME_INTERVAL; }
   if (name == "usecase_idx") { return DRMProperty::USECASE_IDX; }
+  if (name == "brightness") { return DRMProperty::BRIGHTNESS; }
 
   return DRMProperty::INVALID;
 }

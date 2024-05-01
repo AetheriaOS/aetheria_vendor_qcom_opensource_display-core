@@ -262,6 +262,7 @@ enum struct DRMProperty {
   AVR_STEP_STATE,
   FRAME_INTERVAL,
   USECASE_IDX,
+  BRIGHTNESS,
 
   // Insert above
   MAX
