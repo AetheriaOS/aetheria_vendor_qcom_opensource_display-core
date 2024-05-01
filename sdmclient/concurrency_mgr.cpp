@@ -2557,4 +2557,52 @@ int ConcurrencyMgr::GetNotifyEptConfig(Display display) {
   return sdm_display_[disp_idx]->GetNotifyEptConfig();
 }
 
+DisplayError ConcurrencyMgr::SetABCState(uint64_t display_id, bool state) {
+  int disp_idx = GetDisplayIndex(display_id);
+  if (disp_idx == -1) {
+    DLOGW("Invalid display = %d", display_id);
+    return kErrorResources;
+  }
+
+  SCOPE_LOCK(locker_[disp_idx]);
+  if (!sdm_display_[disp_idx]) {
+    DLOGW("Display %d is not connected.", display_id);
+    return kErrorResources;
+  }
+
+  return sdm_display_[disp_idx]->SetABCState(state);
+}
+
+DisplayError ConcurrencyMgr::SetABCReconfig(uint64_t display_id) {
+  int disp_idx = GetDisplayIndex(display_id);
+  if (disp_idx == -1) {
+    DLOGW("Invalid display = %d", display_id);
+    return kErrorResources;
+  }
+
+  SCOPE_LOCK(locker_[disp_idx]);
+  if (!sdm_display_[disp_idx]) {
+    DLOGW("Display %d is not connected.", display_id);
+    return kErrorResources;
+  }
+
+  return sdm_display_[disp_idx]->SetABCReconfig();
+}
+
+DisplayError ConcurrencyMgr::SetABCMode(uint64_t display_id, string mode_name) {
+  int disp_idx = GetDisplayIndex(display_id);
+  if (disp_idx == -1) {
+    DLOGW("Invalid display = %d", display_id);
+    return kErrorResources;
+  }
+
+  SCOPE_LOCK(locker_[disp_idx]);
+  if (!sdm_display_[disp_idx]) {
+    DLOGW("Display %d is not connected.", display_id);
+    return kErrorResources;
+  }
+
+  return sdm_display_[disp_idx]->SetABCMode(mode_name);
+}
+
 } // namespace sdm

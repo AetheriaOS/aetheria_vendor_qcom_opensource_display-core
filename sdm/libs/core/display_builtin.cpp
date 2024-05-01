@@ -268,6 +268,12 @@ DisplayError DisplayBuiltIn::Init() {
   Debug::Get()->GetProperty(DEFER_FPS_FRAME_COUNT, &value);
   deferred_config_.frame_count = (value > 0) ? UINT32(value) : 0;
 
+  if (event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this, extension_lib_) !=
+      kErrorNone) {
+    DLOGW("Failed to initialize event proxy info");
+    event_proxy_info_.Deinit();
+  }
+
   if (pf_factory_ && prop_intf_) {
     // Get status of RC enablement property. Default RC is disabled.
     int rc_prop_value = 0;
@@ -342,6 +348,10 @@ DisplayError DisplayBuiltIn::Init() {
   DebugHandler::Get()->GetProperty(DISABLE_CWB_IDLE_FALLBACK, &value);
   disable_cwb_idle_fallback_ = (value == 1);
 
+  value = 0;
+  DebugHandler::Get()->GetProperty(ENABLE_BRIGHTNESS_DRM_PROP, &value);
+  enable_brightness_drm_prop_ = (value == 1);
+
 #ifdef TRUSTED_VM
   disable_cwb_idle_fallback_ = 1;
 #endif
@@ -358,12 +368,6 @@ DisplayError DisplayBuiltIn::Init() {
 
   left_frame_roi_.resize(core_count_);
   right_frame_roi_.resize(core_count_);
-
-  if (event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this,
-                             extension_lib_) != kErrorNone) {
-    DLOGW("Failed to initialize event proxy info");
-    event_proxy_info_.Deinit();
-  }
 
   return error;
 }
@@ -1003,7 +1007,7 @@ DisplayError DisplayBuiltIn::SetupABCFeature() {
   }
 
   std::unique_ptr<DemuraIntf> abc_intf =
-      abc_factory_->CreateABCIntf(input_cfg, prop_intf_, buffer_allocator_);
+      abc_factory_->CreateABCIntf(input_cfg, prop_intf_, buffer_allocator_, this);
   if (!abc_intf) {
     DLOGE("Unable to create abc_intf on Display %d-%d", display_id_, display_type_);
     return kErrorMemory;
@@ -1618,6 +1622,9 @@ DisplayError DisplayBuiltIn::SetPanelBrightness(float brightness) {
   }
 
   DisplayError err = dpu_core_mux_->SetPanelBrightness(level);
+  if (enable_brightness_drm_prop_) {
+    event_handler_->Refresh();
+  }
   if (err == kErrorNone) {
     level_remainder_ = level_remainder;
     pending_brightness_ = false;
@@ -3795,6 +3802,12 @@ DisplayError DisplayBuiltIn::GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *
   return event_proxy_info_.GetPaHistBins(buf);
 }
 
+DisplayError DisplayBuiltIn::PanelBacklightInfo(
+    const std::string &client_name, bool enable,
+    SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) {
+  return event_proxy_info_.PanelBacklightInfo(client_name, enable, cb_intf);
+}
+
 DisplayError EventProxyInfo::Init(const std::string &panel_name,
                                   DisplayInterface *intf,
                                   DynLib &extension_lib) {
@@ -3942,6 +3955,35 @@ DisplayError EventProxyInfo::GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *
   return kErrorNone;
 }
 
+DisplayError EventProxyInfo::PanelBacklightInfo(
+    const std::string &client_name, bool enable,
+    SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) {
+  if (!event_proxy_intf_.get()) {
+    DLOGW("Event proxy intf is not available");
+    return kErrorParameters;
+  }
+
+  PanelBacklightInfoParam *backlight_info = nullptr;
+  GenericPayload payload;
+  int ret = payload.CreatePayload(backlight_info);
+  if (ret || !backlight_info) {
+    DLOGE("Failed to create payload for backlight info, ret %d", ret);
+    return kErrorParameters;
+  }
+
+  backlight_info->name = client_name;
+  backlight_info->enable = enable;
+  backlight_info->cb_intf = cb_intf;
+
+  ret = event_proxy_intf_->SetParameter(kSetPanelBLInfoEnable, payload);
+  if (ret) {
+    DLOGE("Failed to set panel backlight info enablement, ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  return kErrorNone;
+}
+
 DisplayError DisplayBuiltIn::SetSsrcMode(const std::string &mode) {
   DisplayError ret = kErrorNotSupported;
 
@@ -4006,6 +4048,117 @@ DisplayError DisplayBuiltIn::SetVRRState(bool state) {
   }
 
   vrr_enabled_ = state;
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetABCState(bool state) {
+  DLOGV("Setting the ABC State to %d", state);
+
+  int ret = 0;
+  bool current_abc_state = comp_manager_->GetDemuraStatusForDisplay(display_id_);
+
+  // Check if current ABC state and coming ABC state is same
+  if (state == current_abc_state) {
+    DLOGI("ABC Feature state already set to %s", state ? "true" : "false");
+    return kErrorNone;
+  }
+
+  // If current ABC state is disable and coming ABC state is enable
+  if (state && !current_abc_state) {
+    if (demura_->Init() != 0) {
+      DLOGE("Unable to initialize ABC on Display %d-%d", display_id_, display_type_);
+      return kErrorUndefined;
+    }
+  }
+
+  // Enable or Disable ABC
+  if (SetDemuraIntfStatus(state)) {
+    DLOGE("Failed to set demura status to %s on Display %d, ret = %d", ret,
+          state ? "true" : "false", display_id_);
+    return kErrorUndefined;
+  }
+
+  // Update dispay abc state for current display
+  comp_manager_->SetDemuraStatusForDisplay(display_id_, state);
+  abc_enabled_ = state;
+
+  // Disable Partial Update for one frame.
+  DisablePartialUpdateOneFrameInternal();
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetABCReconfig() {
+  if (!comp_manager_->GetDemuraStatusForDisplay(display_id_)) {
+    return kErrorUndefined;
+  }
+
+  int ret = 0;
+  GenericPayload pl;
+  bool *b = nullptr;
+  ret = pl.CreatePayload<bool>(b);
+  if (ret) {
+    DLOGE("Failed to create kDemuraFeatureParamPendingReconfig payload");
+    return kErrorUndefined;
+  }
+
+  // Setting reconfig as true
+  *b = true;
+  ret = demura_->SetParameter(kDemuraFeatureParamPendingReconfig, pl);
+  if (ret) {
+    DLOGE("Failed to set reconfig parameter for ABC %d", ret);
+    return kErrorUndefined;
+  }
+
+  if (SetDemuraIntfStatus(true)) {
+    DLOGE("Failed to set ABC Status on Display %d", display_id_);
+    return kErrorUndefined;
+  }
+
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetABCMode(const string &mode_name) {
+  if (mode_name.empty()) {
+    DLOGI("mode name is empty");
+    return kErrorUndefined;
+  }
+
+  int ret = 0;
+  GenericPayload config_pl;
+
+  DemuraFeatureParamConfigIdx<std::string> *config_mode_name = nullptr;
+  if ((ret = config_pl.CreatePayload(config_mode_name))) {
+    DLOGE("Failed to create payload for config_mode_name, error = %d", ret);
+    return kErrorUndefined;
+  }
+
+  // Setting the mode name
+  config_mode_name->modeinfo = mode_name;
+  if ((ret = demura_->SetParameter(kDemuraFeatureParamConfigIdx, config_pl))) {
+    DLOGE("Failed to set Config Idx, error = %d", ret);
+    return kErrorUndefined;
+  }
+
+  // Set up ABC correction layer for updated mode name
+  if (SetupCorrectionLayer() != kErrorNone) {
+    DLOGE("Unable to setup ABC layer on Display %d", display_id_);
+    return kErrorUndefined;
+  }
+
+  // Set the ABC feature with updated mode name
+  GenericPayload pl;
+  bool *enable_ptr = nullptr;
+  if ((ret = pl.CreatePayload<bool>(enable_ptr))) {
+    DLOGE("Failed to create payload for enable, error = %d", ret);
+    return kErrorUndefined;
+  } else {
+    *enable_ptr = true;
+    if ((ret = demura_->SetParameter(kDemuraFeatureParamActive, pl))) {
+      DLOGE("Failed to set Active, error = %d", ret);
+      return kErrorUndefined;
+    }
+  }
+
   return kErrorNone;
 }
 

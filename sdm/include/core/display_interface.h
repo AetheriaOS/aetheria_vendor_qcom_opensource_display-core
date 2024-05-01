@@ -1401,6 +1401,40 @@ class DisplayInterface {
   virtual DisplayError NotifyExpectedPresent(uint64_t expected_present_time,
                                              uint32_t frame_interval_ns) = 0;
 
+  /*! @brief Method to enable/disable panel backlight info.
+
+   @param[in] client_name : client name
+   @param[in] enable: enable or disable
+   @param[in] cb_intf: callback interface
+
+   @return \link DisplayError \endlink
+  */
+  virtual DisplayError PanelBacklightInfo(
+      const std::string &client_name, bool enable,
+      SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) = 0;
+
+  /*! @brief Method to enable/disable for ABC feature.
+
+   @param[in] enable or disable
+
+   @return \link DisplayError \endlink
+  */
+  virtual DisplayError SetABCState(bool state) = 0;
+
+  /*! @brief Method to reconfig ABC feature.
+
+   @return \link DisplayError \endlink
+  */
+  virtual DisplayError SetABCReconfig() = 0;
+
+  /*! @brief Method to set ABC mode.
+
+   @param[in] mode_name
+
+   @return \link DisplayError \endlink
+  */
+  virtual DisplayError SetABCMode(const string &mode_name) = 0;
+
  protected:
   virtual ~DisplayInterface() { }
 };

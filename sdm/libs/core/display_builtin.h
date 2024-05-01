@@ -124,6 +124,8 @@ public:
   DisplayError SetPaHistCollection(const std::string &client_name, bool enable,
                                    SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf);
   DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf);
+  DisplayError PanelBacklightInfo(const std::string &client_name, bool enable,
+                                  SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf);
 
  private:
   std::mutex lock_;
@@ -232,6 +234,11 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf) override;
   DisplayError SetSsrcMode(const std::string &mode) override;
   DisplayError SetVRRState(bool state) override;
+  DisplayError PanelBacklightInfo(const std::string &client_name, bool enable,
+                                  SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) override;
+  DisplayError SetABCState(bool state) override;
+  DisplayError SetABCReconfig() override;
+  DisplayError SetABCMode(const string &mode_name) override;
 
   // Implement the HWEventHandlers
   DisplayError VSync(int64_t timestamp) override;
@@ -367,6 +374,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   CacConfig cac_config_ = {};
   BufferInfo output_buffer_info_ = {};
   EventProxyInfo event_proxy_info_ = {};
+  bool enable_brightness_drm_prop_ = false;
 
   DynLib ssrc_lib_;
   std::shared_ptr<aiqe::SsrcFeatureInterface> ssrc_feature_interface_;

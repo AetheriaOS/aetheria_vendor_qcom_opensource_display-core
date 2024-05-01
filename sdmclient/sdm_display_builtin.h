@@ -137,7 +137,10 @@ public:
  virtual DisplayError PerformCacConfig(CacConfig config, bool enable);
  virtual DisplayError SetSsrcMode(const std::string &mode);
  virtual DisplayError SetupVRRConfig();
-  virtual int GetNotifyEptConfig();
+ virtual int GetNotifyEptConfig();
+ virtual DisplayError SetABCState(bool state);
+ virtual DisplayError SetABCReconfig();
+ virtual DisplayError SetABCMode(string mode_name);
 
 private:
  SDMDisplayBuiltIn(CoreInterface *core_intf, BufferAllocator *buffer_allocator,

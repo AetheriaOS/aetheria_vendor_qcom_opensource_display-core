@@ -24,9 +24,14 @@ enum SdmDisplayEvents {
 };
 
 enum DispEventProxyParams {
+  // Setter
   kSetPanelOprInfoEnable,
   kSetPaHistCollection,
+  kSetPanelBLInfoEnable,
+
+  // Getter
   kGetPaHistBins,
+
   kDispEventProxyParamMax = 0xff,
 };
 
@@ -60,6 +65,18 @@ struct PaHistCollectionParam {
   std::string name;
   bool enable;
   SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf = nullptr;
+};
+
+struct PanelBacklightPayload {
+  uint32_t version = sizeof(PanelBacklightPayload);
+  uint64_t flags;
+  uint32_t brightness;
+};
+
+struct PanelBacklightInfoParam {
+  std::string name;
+  bool enable;
+  SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf = nullptr;
 };
 
 using DisplayEventProxyIntf =

@@ -270,6 +270,9 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   virtual uint32_t GetAvailableMixerCount();
   virtual DisplayError SetDemuraState(int state) { return kErrorNotSupported; }
   virtual DisplayError SetDemuraConfig(int demura_idx) { return kErrorNotSupported; }
+  virtual DisplayError SetABCState(bool state) { return kErrorNotSupported; }
+  virtual DisplayError SetABCReconfig() { return kErrorNotSupported; }
+  virtual DisplayError SetABCMode(const string &mode_name) { return kErrorNotSupported; }
   virtual void ResetDispLayerStack();
   virtual bool HasNoiseLayer();
   virtual bool HasConcurrentWriteback();
@@ -294,6 +297,11 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   virtual DisplayError SetVRRState(bool state) { return kErrorNotSupported; }
   virtual DisplayError NotifyExpectedPresent(uint64_t expected_present_time,
                                              uint32_t frame_interval_ns);
+
+  virtual DisplayError PanelBacklightInfo(const std::string &client_name, bool enable,
+                                          SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) {
+    return kErrorNotSupported;
+  }
 
  protected:
   struct DisplayMutex {
