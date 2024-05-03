@@ -36,8 +36,6 @@
 #ifndef __SDM_DEBUGGER_H__
 #define __SDM_DEBUGGER_H__
 
-#define ATRACE_TAG (ATRACE_TAG_GRAPHICS | ATRACE_TAG_HAL)
-
 #include <bitset>
 #include <core/sdm_types.h>
 #include <debug_handler.h>
