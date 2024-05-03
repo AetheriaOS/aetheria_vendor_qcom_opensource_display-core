@@ -239,6 +239,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError SetABCState(bool state) override;
   DisplayError SetABCReconfig() override;
   DisplayError SetABCMode(const string &mode_name) override;
+  DisplayError SetPanelFeatureConfig(int32_t type, void *data) override;
 
   // Implement the HWEventHandlers
   DisplayError VSync(int64_t timestamp) override;
@@ -308,6 +309,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   void HandleUpdateTransferTime(QSyncMode mode);
   DisplayError SetupAiqe();
   DisplayError SetAVRStepState(bool enable);
+  DisplayError SetDemuraTnCWBSamplingPeriod(void *data);
 
   const uint32_t kPuTimeOutMs = 1000;
   std::vector<HWEvent> event_list_;
