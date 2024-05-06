@@ -3753,7 +3753,7 @@ DisplayError DisplayBuiltIn::GetPanelBrightnessBasePath(std::string *base_path) 
 
 bool DisplayBuiltIn::IsCacV2Supported() {
   for (auto &res_info : hw_resource_info_) {
-    if (res_info.cac_version != kCacVersion2) {
+    if ((res_info.cac_version != kCacVersion2) && (res_info.cac_version != kCacVersionLoopback)) {
       return false;
     }
   }

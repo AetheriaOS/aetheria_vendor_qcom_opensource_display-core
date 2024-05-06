@@ -1727,7 +1727,7 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
           uint32_t fg_alpha = layer.plane_alpha;
           uint32_t bg_alpha = 0xffff - layer.plane_alpha;
 
-          if (pipe_info->cac_mode) {
+          if (pipe_info->cac_mode && (pipe_info->cac_mode != kModeLoopbackUnpack)) {
             fg_alpha = bg_alpha = 0xffff;
           }
 
@@ -1735,7 +1735,8 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
 
           drm_atomic_intf_->Perform(DRMOps::PLANE_SET_BG_ALPHA, pipe_id, bg_alpha);
 
-          if (hw_resource_.cac_version == kCacVersion2) {
+          if ((hw_resource_.cac_version == kCacVersion2) ||
+              ((hw_resource_.cac_version == kCacVersionLoopback))) {
             DRMCacMode target_mode = DRMCacMode::CAC_MODE_DISABLED;
             SetCacType(pipe_info->cac_mode, &target_mode);
             drm_atomic_intf_->Perform(DRMOps::PLANE_SET_CAC_TYPE, pipe_id, target_mode);
@@ -2413,6 +2414,12 @@ void HWDeviceDRM::SetCacType(const HWPipeCacMode &cac_mode, DRMCacMode *target) 
       break;
     case kModeFetch:
       *target = DRMCacMode::CAC_MODE_FETCH;
+      break;
+    case kModeLoopbackUnpack:
+      *target = DRMCacMode::CAC_MODE_LOOPBACK_UNPACK;
+      break;
+    case kModeLoopbackFetch:
+      *target = DRMCacMode::CAC_MODE_LOOPBACK_FETCH;
       break;
     default:
       *target = DRMCacMode::CAC_MODE_DISABLED;

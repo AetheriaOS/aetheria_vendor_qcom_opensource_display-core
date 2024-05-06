@@ -301,6 +301,8 @@ enum HWPipeCacMode {
   kModeDisabled,
   kModeUnpack,
   kModeFetch,
+  kModeLoopbackUnpack,
+  kModeLoopbackFetch,
 };
 
 enum HWCacColorComponent {
@@ -386,6 +388,7 @@ enum CacVersion {
   kCacVersionNone,
   kCacVersion1,
   kCacVersion2,
+  kCacVersionLoopback,
 };
 
 enum DDRVersion {
