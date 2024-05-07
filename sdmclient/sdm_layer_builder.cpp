@@ -46,6 +46,7 @@ void SDMLayerBuilder::Deinit() {
 
 DisplayError SDMLayerBuilder::Init(BufferAllocator *buffer_allocator,
                                    uint64_t display_id) {
+  SCOPE_LOCK(locker_[display_id]);
   buffer_allocator_ = buffer_allocator;
 
   Debug::Get()->GetProperty(DISABLE_SDR_HISTOGRAM, &disable_sdr_histogram_);
@@ -76,6 +77,7 @@ DisplayError SDMLayerBuilder::DeInit(uint64_t display_id) {
   for (auto sdm_layer : layer_set) {
     delete sdm_layer;
   }
+  display_layer_stack_.erase(display);
 
   return kErrorNone;
 }
