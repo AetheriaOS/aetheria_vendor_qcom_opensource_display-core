@@ -315,6 +315,10 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError SetAVRStepState(bool enable);
   DisplayError SetDemuraTnCWBSamplingPeriod(void *data);
   DisplayError SetDemuraTnEventsCtrl(void *data);
+  DisplayError SetDemuraTnUserCtrl(void *data);
+  DisplayError CleanupDemuraConfig(void *data, DemuraTnCleanupType type);
+  bool GetDemuraTnUserCtrl();
+  int UpdateDemuraTnUserCtrl(bool user_ctrl);
 
   const uint32_t kPuTimeOutMs = 1000;
   std::vector<HWEvent> event_list_;
@@ -363,6 +367,9 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   bool demura_intended_ = false;
   bool demura_dynamic_enabled_ = true;
   int demura_current_idx_ = -1;
+  const std::string kDemuraTnUserCtrlFile = "/mnt/vendor/persist/display/demuratn_user_ctrl";
+  std::shared_ptr<DemuraTnCleanupIntf> demuratn_cleanup_intf_;
+  bool demuratn_user_ctrl_ = true;
   bool abc_enabled_ = false;
   bool abc_prop_ = false;
   bool enable_dpps_dyn_fps_ = false;
