@@ -30,7 +30,7 @@
 /*
 * Changes from Qualcomm Innovation Center are provided under the following license:
 *
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted (subject to the limitations in the
@@ -68,6 +68,7 @@
 
 #include <vector>
 #include <mutex>
+#include <deque>
 
 #include "drm_interface.h"
 #include "drm_property.h"
@@ -104,7 +105,7 @@ class DRMPanelFeatureMgr : public DRMPanelFeatureMgrIntf {
   std::vector<struct DRMPanelFeatureInfo> dirty_features_ {};
   std::map<DRMPanelFeatureID, DRMProperty> drm_property_map_ {};
   std::map<DRMPanelFeatureID, DRMPropType> drm_prop_type_map_ {};
-  std::map<DRMPanelFeatureID, uint32_t> drm_prop_blob_ids_map_ {};
+  std::map<DRMPanelFeatureID, std::deque<uint32_t>> drm_prop_blob_ids_cache_{};
   std::array<DRMPanelFeatureInfo, kDRMPanelFeatureMax> feature_info_tbl_ {};
   std::map<uint32_t /* obj_id */, DRMPanelFeatureID> apply_in_null_commit_ {};
 };

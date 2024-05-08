@@ -2605,4 +2605,8 @@ DisplayError ConcurrencyMgr::SetABCMode(uint64_t display_id, string mode_name) {
   return sdm_display_[disp_idx]->SetABCMode(mode_name);
 }
 
+DisplayError ConcurrencyMgr::SetPanelFeatureConfig(Display display, int32_t type, void *data) {
+  return CallDisplayFunction(display, &SDMDisplay::SetPanelFeatureConfig, type, data);
+}
+
 } // namespace sdm

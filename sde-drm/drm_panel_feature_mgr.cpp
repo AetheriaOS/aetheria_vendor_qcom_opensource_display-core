@@ -228,13 +228,16 @@ void DRMPanelFeatureMgr::Deinit() {
   int ret = 0;
   for (int i = kDRMPanelFeatureDsppIndex; i < kDRMPanelFeatureMax; i++) {
     DRMPanelFeatureID prop_id = static_cast<DRMPanelFeatureID>(i);
-    if (drm_prop_blob_ids_map_[prop_id]) {
-      ret = drmModeDestroyPropertyBlob(dev_fd_, drm_prop_blob_ids_map_[prop_id]);
-      if (ret) {
-        DRM_LOGE("failed to destroy blob for feature %d, ret = %d", prop_id, ret);
-        return;
-      } else {
-        drm_prop_blob_ids_map_[prop_id] = 0;
+    DRM_LOGD("size of queue %d, feature %d", drm_prop_blob_ids_cache_[prop_id].size(), prop_id);
+    for (; drm_prop_blob_ids_cache_[prop_id].size();
+         drm_prop_blob_ids_cache_[prop_id].pop_front()) {
+      uint32_t blob_id = drm_prop_blob_ids_cache_[prop_id].front();
+      if (blob_id) {
+        ret = drmModeDestroyPropertyBlob(dev_fd_, blob_id);
+        if (ret) {
+          DRM_LOGE("failed to destroy blob for feature %d, ret = %d", prop_id, ret);
+          return;
+        }
       }
     }
   }
@@ -674,14 +677,31 @@ void DRMPanelFeatureMgr::ApplyDirtyFeature(drmModeAtomicReq *req, const DRMDispl
       return;
     }
 
-    if (drm_prop_blob_ids_map_[info.prop_id]) {
-      ret = drmModeDestroyPropertyBlob(dev_fd_, drm_prop_blob_ids_map_[info.prop_id]);
+    if (drm_prop_blob_ids_cache_[info.prop_id].size() > 2) {
+      DRM_LOGE("invalid blob count %d, for feature = %d, clearing stale blobs",
+               drm_prop_blob_ids_cache_[info.prop_id].size(), info.prop_id);
+      for (; drm_prop_blob_ids_cache_[info.prop_id].size();
+           drm_prop_blob_ids_cache_[info.prop_id].pop_front()) {
+        uint32_t stale_blob_id = drm_prop_blob_ids_cache_[info.prop_id].front();
+        if (stale_blob_id) {
+          ret = drmModeDestroyPropertyBlob(dev_fd_, stale_blob_id);
+          if (ret) {
+            DRM_LOGE("failed to destroy blob for feature %d, ret = %d", info.prop_id, ret);
+            return;
+          }
+        }
+      }
+    } else if (drm_prop_blob_ids_cache_[info.prop_id].size() == 2) {
+      ret = drmModeDestroyPropertyBlob(dev_fd_, drm_prop_blob_ids_cache_[info.prop_id].front());
       if (ret) {
         DRM_LOGE("failed to destroy blob for feature %d, ret = %d", info.prop_id, ret);
         return;
       }
+      drm_prop_blob_ids_cache_[info.prop_id].pop_front();
     }
-    drm_prop_blob_ids_map_[info.prop_id] = blob_id;
+    drm_prop_blob_ids_cache_[info.prop_id].push_back(blob_id);
+    DRM_LOGD("size of queue %d, property %d", drm_prop_blob_ids_cache_[info.prop_id].size(),
+             info.prop_id);
 
     value = blob_id;
   } else if (DRMPropType::kPropRange == drm_prop_type_map_[info.prop_id]) {

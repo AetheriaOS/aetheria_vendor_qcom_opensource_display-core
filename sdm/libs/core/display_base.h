@@ -297,6 +297,9 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   virtual DisplayError SetVRRState(bool state) { return kErrorNotSupported; }
   virtual DisplayError NotifyExpectedPresent(uint64_t expected_present_time,
                                              uint32_t frame_interval_ns);
+  virtual DisplayError SetPanelFeatureConfig(int32_t type, void *data) {
+    return kErrorNotSupported;
+  }
 
   virtual DisplayError PanelBacklightInfo(const std::string &client_name, bool enable,
                                           SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) {

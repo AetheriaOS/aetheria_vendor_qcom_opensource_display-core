@@ -141,6 +141,7 @@ public:
  virtual DisplayError SetABCState(bool state);
  virtual DisplayError SetABCReconfig();
  virtual DisplayError SetABCMode(string mode_name);
+ virtual DisplayError SetPanelFeatureConfig(int32_t type, void *data);
 
 private:
  SDMDisplayBuiltIn(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
