@@ -265,6 +265,10 @@ DisplayError Strategy::Reconfigure(DisplayInfoContext &info_ctx,
     partial_update_intf_->SetSprIntf(spr_intf_);
   }
 
+  if (partial_update_intf_) {
+    partial_update_intf_->SetDetailEnhancerData(de_data_);
+  }
+
   error = strategy_intf_->Reconfigure(info_ctx, device_ctx, hw_resource_info_);
   if (error != kErrorNone) {
     return error;
@@ -397,6 +401,7 @@ DisplayError Strategy::SetSprIntf(std::shared_ptr<SPRIntf> intf) {
 }
 
 DisplayError Strategy::SetDetailEnhancerData(const DisplayDetailEnhancerData &de_data) {
+  de_data_ = de_data;
   if (!partial_update_intf_) {
     return kErrorNotSupported;
   }
