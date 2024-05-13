@@ -605,8 +605,10 @@ void DRMPanelFeatureMgr::ResetPanelFeatures(drmModeAtomicReq *req,
   info.prop_id = kDRMPanelFeatureDemuraInit;
   ApplyDirtyFeature(req, token, info);
 
+#ifndef TRUSTED_VM
   info.prop_id = kDRMPanelFeatureABC;
   ApplyDirtyFeature(req, token, info);
+#endif
 
   info.prop_id = kDRMPanelFeatureSPRUDC;
   uint32_t prop_id = prop_mgr_.GetPropertyId(drm_property_map_[info.prop_id]);

@@ -93,6 +93,7 @@ class Strategy {
   bool disable_gpu_comp_ = false;
   BufferAllocator *buffer_allocator_ = NULL;
   std::shared_ptr<SPRIntf> spr_intf_ = nullptr;
+  DisplayDetailEnhancerData de_data_ = {};
 };
 
 }  // namespace sdm

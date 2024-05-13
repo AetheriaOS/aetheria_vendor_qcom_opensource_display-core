@@ -4169,6 +4169,9 @@ DisplayError DisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) {
     case kTypeDemuraTnCWBSamplingPeriod:
       ret = SetDemuraTnCWBSamplingPeriod(data);
       break;
+    case kTypeDemuraTnEventsCtrl:
+      ret = SetDemuraTnEventsCtrl(data);
+      break;
     default:
       DLOGE("Invalid type %d", type);
       ret = kErrorParameters;
@@ -4201,6 +4204,33 @@ DisplayError DisplayBuiltIn::SetDemuraTnCWBSamplingPeriod(void *data) {
   }
 
   DLOGI("Set CWB sampling period %d success", *period_ptr);
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetDemuraTnEventsCtrl(void *data) {
+  int ret = 0;
+  bool *ctrl_ptr = nullptr;
+  GenericPayload payload = {};
+
+  if (!data || !demuratn_ || !demuratn_enabled_) {
+    DLOGE("Data %pK demuratn_ %pK demuratn_enabled_ %d", data, demuratn_.get(), demuratn_enabled_);
+    return kErrorUndefined;
+  }
+
+  ret = payload.CreatePayload<bool>(ctrl_ptr);
+  if (ret) {
+    DLOGE("Failed to create the payload, ret %d", ret);
+    return kErrorUndefined;
+  }
+  *ctrl_ptr = *(reinterpret_cast<bool *>(data));
+
+  ret = demuratn_->SetParameter(kDemuraTnCoreUvmParamEventsCtrl, payload);
+  if (ret) {
+    DLOGE("Set events ctrl failed ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  DLOGI("Set events ctrl %d success", *ctrl_ptr);
   return kErrorNone;
 }
 
