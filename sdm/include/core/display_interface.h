@@ -363,6 +363,7 @@ struct PanelFeatureInfo {
 */
 enum PanelFeatureVendorServiceType {
   kTypeDemuraTnCWBSamplingPeriod,
+  kTypeDemuraTnEventsCtrl,
   PanelFeatureVendorServiceTypeMax,
 };
 

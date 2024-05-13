@@ -29,6 +29,8 @@ enum DemuraTnCoreUvmParams {
   kDemuraTnCoreUvmParamDisplayState,
   /* Setter: int  */
   kDemuraTnCoreUvmParamCWBSamplingPeriod,
+  /* Setter: bool  */
+  kDemuraTnCoreUvmParamEventsCtrl,
   kDemuraTnCoreUvmParamsMax = 2048,
   kDemuraTnCoreUvmPrivParamsStart = 2049,
   kDemuraTnCoreUvmPrivParamsEnd = 4096,
