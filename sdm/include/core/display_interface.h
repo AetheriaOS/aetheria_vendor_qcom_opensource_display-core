@@ -369,6 +369,8 @@ enum PanelFeatureVendorServiceType {
   kTypeDemuraTnUserCtrl = 2,
   kTypeDeleteDemuraConfig = 3,
   kTypeDeleteDemuraTnConfig = 4,
+  /* Setter: None */
+  kTypeTriggerDemuraOemPlugIn = 5,
   PanelFeatureVendorServiceTypeMax,
 };
 
