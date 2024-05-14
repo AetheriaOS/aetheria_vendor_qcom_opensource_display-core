@@ -20,6 +20,7 @@ public:
   virtual SDMDisplay *GetDisplayFromClientId(Display id) = 0;
   virtual void SetDisplayByClientId(Display id, SDMDisplay *disp) = 0;
   virtual DisplayError SetPowerMode(uint64_t display, int32_t int_mode) = 0;
+  virtual DisplayError WaitForCommitDone(Display display, int client_id) = 0;
   virtual void NotifyDisplayAttributes(Display display, Config config) = 0;
   virtual void GetHpdData(int *hpd_bpp, int *hpd_pattern,
                           int *hpd_connected) = 0;
