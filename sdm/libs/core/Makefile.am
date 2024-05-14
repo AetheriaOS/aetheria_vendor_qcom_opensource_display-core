@@ -12,10 +12,8 @@ c_sources = core_interface.cpp \
             strategy.cpp \
             resource_default.cpp \
             hw_info_default.cpp \
-            color_manager.cpp \
-            dpu_core_factory.cpp \
-            dpu_multi_core.cpp \
-            dpu_single_core.cpp
+            dpu_core_mux.cpp \
+            color_manager.cpp
 
 core_h_sources = $(HEADER_PATH)/core/*.h
 
