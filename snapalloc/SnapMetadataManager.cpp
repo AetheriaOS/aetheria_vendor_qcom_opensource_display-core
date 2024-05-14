@@ -22,6 +22,7 @@ SnapMetadataManager::~SnapMetadataManager() {}
 
 SnapMetadataManager::SnapMetadataManager() {
   constraint_mgr_ = SnapConstraintManager::GetInstance();
+  mem_allocator_ = SnapMemAllocator::GetInstance();
 }
 
 SnapMetadataManager *SnapMetadataManager::GetInstance() {
@@ -772,9 +773,10 @@ Error SnapMetadataManager::BufferPermissionHelper(SnapMetadata *metadata,
     for (int i = 0; i < numelems; i++) {
       metadata->bufferPerm[i] = buf_perm[i];
     }
-    mem_allocator_->SetBufferPermission(
-        handle->fd, &metadata->bufferPerm[0], &metadata->memHandle);
-    return Error::NONE;
+    if (mem_allocator_ != nullptr) {
+      return mem_allocator_->SetBufferPermission(handle->fd, &metadata->bufferPerm[0],
+                                                 &metadata->memHandle);
+    }
   }
   return Error::BAD_VALUE;
 }
