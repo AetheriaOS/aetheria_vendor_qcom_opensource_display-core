@@ -388,6 +388,7 @@ private:
   SDMColorManager *color_mgr_ = nullptr;
   BufferAllocator *buffer_allocator_ = nullptr;
   SocketHandler *socket_handler_ = nullptr;
+  std::map<PanelFeatureVendorServiceType, std::string> panel_feature_data_type_map_ = {};
 };
 
 } // namespace sdm
