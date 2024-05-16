@@ -87,6 +87,7 @@ public:
   LayerBufferFormat GetSDMFormat(const int32_t &source, const int32_t flags,
                                  const int64_t compression_type) override;
   DisplayError GetSDMLayerStack(uint64_t display_id, SDMLayerStack **stack) {
+    SCOPE_LOCK(locker_[display_id]);
     auto disp = display_layer_stack_.find(display_id);
     if (disp == display_layer_stack_.end()) {
       // initialize layer stack

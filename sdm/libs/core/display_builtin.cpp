@@ -306,6 +306,10 @@ DisplayError DisplayBuiltIn::Init() {
     Debug::Get()->GetProperty(ENABLE_ABC, &enable_abc);
     abc_prop_ = enable_abc;
 
+#ifndef TRUSTED_VM
+    std::thread([=] { DisplayBuiltIn::StartTvmServices(); }).detach();
+#endif
+
     if (abc_prop_) {
       SetupABC();
     } else {
@@ -388,6 +392,7 @@ DisplayError DisplayBuiltIn::Deinit() {
         DLOGE("Unable to DeInit Demura on Display %d-%d", display_id_, display_type_);
       }
     }
+
     if (demuratn_) {
       EnableDemuraTn(false);
       if (demuratn_->Deinit() != 0) {
@@ -398,7 +403,14 @@ DisplayError DisplayBuiltIn::Deinit() {
 
     DeinitCWBBuffer();
     hw_rc_blocks_in_use_ -= rc_blocks_reserved_;
+
+    if (service_manager_intf_) {
+      service_manager_intf_->Deinit();
+      service_manager_intf_.reset();
+      service_manager_intf_ = nullptr;
+    }
   }
+
   dpps_info_.Deinit();
   event_proxy_info_.Deinit();
   return DisplayBase::Deinit();
@@ -4204,6 +4216,109 @@ DisplayError DisplayBuiltIn::SetDemuraTnCWBSamplingPeriod(void *data) {
   }
 
   DLOGI("Set CWB sampling period %d success", *period_ptr);
+
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::ExportDemuraFiles() {
+  if (!pf_factory_) {
+    DLOGW("Invalid panel feature factory");
+    return kErrorUndefined;
+  }
+
+  std::shared_ptr<DemuraParserManagerIntf> pm_intf =
+      pf_factory_->CreateDemuraParserManager(ipc_intf_, buffer_allocator_);
+  if (!pm_intf) {
+    DLOGE("Failed to get Parser Manager intf");
+    return kErrorResources;
+  }
+
+  if (pm_intf->Init() != 0) {
+    DLOGE("Failed to init Parser Manager intf");
+    return kErrorResources;
+  }
+
+  GenericPayload in;
+  int ret = pm_intf->SetParameter(kDemuraParserManagerExportDemuraFiles, in);
+  if (ret) {
+    DLOGE("Failed to export demura files, ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::StartTvmServices() {
+  int enable_demura = 0, enable_anti_aging = 0;
+
+  Debug::Get()->GetProperty(ENABLE_DEMURA, &enable_demura);
+  Debug::Get()->GetProperty(ENABLE_ANTI_AGING, &enable_anti_aging);
+
+  if (!abc_prop_ && !enable_demura && !enable_anti_aging) {
+    return kErrorNone;
+  }
+
+#ifndef SDM_UNIT_TESTING
+  sleep(5);  // sleep 5 seconds to make sure persist is mounted on TVM
+#endif
+
+  DisplayError error = StartService(kStartVmFileTransferService);
+  if (error) {
+    DLOGE("Failed to start file transfer service, error %d", error);
+    return error;
+  } else {
+    DLOGI("VmFiletransfer service is started successfully");
+  }
+
+  if (enable_demura) {
+    error = ExportDemuraFiles();
+    if (error) {
+      DLOGE("Failed to export demura files, error %d", error);
+      return error;
+    }
+  }
+
+  if (enable_anti_aging) {
+    error = StartService(kStartDemuraTnService);
+    if (error) {
+      DLOGE("Failed to start DemuraTn service, error %d", error);
+    } else {
+      DLOGI("DemuraTn service is started successfully");
+    }
+  }
+  return error;
+}
+
+DisplayError DisplayBuiltIn::StartService(TvmDispServiceManagerParams service) {
+  if (service_manager_intf_ == nullptr) {
+    if (pf_factory_ == nullptr) {
+      DLOGE("Invalid panel feature factory");
+      return kErrorUndefined;
+    }
+
+    service_manager_intf_ = pf_factory_->CreateTvmServiceManager();
+    if (!service_manager_intf_) {
+      DLOGE("Failed to get Tvm Service Manager intf");
+      return kErrorResources;
+    }
+
+    if (service_manager_intf_->Init() != 0) {
+      DLOGE("Failed to init Tvm Service Manager intf");
+      service_manager_intf_.reset();
+      service_manager_intf_ = nullptr;
+      return kErrorResources;
+    }
+  }
+
+  GenericPayload in;
+  int ret = service_manager_intf_->SetParameter(service, in);
+  if (ret) {
+    DLOGE("Failed to set parameter %d, ret %d", service, ret);
+    return kErrorUndefined;
+  } else {
+    DLOGI("Start service %d", service);
+  }
+
   return kErrorNone;
 }
 
