@@ -1216,6 +1216,14 @@ void ConcurrencyMgr::Refresh(uint64_t display) {
   client_pending_refresh_.set(UINT32(display));
 }
 
+void ConcurrencyMgr::CompositorSync(CompositorSyncType sync_type) {
+  if (sync_type == CompositorSyncTypeAcquire) {
+    command_seq_mutex_.lock();
+  } else {
+    command_seq_mutex_.unlock();
+  }
+}
+
 void ConcurrencyMgr::PerformDisplayPowerReset() {
   disp_->RemoveDisconnectedPluggableDisplays();
 
@@ -1955,6 +1963,7 @@ DisplayError ConcurrencyMgr::TeardownConcurrentWriteback(Display display) {
 
     if (disp) {
       disp->TeardownConcurrentWriteback();
+      WaitForCommitDone(display, kClientTeardownCWB);
     }
   }
 
@@ -2546,6 +2555,58 @@ int ConcurrencyMgr::GetNotifyEptConfig(Display display) {
   }
 
   return sdm_display_[disp_idx]->GetNotifyEptConfig();
+}
+
+DisplayError ConcurrencyMgr::SetABCState(uint64_t display_id, bool state) {
+  int disp_idx = GetDisplayIndex(display_id);
+  if (disp_idx == -1) {
+    DLOGW("Invalid display = %d", display_id);
+    return kErrorResources;
+  }
+
+  SCOPE_LOCK(locker_[disp_idx]);
+  if (!sdm_display_[disp_idx]) {
+    DLOGW("Display %d is not connected.", display_id);
+    return kErrorResources;
+  }
+
+  return sdm_display_[disp_idx]->SetABCState(state);
+}
+
+DisplayError ConcurrencyMgr::SetABCReconfig(uint64_t display_id) {
+  int disp_idx = GetDisplayIndex(display_id);
+  if (disp_idx == -1) {
+    DLOGW("Invalid display = %d", display_id);
+    return kErrorResources;
+  }
+
+  SCOPE_LOCK(locker_[disp_idx]);
+  if (!sdm_display_[disp_idx]) {
+    DLOGW("Display %d is not connected.", display_id);
+    return kErrorResources;
+  }
+
+  return sdm_display_[disp_idx]->SetABCReconfig();
+}
+
+DisplayError ConcurrencyMgr::SetABCMode(uint64_t display_id, string mode_name) {
+  int disp_idx = GetDisplayIndex(display_id);
+  if (disp_idx == -1) {
+    DLOGW("Invalid display = %d", display_id);
+    return kErrorResources;
+  }
+
+  SCOPE_LOCK(locker_[disp_idx]);
+  if (!sdm_display_[disp_idx]) {
+    DLOGW("Display %d is not connected.", display_id);
+    return kErrorResources;
+  }
+
+  return sdm_display_[disp_idx]->SetABCMode(mode_name);
+}
+
+DisplayError ConcurrencyMgr::SetPanelFeatureConfig(Display display, int32_t type, void *data) {
+  return CallDisplayFunction(display, &SDMDisplay::SetPanelFeatureConfig, type, data);
 }
 
 } // namespace sdm

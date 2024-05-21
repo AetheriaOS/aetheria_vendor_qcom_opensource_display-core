@@ -173,12 +173,14 @@ int GraphicsConstraintProvider::GetCapabilities(BufferDescriptor desc, Capabilit
     out->enabled = false;
   }
 
-  uint64_t pixel_format_modifier = GetPixelFormatModifier(desc);
-  if (GetGpuPixelFormat(
-          desc.format,
-          static_cast<vendor_qti_hardware_display_common_PixelFormatModifier>(
-              pixel_format_modifier)) == ADRENO_PIXELFORMAT_UNKNOWN) {
-    out->enabled = false;
+  if (out->enabled == true) {
+    uint64_t pixel_format_modifier = GetPixelFormatModifier(desc);
+    if (GetGpuPixelFormat(
+            desc.format,
+            static_cast<vendor_qti_hardware_display_common_PixelFormatModifier>(
+                pixel_format_modifier)) == ADRENO_PIXELFORMAT_UNKNOWN) {
+      out->enabled = false;
+    }
   }
 
   ALOGD_IF(DEBUG, (out->enabled == true
@@ -233,6 +235,11 @@ int GraphicsConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferCo
       plane_layout.scanline.scanline = static_cast<uint64_t>(aligned_h);
     } else if (IsGpuDepthStencil(snap_format)) {
       ALOGD_IF(DEBUG, "Querying graphics for GpuDepthStencil case");
+      // Depth formats are not supported by graphics when CPU bits are set
+      if (CpuCanAccess(desc.usage)) {
+        return Error::UNSUPPORTED;
+      }
+
       aligned_h = 0;
       aligned_w = 0;
       AlignGpuDepthStencilFormat(desc.width, desc.height, format, tile_enabled,

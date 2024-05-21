@@ -520,9 +520,9 @@ int HWDeviceDRM::Registry::MapBufferToFbId(Layer *layer, const LayerBuffer &buff
     // Create and cache the fb_id in map
     std::vector<std::shared_ptr<LayerBufferObject>> fb_id_vec;
     for (int i = 0; i < fb_id.size(); i++) {
-      std::shared_ptr<LayerBufferObject> bo = std::make_shared<FrameBufferObject>(fb_id[i],
-                                              core_id_, buffer.format, buffer.width, buffer.height,
-                                              secure_present);
+      std::shared_ptr<LayerBufferObject> bo =
+          std::make_shared<FrameBufferObject>(fb_id[i], core_id_, buffer.format, buffer.width,
+                                              buffer.height, false /* shallow */, secure_present);
       fb_id_vec.push_back(bo);
     }
 
@@ -712,6 +712,10 @@ DisplayError HWDeviceDRM::Init() {
     aspect_ratio_threshold_ = 1 + (FLOAT(value) / 100);
     DLOGI("aspect_ratio_threshold_: %f", aspect_ratio_threshold_);
   }
+
+  value = 0;
+  Debug::GetProperty(ENABLE_BRIGHTNESS_DRM_PROP, &value);
+  enable_brightness_drm_prop_ = (value == 1);
 
   return kErrorNone;
 }
@@ -954,7 +958,28 @@ void HWDeviceDRM::PopulateHWPanelInfo() {
         display_attributes_[index].x_pixels / 2;
   }
 
-  hw_panel_info_.partial_update = connector_info_.modes[index].num_roi;
+  int value = 0;
+  bool enable_ai_scaler = false;
+  if (Debug::GetProperty(ENABLE_AI_SCALER_PROP, &value) == kErrorNone) {
+    enable_ai_scaler = (value == 1);
+  }
+
+  bool enable_abc = false;
+  if (Debug::GetProperty(ENABLE_ABC, &value) == kErrorNone) {
+    enable_abc = (value == 1);
+  }
+
+  bool enable_ssrc = false;
+  if (Debug::GetProperty(AIQE_SSRC_ENABLE, &value) == kErrorNone) {
+    enable_ssrc = (value == 1);
+  }
+
+  if (enable_ai_scaler || enable_abc || enable_ssrc) {
+    hw_panel_info_.partial_update = false;
+  } else {
+    hw_panel_info_.partial_update = connector_info_.modes[index].num_roi;
+  }
+
   hw_panel_info_.left_roi_count = UINT32(connector_info_.modes[index].num_roi);
   hw_panel_info_.right_roi_count = UINT32(connector_info_.modes[index].num_roi);
   hw_panel_info_.left_align = connector_info_.modes[index].xstart;
@@ -1314,6 +1339,12 @@ DisplayError HWDeviceDRM::PowerOn(const HWQosData &qos_data, SyncPoints *sync_po
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::ON);
   drm_atomic_intf_->Perform(DRMOps::CRTC_GET_RELEASE_FENCE, token_.crtc_id, &release_fence_fd);
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_GET_RETIRE_FENCE, token_.conn_id, &retire_fence_fd);
+  if (enable_brightness_drm_prop_ && cached_brightness_level_ != -1) {
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_BRIGHTNESS, token_.conn_id,
+                              cached_brightness_level_);
+    current_brightness_ = cached_brightness_level_;
+    cached_brightness_level_ = -1;
+  }
 
   // On the first boot up of the display, make the power call synchronous. This is only applicable
   // to pluggable displays. Check HWPeripheralDRM::PowerOn. For builtin first power call defered
@@ -1369,6 +1400,12 @@ DisplayError HWDeviceDRM::PowerOff(bool teardown, SyncPoints *sync_points) {
   drmModeModeInfo current_mode = connector_info_.modes[current_mode_index_].mode;
   if (!IsSeamlessTransition()) {
     drm_atomic_intf_->Perform(DRMOps::CRTC_SET_MODE, token_.crtc_id, &current_mode);
+  }
+  if (enable_brightness_drm_prop_ && cached_brightness_level_ != -1) {
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_BRIGHTNESS, token_.conn_id,
+                              cached_brightness_level_);
+    current_brightness_ = cached_brightness_level_;
+    cached_brightness_level_ = -1;
   }
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::OFF);
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 0);
@@ -1438,6 +1475,12 @@ DisplayError HWDeviceDRM::Doze(const HWQosData &qos_data, SyncPoints *sync_point
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::DOZE);
   drm_atomic_intf_->Perform(DRMOps::CRTC_GET_RELEASE_FENCE, token_.crtc_id, &release_fence_fd);
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_GET_RETIRE_FENCE, token_.conn_id, &retire_fence_fd);
+  if (enable_brightness_drm_prop_ && cached_brightness_level_ != -1) {
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_BRIGHTNESS, token_.conn_id,
+                              cached_brightness_level_);
+    current_brightness_ = cached_brightness_level_;
+    cached_brightness_level_ = -1;
+  }
 
   bool is_synchronous = false;
   if (hw_panel_info_.dpu_ctl_op_sync && core_id_ != 0) {
@@ -1475,6 +1518,12 @@ DisplayError HWDeviceDRM::DozeSuspend(const HWQosData &qos_data, SyncPoints *syn
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_CRTC, token_.conn_id, token_.crtc_id);
     drmModeModeInfo current_mode = connector_info_.modes[current_mode_index_].mode;
     drm_atomic_intf_->Perform(DRMOps::CRTC_SET_MODE, token_.crtc_id, &current_mode);
+  }
+  if (enable_brightness_drm_prop_ && cached_brightness_level_ != -1) {
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_BRIGHTNESS, token_.conn_id,
+                              cached_brightness_level_);
+    current_brightness_ = cached_brightness_level_;
+    cached_brightness_level_ = -1;
   }
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 1);
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id,
@@ -1620,6 +1669,13 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
     // Used in 1 cases:
     // 1. Since driver doesnt clear the SSPP luts during the adb shell stop/start, clear once
     drm_atomic_intf_->Perform(sde_drm::DRMOps::PLANES_RESET_LUT, token_.crtc_id);
+  }
+
+  if (enable_brightness_drm_prop_ && cached_brightness_level_ != -1) {
+    drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_BRIGHTNESS, token_.conn_id,
+                              cached_brightness_level_);
+    current_brightness_ = cached_brightness_level_;
+    cached_brightness_level_ = -1;
   }
 
   for (uint32_t i = 0; i < hw_layer_count; i++) {
@@ -2979,12 +3035,10 @@ void HWDeviceDRM::SetUcscTonemapFeatures(HWPipeInfo *pipe_info) {
   for (auto &it : pipe_info->ucsc_write_op) {
     switch (it.first) {
       case kUcscUnmult:
-        if (it.second != kNoOp) {
-          DLOGV_IF(kTagDriverConfig, "Call Perform UCSC UNMULT Op = %s, display: %d-%d",
-                   (it.second == kSet) ? "Set" : "Reset", display_id_, disp_type_);
-          drm_atomic_intf_->Perform(DRMOps::PLANE_SET_UCSC_UNMULT_CONFIG, pipe_info->pipe_id,
-                                    pipe_info->ucsc_config.unmult_en);
-        }
+        DLOGV_IF(kTagDriverConfig, "Call Perform UCSC UNMULT enable = %d, display: %d-%d",
+                 pipe_info->ucsc_config.unmult_en, display_id_, disp_type_);
+        drm_atomic_intf_->Perform(DRMOps::PLANE_SET_UCSC_UNMULT_CONFIG, pipe_info->pipe_id,
+                                  pipe_info->ucsc_config.unmult_en);
         break;
       case kUcscIgc:
         if (it.second != kNoOp) {

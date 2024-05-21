@@ -92,6 +92,7 @@ const std::string kDemuraFeatureParamSprPattern = "SprPattern";
 const std::string kDemuraFeatureParamConfigIdx = "ConfigIdx";
 const std::string kDemuraFeatureParamNeedScreenRefresh = "NeedScreenRefresh";
 const std::string kDemuraFeatureParamBacklightEvent = "DisplayBacklightEvent";
+const std::string kDemuraFeatureParamBrightHeadroomRatio = "BrightHeadroomRatio";
 
 using DemuraIntf = GenericIntf<const std::string&, const std::string&, GenericPayload>;
 }  // namespace sdm

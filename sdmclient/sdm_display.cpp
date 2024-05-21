@@ -2086,15 +2086,17 @@ void SDMDisplay::DumpInputBuffers() {
 
     uint32_t width = 0, height = 0, alloc_size = 0;
 
-    auto err = snapmapper_->GetMetadata(*handle, MetadataType::STRIDE, &width);
+    auto err = GetMetadata(handle, MetadataType::STRIDE, &width, snapmapper_);
     if (err != Error::NONE) {
       DLOGW("Failed to retrieve width: %d", err);
     }
-    err = snapmapper_->GetMetadata(*handle, MetadataType::ALIGNED_HEIGHT_IN_PIXELS, &height);
+    err = GetMetadata(handle, MetadataType::ALIGNED_HEIGHT_IN_PIXELS, &height,
+                      snapmapper_);
     if (err != Error::NONE) {
       DLOGW("Failed to retrieve height: %d", err);
     }
-    err = snapmapper_->GetMetadata(*handle, MetadataType::ALLOCATION_SIZE, &alloc_size);
+    err = GetMetadata(handle, MetadataType::ALLOCATION_SIZE, &alloc_size,
+                      snapmapper_);
     if (err != Error::NONE) {
       DLOGW("Failed to retrieve allocation size: %d", err);
     }
@@ -2792,11 +2794,11 @@ DisplayError SDMDisplay::GetDisplayIdentificationData(uint8_t *out_port,
   DisplayError ret = display_intf_->GetDisplayIdentificationData(
       out_port, out_data_size, out_data);
   if (ret != kErrorNone) {
-    DLOGE("Failed due to SDM/Driver (err = %d, disp id = %" PRIu64 " %d-%d",
-          ret, id_, sdm_id_, type_);
+    DLOGW("Failed due to SDM/Driver (err = %d, disp id = %" PRIu64 " %d-%d", ret, id_, sdm_id_,
+          type_);
   }
 
-  return ret;
+  return kErrorNone;
 }
 
 DisplayError SDMDisplay::SetDisplayElapseTime(uint64_t time) {
@@ -3566,24 +3568,26 @@ DisplayError SDMDisplay::SetReadbackBuffer(void *buffer,
 
 
   // Configure the output buffer as Readback buffer
-  auto err = snapmapper_->GetMetadata(*hdl, MetadataType::STRIDE, &output_buffer.width);
+  auto err =
+      GetMetadata(hdl, MetadataType::STRIDE, &output_buffer.width, snapmapper_);
   if (err) {
     DLOGE("Failed to retrieve aligned width");
   }
   output_buffer.planes[0].stride = output_buffer.width;
-  err = snapmapper_->GetMetadata(*hdl, MetadataType::ALIGNED_HEIGHT_IN_PIXELS, &output_buffer.height);
+  err = GetMetadata(hdl, MetadataType::ALIGNED_HEIGHT_IN_PIXELS,
+                    &output_buffer.height, snapmapper_);
   if (err) {
     DLOGE("Failed to retrieve aligned height");
   }
 
   uint64_t tmp_width, tmp_height;
-  err = snapmapper_->GetMetadata(*hdl, MetadataType::WIDTH, &tmp_width);
+  err = GetMetadata(hdl, MetadataType::WIDTH, &tmp_width, snapmapper_);
   if (err) {
     DLOGE("Failed to retrieve unaligned width");
   } else {
     output_buffer.unaligned_width = static_cast<uint32_t>(tmp_width);
   }
-  err = snapmapper_->GetMetadata(*hdl, MetadataType::HEIGHT, &tmp_height);
+  err = GetMetadata(hdl, MetadataType::HEIGHT, &tmp_height, snapmapper_);
   if (err) {
     DLOGE("Failed to retrieve unaligned height");
   } else {
@@ -3591,19 +3595,21 @@ DisplayError SDMDisplay::SetReadbackBuffer(void *buffer,
   }
 
   int format;
-  err = snapmapper_->GetMetadata(*hdl, MetadataType::PIXEL_FORMAT_ALLOCATED, &format);
+  err = GetMetadata(hdl, MetadataType::PIXEL_FORMAT_ALLOCATED, &format,
+                    snapmapper_);
   if (err) {
     DLOGE("Failed to retrieve format");
   }
   BufferUsage usage_flag;
-  err = snapmapper_->GetMetadata(*hdl, MetadataType::USAGE, &usage_flag);
+  err = GetMetadata(hdl, MetadataType::USAGE, &usage_flag, snapmapper_);
   if (err) {
     DLOGE("Failed to retrieve flag");
   }
   output_buffer.usage = static_cast<uint64_t>(usage_flag);
 
   int64_t compression_type;
-  err = snapmapper_->GetMetadata(*hdl, MetadataType::COMPRESSION, &compression_type);
+  err = GetMetadata(hdl, MetadataType::COMPRESSION, &compression_type,
+                    snapmapper_);
   if (err) {
     DLOGE("Failed to retrieve compression type");
   }
@@ -3617,13 +3623,14 @@ DisplayError SDMDisplay::SetReadbackBuffer(void *buffer,
   flag = is_ubwc ? INT32(MetadataType::IS_UBWC) : 0;
 
   output_buffer.format = buffer_allocator_->GetSDMFormat(format, flag, compression_type);
-  err = snapmapper_->GetMetadata(*hdl, MetadataType::FD, &output_buffer.planes[0].fd);
+  err = GetMetadata(hdl, MetadataType::FD, &output_buffer.planes[0].fd,
+                    snapmapper_);
   if (err) {
     DLOGE("Failed to retrieve file descriptor");
   }
 
-  err = snapmapper_->GetMetadata(*hdl, MetadataType::BUFFER_ID,
-                                 &output_buffer.handle_id);
+  err = GetMetadata(hdl, MetadataType::BUFFER_ID, &output_buffer.handle_id,
+                    snapmapper_);
   if (err) {
     DLOGE("Failed to retrieve buffer id");
   }

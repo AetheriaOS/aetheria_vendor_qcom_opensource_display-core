@@ -7,6 +7,7 @@
 
 #include <core/buffer_allocator.h>
 #include <core/buffer_sync_handler.h>
+#include <core/display_interface.h>
 #include <memory>
 #include <private/demura_intf.h>
 #include <private/panel_feature_property_intf.h>
@@ -22,7 +23,8 @@ class ABCFeatureFactIntf {
   virtual ~ABCFeatureFactIntf() {}
   virtual std::unique_ptr<sdm::DemuraIntf> CreateABCIntf(const sdm::DemuraInputConfig &input_cfg,
                                                          sdm::PanelFeaturePropertyIntf *prop_intf,
-                                                         sdm::BufferAllocator *allocator) = 0;
+                                                         sdm::BufferAllocator *allocator,
+                                                         sdm::DisplayInterface *display_intf) = 0;
 };
 
 extern "C" ABCFeatureFactIntf *GetABCFeatureFactIntf();

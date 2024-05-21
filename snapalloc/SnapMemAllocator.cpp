@@ -4,17 +4,16 @@
 #include "SnapMemAllocator.h"
 #include <log/log.h>
 #include <iostream>
-#include "ISnapMemAllocBackend.h"
 
 #define DEBUG 0
 
 namespace snapalloc {
 
 SnapMemAllocator *SnapMemAllocator::instance_{nullptr};
-std::mutex SnapMemAllocator::mem_allocator_mutex_;
+std::mutex SnapMemAllocator::mem_allocator_instance_mutex_;
 
 SnapMemAllocator *SnapMemAllocator::GetInstance() {
-  std::lock_guard<std::mutex> lock(mem_allocator_mutex_);
+  std::lock_guard<std::mutex> lock(mem_allocator_instance_mutex_);
 
   if (instance_ == nullptr) {
     instance_ = new SnapMemAllocator();
@@ -22,14 +21,17 @@ SnapMemAllocator *SnapMemAllocator::GetInstance() {
   return instance_;
 }
 
+SnapMemAllocator::SnapMemAllocator() : alloc_intf_{ISnapMemAllocBackend::GetInstance()} {};
+
 Error SnapMemAllocator::AllocateMem(AllocData *alloc_data,
                                     vendor_qti_hardware_display_common_BufferUsage usage,
                                     vendor_qti_hardware_display_common_PixelFormat format) {
+  std::lock_guard<std::mutex> lock(mem_allocator_mutex_);
+
   int ret = -1;
   int err = 0;
 
-  ISnapMemAllocBackend *alloc_intf = ISnapMemAllocBackend::GetInstance();
-  if (!alloc_intf) {
+  if (!alloc_intf_) {
     return Error::NO_RESOURCES;
   }
 
@@ -39,11 +41,11 @@ Error SnapMemAllocator::AllocateMem(AllocData *alloc_data,
   }
 
   // After this point we should have the right heap set, there is no fallback
-  alloc_intf->GetHeapInfo(usage, use_system_heap_for_sensors_, &alloc_data->heap_name,
-                          &alloc_data->vm_names, &alloc_data->alloc_type, &alloc_data->flags,
-                          &alloc_data->size);
+  alloc_intf_->GetHeapInfo(usage, use_system_heap_for_sensors_, &alloc_data->heap_name,
+                           &alloc_data->vm_names, &alloc_data->alloc_type, &alloc_data->flags,
+                           &alloc_data->size);
 
-  ret = alloc_intf->AllocBuffer(alloc_data);
+  ret = alloc_intf_->AllocBuffer(alloc_data);
 
   if (ret < 0) {
     ALOGE("Failed to allocate buffer - heap name: %s, flags 0x%x ret %d ",
@@ -52,7 +54,7 @@ Error SnapMemAllocator::AllocateMem(AllocData *alloc_data,
   }
 
   if (!alloc_data->vm_names.empty()) {
-    err = alloc_intf->SecureMemPerms(alloc_data);
+    err = alloc_intf_->SecureMemPerms(alloc_data);
   }
 
   if (err) {
@@ -64,46 +66,50 @@ Error SnapMemAllocator::AllocateMem(AllocData *alloc_data,
 }
 
 Error SnapMemAllocator::FreeBuffer(void *base, unsigned int size, int fd, std::string buffer_path) {
-  ISnapMemAllocBackend *alloc_intf = ISnapMemAllocBackend::GetInstance();
-  if (!alloc_intf) {
+  std::lock_guard<std::mutex> lock(mem_allocator_mutex_);
+
+  if (!alloc_intf_) {
     return Error::NO_RESOURCES;
   }
   ALOGD_IF(DEBUG, "Freeing buffer base:%p size:%u fd:%d", base, size, fd);
-  if (alloc_intf) {
-    return alloc_intf->FreeBuffer(base, size, fd, std::move(buffer_path));
+  if (alloc_intf_) {
+    return alloc_intf_->FreeBuffer(base, size, fd, std::move(buffer_path));
   }
 
   return Error::BAD_BUFFER;
 }
 
 Error SnapMemAllocator::MapBuffer(void **base, unsigned int size, int fd) {
-  ISnapMemAllocBackend *alloc_intf = ISnapMemAllocBackend::GetInstance();
-  if (!alloc_intf) {
+  std::lock_guard<std::mutex> lock(mem_allocator_mutex_);
+
+  if (!alloc_intf_) {
     return Error::NO_RESOURCES;
   }
-  if (alloc_intf) {
-    return alloc_intf->MapBuffer(base, size, fd);
+  if (alloc_intf_) {
+    return alloc_intf_->MapBuffer(base, size, fd);
   }
 
   return Error::BAD_BUFFER;
 }
 
 Error SnapMemAllocator::CleanBuffer(void *base, unsigned int size, int op, int fd) {
-  ISnapMemAllocBackend *alloc_intf = ISnapMemAllocBackend::GetInstance();
-  if (!alloc_intf) {
+  std::lock_guard<std::mutex> lock(mem_allocator_mutex_);
+
+  if (!alloc_intf_) {
     return Error::NO_RESOURCES;
   }
-  if (alloc_intf) {
-    return alloc_intf->CleanBuffer(base, size, op, fd);
+  if (alloc_intf_) {
+    return alloc_intf_->CleanBuffer(base, size, op, fd);
   }
 
   return Error::BAD_BUFFER;
 }
 
 int SnapMemAllocator::ImportBuffer(int fd) {
-  ISnapMemAllocBackend *alloc_intf = ISnapMemAllocBackend::GetInstance();
-  if (alloc_intf) {
-    return alloc_intf->ImportBuffer(fd);
+  std::lock_guard<std::mutex> lock(mem_allocator_mutex_);
+
+  if (alloc_intf_) {
+    return alloc_intf_->ImportBuffer(fd);
   }
   ALOGE("ISnapMemAllocBackend is not available");
   return -1;
@@ -112,12 +118,13 @@ int SnapMemAllocator::ImportBuffer(int fd) {
 Error SnapMemAllocator::SetBufferPermission(
     int fd, vendor_qti_hardware_display_common_BufferPermission *buffer_perm,
     int64_t *mem_hdl) {
-  ISnapMemAllocBackend *alloc_intf = ISnapMemAllocBackend::GetInstance();
-  if (!alloc_intf) {
+  std::lock_guard<std::mutex> lock(mem_allocator_mutex_);
+
+  if (!alloc_intf_) {
     return Error::NO_RESOURCES;
   }
-  if (alloc_intf) {
-    return alloc_intf->SetBufferPermission(fd, buffer_perm, mem_hdl);
+  if (alloc_intf_) {
+    return alloc_intf_->SetBufferPermission(fd, buffer_perm, mem_hdl);
   }
 
   return Error::BAD_BUFFER;

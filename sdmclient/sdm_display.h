@@ -483,6 +483,9 @@ public:
   virtual DisplayError SetDemuraConfig(int demura_idx) {
     return kErrorNotSupported;
   }
+  virtual DisplayError SetABCState(bool state) { return kErrorNotSupported; }
+  virtual DisplayError SetABCReconfig() { return kErrorNotSupported; }
+  virtual DisplayError SetABCMode(string mode_name) { return kErrorNotSupported; }
   virtual DisplayError
   GetClientTargetProperty(SDMClientTargetProperty *out_client_target_property);
   virtual void GetConfigInfo(
@@ -516,6 +519,9 @@ public:
   virtual void SetFrameIntervalNs(uint32_t fi) { frame_interval_ns_ = fi; }
   virtual DisplayError SetSsrcMode(const std::string &mode) { return kErrorNotSupported; }
   virtual int GetNotifyEptConfig() { return -1; }
+  virtual DisplayError SetPanelFeatureConfig(int32_t type, void *data) {
+    return kErrorNotSupported;
+  }
 
  protected:
   static uint32_t throttling_refresh_rate_;

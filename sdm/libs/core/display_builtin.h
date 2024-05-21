@@ -44,9 +44,10 @@
 #include <private/panel_feature_factory_intf.h>
 #include <private/panel_feature_property_intf.h>
 #include <private/spr_intf.h>
+#include <private/display_event_proxy_intf.h>
+#include <private/tvm_service_manager_intf.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-
 #include <string>
 #include <vector>
 
@@ -124,6 +125,8 @@ public:
   DisplayError SetPaHistCollection(const std::string &client_name, bool enable,
                                    SdmDisplayCbInterface<PaHistCollectionPayload> *cb_intf);
   DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf);
+  DisplayError PanelBacklightInfo(const std::string &client_name, bool enable,
+                                  SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf);
 
  private:
   std::mutex lock_;
@@ -232,6 +235,15 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError GetPaHistBins(std::array<uint32_t, HIST_BIN_SIZE> *buf) override;
   DisplayError SetSsrcMode(const std::string &mode) override;
   DisplayError SetVRRState(bool state) override;
+  DisplayError PanelBacklightInfo(const std::string &client_name, bool enable,
+                                  SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) override;
+  DisplayError SetABCState(bool state) override;
+  DisplayError SetABCReconfig() override;
+  DisplayError SetABCMode(const string &mode_name) override;
+  DisplayError SetPanelFeatureConfig(int32_t type, void *data) override;
+  DisplayError StartTvmServices();
+  DisplayError StartService(TvmDispServiceManagerParams service);
+  DisplayError ExportDemuraFiles();
 
   // Implement the HWEventHandlers
   DisplayError VSync(int64_t timestamp) override;
@@ -301,6 +313,8 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   void HandleUpdateTransferTime(QSyncMode mode);
   DisplayError SetupAiqe();
   DisplayError SetAVRStepState(bool enable);
+  DisplayError SetDemuraTnCWBSamplingPeriod(void *data);
+  DisplayError SetDemuraTnEventsCtrl(void *data);
 
   const uint32_t kPuTimeOutMs = 1000;
   std::vector<HWEvent> event_list_;
@@ -367,11 +381,13 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   CacConfig cac_config_ = {};
   BufferInfo output_buffer_info_ = {};
   EventProxyInfo event_proxy_info_ = {};
+  bool enable_brightness_drm_prop_ = false;
 
   DynLib ssrc_lib_;
   std::shared_ptr<aiqe::SsrcFeatureInterface> ssrc_feature_interface_;
   bool avr_step_enabled_ = false;
   bool vrr_enabled_ = false;
+  std::shared_ptr<TvmDispServiceManagerIntf> service_manager_intf_ = nullptr;
 };
 
 }  // namespace sdm

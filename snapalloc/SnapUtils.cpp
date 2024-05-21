@@ -69,6 +69,8 @@ static std::unordered_map<vendor_qti_hardware_display_common_PixelFormat, Format
          {false, false, false, false, false, false, false, false}},
         {{vendor_qti_hardware_display_common_PixelFormat::RAW12},
          {false, false, false, false, false, false, false, false}},
+        {{vendor_qti_hardware_display_common_PixelFormat::RAW14},
+         {false, false, false, false, false, false, false, false}},
         {{vendor_qti_hardware_display_common_PixelFormat::RAW16},
          {false, false, false, false, false, false, false, false}},
         {{vendor_qti_hardware_display_common_PixelFormat::DEPTH_16},

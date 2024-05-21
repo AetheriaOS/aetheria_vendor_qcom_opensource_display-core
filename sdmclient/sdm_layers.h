@@ -102,6 +102,8 @@ struct ColorMetadata {
 };
 
 Error SetCSC(const SnapHandle *handle, ColorMetadata *color_metadata, std::shared_ptr<ISnapMapper> snapmapper_);
+Error GetMetadata(const SnapHandle *handle, MetadataType type, void *out,
+                  std::shared_ptr<ISnapMapper> snapmapper_);
 bool IsBT2020(const QtiColorPrimaries &color_primary);
 bool IsBT2020(const QtiColorPrimaries &color_primary);
 

@@ -447,6 +447,24 @@
                 }
             },
             {
+                "format" : "RAW12",
+                "constraints" : {
+                    "size_align_bytes" : 4096,
+                    "planes" : [
+                        {
+                            "components": [
+                                {
+                                    "component_type" : "RAW"
+                                }
+                            ],
+                            "horiz_stride_align_bytes" : 16,
+                            "scanline_align" : 1,
+                            "size_align_bytes" : 1
+                        }
+                    ]
+                }
+            },
+            {
                 "format" : "YV12",
                 "constraints" : {
                     "size_align_bytes" : 4096,
@@ -813,6 +831,24 @@
                                 }
                             ],
                             "horiz_stride_align_bytes" :16,
+                            "scanline_align" : 1,
+                            "size_align_bytes" : 1
+                        }
+                    ]
+                }
+            },
+            {
+                "format" : "R_8",
+                "constraints" : {
+                    "size_align_bytes" : 1,
+                    "planes" : [
+                        {
+                            "components": [
+                                {
+                                    "component_type" : "R"
+                                }
+                            ],
+                            "horiz_stride_align_bytes" : 256,
                             "scanline_align" : 1,
                             "size_align_bytes" : 1
                         }

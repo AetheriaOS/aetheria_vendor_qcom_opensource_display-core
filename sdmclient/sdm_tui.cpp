@@ -154,8 +154,6 @@ DisplayError SDMTrustedUI::TUITransitionPrepare(int disp_id) {
     return kErrorNotSupported;
   }
 
-  disp_->TeardownPluggableDisplays();
-
   std::vector<DisplayMapInfo> map_info = {
       disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_PRIMARY)[0]};
   auto &map_info_builtin = disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_BUILTIN_2);
@@ -179,6 +177,8 @@ DisplayError SDMTrustedUI::TUITransitionPrepare(int disp_id) {
       return kErrorNotSupported;
     }
   }
+
+  disp_->TeardownPluggableDisplays();
 
   return kErrorNone;
 }

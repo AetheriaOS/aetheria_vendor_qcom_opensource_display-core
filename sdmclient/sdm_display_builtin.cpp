@@ -1663,6 +1663,48 @@ DisplayError SDMDisplayBuiltIn::SetDemuraConfig(int demura_idx) {
   return kErrorNone;
 }
 
+DisplayError SDMDisplayBuiltIn::SetABCState(bool state) {
+  DLOGV("Display ID: %" PRId64 " state: %d", id_, state);
+  DisplayError error = display_intf_->SetABCState(state);
+
+  if (error != kErrorNone) {
+    DLOGE("Failed. state = %d, error = %d", state, error);
+    return kErrorParameters;
+  }
+
+  callbacks_->OnRefresh(id_);
+
+  return kErrorNone;
+}
+
+DisplayError SDMDisplayBuiltIn::SetABCReconfig() {
+  DLOGV("Display ID: %" PRId64, id_);
+  DisplayError error = display_intf_->SetABCReconfig();
+
+  if (error != kErrorNone) {
+    DLOGE("Failed to Reconfig ABC feature, error = %d", error);
+    return kErrorParameters;
+  }
+
+  callbacks_->OnRefresh(id_);
+
+  return kErrorNone;
+}
+
+DisplayError SDMDisplayBuiltIn::SetABCMode(string mode_name) {
+  DLOGV("Display ID: %" PRId64 " mode name: %s", id_, mode_name.c_str());
+  DisplayError error = display_intf_->SetABCMode(mode_name);
+
+  if (error != kErrorNone) {
+    DLOGE("Failed to Reconfig ABC feature, error = %d", error);
+    return kErrorParameters;
+  }
+
+  callbacks_->OnRefresh(id_);
+
+  return kErrorNone;
+}
+
 void SDMDisplayBuiltIn::HandleLargeCompositionHint(bool release) {
   if (!cpu_hint_) {
     return;
@@ -1738,6 +1780,10 @@ DisplayError SDMDisplayBuiltIn::SetupVRRConfig() {
 
 int SDMDisplayBuiltIn::GetNotifyEptConfig() {
   return notify_ept_heads_up_config_;
+}
+
+DisplayError SDMDisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) {
+  return display_intf_->SetPanelFeatureConfig(type, data);
 }
 
 } // namespace sdm
