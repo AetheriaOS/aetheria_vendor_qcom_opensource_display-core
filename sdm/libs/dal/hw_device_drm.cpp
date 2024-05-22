@@ -2440,13 +2440,20 @@ void HWDeviceDRM::SelectCscType(const LayerBuffer &input_buffer, DRMCscType *typ
   }
 
   // Override YUV to RGB CSC in DV P5 cases. If extended content metadata is used
-  // for other metadata types we will run into issues.
+  // and is DV's sync word, it should be DV. Then using full range to judge it's P5.
   bool extended_md_present = input_buffer.extended_content_metadata != nullptr &&
                               input_buffer.extended_content_metadata->size;
-  if (extended_md_present && (input_buffer.dataspace.transfer == QtiTransfer_SMPTE_170M
-                          || input_buffer.dataspace.transfer == QtiTransfer_sRGB)) {
-      *type = DRMCscType::kCscYuv2RgbDolbyVisionP5;
-      return;
+  if (extended_md_present) {
+    uint8_t *md = input_buffer.extended_content_metadata->metadataPayload;
+    if (md[0] == 0x0 && md[1] == 0x0 && md[2] == 0x0 && md[3] == 0x1 && md[4] == 0x7c &&
+        md[5] == 0x1) {
+      if ((input_buffer.dataspace.range == QtiRange_Full) ||
+          (input_buffer.dataspace.transfer == QtiTransfer_SMPTE_170M) ||
+          (input_buffer.dataspace.transfer == QtiTransfer_sRGB)) {
+        *type = DRMCscType::kCscYuv2RgbDolbyVisionP5;
+        return;
+      }
+    }
   }
 
   switch (input_buffer.dataspace.colorPrimaries) {
