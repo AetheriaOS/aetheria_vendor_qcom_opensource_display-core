@@ -2962,6 +2962,21 @@ DisplayError DisplayBuiltIn::ReconfigureDisplay() {
     dpps_info_.DppsNotifyOps(kDppsUpdateFpsEvent, &dpps_payload, sizeof(dpps_payload));
   }
 
+  // Notify Demura when refresh rate changes
+  if (demura_) {
+    GenericPayload demura_fps_pl = {};
+    uint32_t *demura_fps_ptr = nullptr;
+    int ret = demura_fps_pl.CreatePayload<uint32_t>(demura_fps_ptr);
+    if (ret) {
+      DLOGE("Failed to create payload for demura fps, error = %d", ret);
+    } else {
+      *demura_fps_ptr = client_ctx_.display_attributes.fps;
+      ret = demura_->SetParameter(kDemuraFeatureParamRefreshRate, demura_fps_pl);
+      if (ret) {
+        DLOGE("Failed to set refresh rate for demura, error = %d", ret);
+      }
+    }
+  }
   return kErrorNone;
 }
 
