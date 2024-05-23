@@ -380,11 +380,6 @@ DisplayError DisplayBuiltIn::Deinit() {
   {
     ClientLock lock(disp_mutex_);
 
-    if (vm_cb_intf_) {
-      vm_cb_intf_->Deinit();
-      delete vm_cb_intf_;
-    }
-
     if (demura_) {
       SetDemuraIntfStatus(false);
 
@@ -723,40 +718,7 @@ DisplayError DisplayBuiltIn::SetupDemura() {
   }
 
 #ifdef TRUSTED_VM
-  int ret = 0;
-  GenericPayload out;
-  IPCImportBufOutParams *buf_out_params = nullptr;
-  if ((ret = out.CreatePayload<IPCImportBufOutParams>(buf_out_params))) {
-    DLOGE("Failed to create output payload error = %d", ret);
-    return kErrorUndefined;
-  }
-
-  GenericPayload in;
-  IPCImportBufInParams *buf_in_params = nullptr;
-  if ((ret = in.CreatePayload<IPCImportBufInParams>(buf_in_params))) {
-    DLOGE("Failed to create input payload error = %d", ret);
-    return kErrorUndefined;
-  }
-  buf_in_params->req_buf_type = kIpcBufferTypeDemuraHFC;
-
-  if ((ret = ipc_intf_->ProcessOps(kIpcOpsImportBuffers, in, &out))) {
-    DLOGE("Failed to kIpcOpsImportBuffers payload error = %d", ret);
-    return kErrorUndefined;
-  }
-  DLOGI("DemuraHFC buffer fd %d size %d", buf_out_params->buffers[0].fd,
-    buf_out_params->buffers[0].size);
-
-  if (buf_out_params->buffers[0].fd < 0) {
-    DLOGE("HFC buffer import error fd :%d ", buf_out_params->buffers[0].fd);
-    return kErrorUndefined;
-  }
-
-  input_cfg.secure_hfc_fd = buf_out_params->buffers[0].fd;
-  input_cfg.secure_hfc_size = buf_out_params->buffers[0].size;
-  input_cfg.panel_id = buf_out_params->buffers[0].panel_id;
   input_cfg.secure_session = true;
-  hfc_buffer_fd_ = buf_out_params->buffers[0].fd;
-  hfc_buffer_size_ = buf_out_params->buffers[0].size;
 #endif
   input_cfg.panel_id = panel_id_;
   DLOGI("panel id %lx\n", input_cfg.panel_id);
@@ -790,18 +752,6 @@ DisplayError DisplayBuiltIn::SetupDemura() {
   demura_intended_ = true;
   DLOGI("Enabled Demura Core!");
 
-#ifndef TRUSTED_VM
-  GenericPayload pl;
-  uint64_t *panel_id_ptr = nullptr;
-  int rc = 0;
-  if ((rc = pl.CreatePayload<uint64_t>(panel_id_ptr))) {
-    DLOGE("Failed to create payload for Paneld, error = %d", rc);
-  }
-  demura_->GetParameter(kDemuraFeatureParamPanelId, &pl);
-  vm_cb_intf_ = new DisplayIPCVmCallbackImpl(buffer_allocator_, ipc_intf_,
-      *panel_id_ptr, hfc_buffer_width_, hfc_buffer_height_);
-  vm_cb_intf_->Init();
-#endif
   return kErrorNone;
 }
 
@@ -834,8 +784,9 @@ DisplayError DisplayBuiltIn::SetupDemuraLayer() {
       continue;
     Layer demura_layer = {};
 #ifndef TRUSTED_VM
-    demura_layer.input_buffer.size = corrdata->surfaces[buf_idx].alloc_buffer_info.size;
     demura_layer.input_buffer.buffer_id = corrdata->surfaces[buf_idx].alloc_buffer_info.id;
+#endif
+    demura_layer.input_buffer.size = corrdata->surfaces[buf_idx].alloc_buffer_info.size;
     demura_layer.input_buffer.format = corrdata->surfaces[buf_idx].alloc_buffer_info.format;
     demura_layer.input_buffer.width = corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_width;
     demura_layer.input_buffer.unaligned_width =
@@ -848,22 +799,6 @@ DisplayError DisplayBuiltIn::SetupDemuraLayer() {
         corrdata->surfaces[buf_idx].alloc_buffer_info.stride;
     hfc_buffer_width_ = corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_width;
     hfc_buffer_height_ = corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_height;
-#else
-    uint32_t aligned_width =
-        ALIGN(static_cast<int>(corrdata->surfaces[buf_idx].buffer_config.width), 32);
-    uint32_t aligned_height =
-        ALIGN(static_cast<int>(corrdata->surfaces[buf_idx].buffer_config.height), 32);
-    demura_layer.input_buffer.format = corrdata->surfaces[buf_idx].buffer_config.format;
-    float bpp = GetBufferFormatBpp(kFormatBGRA8888);
-    uint32_t stride = static_cast<uint32_t>(aligned_width * bpp);
-    demura_layer.input_buffer.size = hfc_buffer_size_;
-    demura_layer.input_buffer.width = aligned_width;
-    demura_layer.input_buffer.unaligned_width = aligned_width;
-    demura_layer.input_buffer.height = aligned_height;
-    demura_layer.input_buffer.unaligned_height = aligned_height;
-    demura_layer.input_buffer.planes[0].fd = hfc_buffer_fd_;
-    demura_layer.input_buffer.planes[0].stride = stride;
-#endif
     demura_layer.input_buffer.planes[0].offset = 0;
     demura_layer.input_buffer.flags.demura = 1;
     demura_layer.composition = kCompositionDemura;
@@ -3287,9 +3222,6 @@ DisplayError DisplayBuiltIn::HandleSecureEvent(SecureEvent secure_event, bool *n
 DisplayError DisplayBuiltIn::PostHandleSecureEvent(SecureEvent secure_event) {
   ClientLock lock(disp_mutex_);
   if (secure_event == kTUITransitionStart) {
-    if (vm_cb_intf_) {
-      vm_cb_intf_->ExportHFCBuffer();
-    }
     if (!pending_brightness_) {
       if (secure_event == kTUITransitionStart) {
         // Send the panel brightness event to secondary VM on TUI session start
@@ -3309,9 +3241,6 @@ DisplayError DisplayBuiltIn::PostHandleSecureEvent(SecureEvent secure_event) {
     }
   }
   if (secure_event == kTUITransitionEnd) {
-    if (vm_cb_intf_) {
-      vm_cb_intf_->FreeExportBuffer();
-    }
     comp_manager_->PostHandleSecureEvent(display_comp_ctx_, secure_event);
   }
   return kErrorNone;
