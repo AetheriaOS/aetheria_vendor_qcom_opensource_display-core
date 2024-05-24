@@ -865,6 +865,9 @@ void SDMDisplay::BuildLayerStack() {
       layer_stack_.flags.single_buffered_layer_present = true;
     }
 
+    // hdr flag is reset since same layer can switch b/w hdr & non-hdr content
+    // eg: switching b/w hdr & sdr videos in pip
+    layer->input_buffer.flags.hdr = false;
     bool hdr_layer = IsHDRLayerPresent(layer);
     if (hdr_layer && !disable_hdr_handling_) {
       // Dont honor HDR when its handling is disabled
