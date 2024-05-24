@@ -3383,7 +3383,7 @@ DisplayError SDMDisplay::HandleSecureEvent(SecureEvent secure_event,
     DLOGI("Resume display %d-%d", sdm_id_, type_);
     display_paused_ = false;
     display_pause_pending_ = false;
-    if (*needs_refresh == false) {
+    if (*needs_refresh == false || secure_event == kTUITransitionUnPrepare) {
       secure_event_ = kSecureEventMax;
       return kErrorNone;
     }
