@@ -976,6 +976,21 @@ Error SnapMetadataManager::ColorRemappingInfoHelper(SnapMetadata *metadata,
   return Error::BAD_VALUE;
 }
 
+Error SnapMetadataManager::AnamorphicCompressionHelper(SnapMetadata *metadata,
+                                                       SnapHandleInternal *handle, void *in_set,
+                                                       void *out_get, BufferDescriptor *buf_des) {
+  if (out_get != nullptr) {
+    *static_cast<vendor_qti_hardware_display_common_QtiAnamorphicMetadata *>(out_get) =
+        metadata->anamorphic_compression;
+    return Error::NONE;
+  } else if (in_set != nullptr) {
+    metadata->anamorphic_compression =
+        *static_cast<vendor_qti_hardware_display_common_QtiAnamorphicMetadata *>(in_set);
+    return Error::NONE;
+  }
+  return Error::BAD_VALUE;
+}
+
 Error SnapMetadataManager::BaseAddressHelper(SnapMetadata *metadata, SnapHandleInternal *handle,
                                              void *in_set, void *out_get,
                                              BufferDescriptor *buf_des) {
