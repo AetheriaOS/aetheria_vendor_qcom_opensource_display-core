@@ -62,6 +62,11 @@ void SDMServices::Init(SDMDisplayBuilder *disp,
   if (!color_mgr_) {
     DLOGW("Failed to load SDMColorManager.");
   }
+
+  // Default is int. Support extensions, such as uint64_t and float
+  for (int i = 0; i < PanelFeatureVendorServiceTypeMax; i++) {
+    panel_feature_data_type_map_[static_cast<PanelFeatureVendorServiceType>(i)] = "int";
+  }
 }
 
 void SDMServices::Deinit() {
@@ -1934,15 +1939,39 @@ DisplayError SDMServices::DumpCodeCoverage(SDMParcel *input_parcel) {
 DisplayError SDMServices::SetPanelFeatureConfig(SDMParcel *input_parcel, SDMParcel *output_parcel) {
   int disp_id = input_parcel->readInt32();
   int type = input_parcel->readInt32();
-  // By default, use int type and support extension to other types.
-  int data = input_parcel->readInt32();
+  void *data_ptr = nullptr;
+  int data_int = 0;
+  float data_float = 0;
+  uint64_t data_uint64 = 0;
 
   if (type >= PanelFeatureVendorServiceTypeMax) {
     DLOGE("Invalid type %d", type);
     return kErrorNotSupported;
   }
 
-  auto ret = cb_->SetPanelFeatureConfig(disp_id, type, &data);
+  // Query data type
+  auto it = panel_feature_data_type_map_.find(static_cast<PanelFeatureVendorServiceType>(type));
+  if (it == panel_feature_data_type_map_.end()) {
+    DLOGE("Type %d not found in map", type);
+    return kErrorNotSupported;
+  }
+
+  // Compare with corresponding data type in order to parse the data
+  if (it->second.compare("int") == 0) {
+    data_int = input_parcel->readInt32();
+    data_ptr = &data_int;
+  } else if (it->second.compare("float") == 0) {
+    data_float = input_parcel->readFloat();
+    data_ptr = &data_float;
+  } else if (it->second.compare("uint64_t") == 0) {
+    data_uint64 = input_parcel->readInt64();
+    data_ptr = &data_uint64;
+  } else {
+    DLOGE("Invalue data type %s", it->second.c_str());
+    return kErrorNotSupported;
+  }
+
+  auto ret = cb_->SetPanelFeatureConfig(disp_id, type, data_ptr);
   if (ret != kErrorNone) {
     output_parcel->write("FAILED", strlen("FAILED"));
   } else {
