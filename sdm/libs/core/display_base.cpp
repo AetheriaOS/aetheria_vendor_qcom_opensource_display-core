@@ -4531,7 +4531,10 @@ DisplayError DisplayBase::SetPPConfig(void *payload, size_t size) {
   }
 
   DLOGI_IF(kTagDisplay, "PP Event is set successfully");
-  event_handler_->Refresh();
+  struct sde_drm::DRMPPFeatureInfo *info = reinterpret_cast<sde_drm::DRMPPFeatureInfo *>(payload);
+  if (info->id != sde_drm::kFeaturePaHistIrq) {
+    event_handler_->Refresh();
+  }
   return kErrorNone;
 }
 
