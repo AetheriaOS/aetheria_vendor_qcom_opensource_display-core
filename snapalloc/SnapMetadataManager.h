@@ -38,8 +38,10 @@ class SnapMetadataManager {
   Error GetCustomDimensions(SnapHandleInternal *hnd, SnapMetadata *metadata, int32_t *stride,
                             int32_t *height);
   Error InitializeMetadata(
-      SnapHandleInternal *hnd, BufferDescriptor in_desc, BufferDescriptor out_desc,
-      const AllocData ad, vendor_qti_hardware_display_common_BufferLayout *layout);  // TODO: make this API extensible
+      SnapHandleInternal *hnd,
+      vendor_qti_hardware_display_common_PixelFormat pixel_format_requested,
+      BufferDescriptor out_desc, const AllocData ad,
+      vendor_qti_hardware_display_common_BufferLayout *layout);  // TODO: make this API extensible
   uint32_t GetCustomContentMetadataSize(vendor_qti_hardware_display_common_PixelFormat format,
                                         vendor_qti_hardware_display_common_BufferUsage usage);
   Error GetMetadataState(SnapHandleInternal *hnd, vendor_qti_hardware_display_common_MetadataType type, bool *out);
