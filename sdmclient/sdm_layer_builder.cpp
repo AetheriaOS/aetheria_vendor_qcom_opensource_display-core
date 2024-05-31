@@ -9,36 +9,10 @@
 
 namespace sdm {
 
-SDMLayerBuilder *SDMLayerBuilder::layer_builder_ = nullptr;
-uint32_t SDMLayerBuilder::ref_count_ = 0;
-std::mutex SDMLayerBuilder::lock_;
 Locker SDMLayerBuilder::locker_[kNumDisplays];
 
-SDMLayerBuilder *SDMLayerBuilder::GetInstance() {
-  std::lock_guard<std::mutex> lock(lock_);
-
-  if (!ref_count_) {
-    layer_builder_ = new SDMLayerBuilder();
-  }
-
-  ref_count_++;
-  return layer_builder_;
-}
-
-void SDMLayerBuilder::PutInstance() {
-  std::lock_guard<std::mutex> lock(lock_);
-
-  ref_count_--;
-  if (!ref_count_) {
-    layer_builder_->Deinit();
-    delete layer_builder_;
-    layer_builder_ = nullptr;
-
-    return;
-  }
-}
-
-void SDMLayerBuilder::Deinit() {
+// final cleanup if any displays were lost
+SDMLayerBuilder::~SDMLayerBuilder() {
   for (auto i : display_layer_stack_) {
     DeInit(i.first);
   }
