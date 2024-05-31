@@ -62,6 +62,9 @@ public:
                                       uint32_t *out_num_types, uint32_t *out_num_requests,
                                       bool *needs_commit);
  virtual bool FreezeScreen();
+ virtual DisplayError SetColorTransform(const float *matrix, SDMColorTransform hint) {
+   return kErrorNone;
+ }
 
 private:
   // SyncTask methods.

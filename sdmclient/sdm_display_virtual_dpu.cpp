@@ -202,6 +202,10 @@ DisplayError SDMDisplayVirtualDPU::PreValidateDisplay(bool *exit_validate) {
     }
   }
 
+  if (force_gpu_comp_ && !layer_stack_.flags.secure_present) {
+    MarkLayersForClientComposition();
+  }
+
   *exit_validate = false;
 
   return kErrorNone;
@@ -275,6 +279,11 @@ DisplayError SDMDisplayVirtualDPU::SetPanelLuminanceAttributes(float min_lum,
   if (err != kErrorNone) {
     return kErrorParameters;
   }
+  return kErrorNone;
+}
+
+DisplayError SDMDisplayVirtualDPU::SetColorTransform(const float *matrix, SDMColorTransform hint) {
+  force_gpu_comp_ = (hint != SDMColorTransform::TRANSFORM_IDENTITY) ? true : false;
   return kErrorNone;
 }
 
