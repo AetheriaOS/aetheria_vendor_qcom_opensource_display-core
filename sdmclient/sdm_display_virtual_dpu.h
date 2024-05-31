@@ -55,12 +55,14 @@ public:
  virtual DisplayError CommitOrPrepare(bool validate_only, shared_ptr<Fence> *out_retire_fence,
                                       uint32_t *out_num_types, uint32_t *out_num_requests,
                                       bool *needs_commit);
+ virtual DisplayError SetColorTransform(const float *matrix, SDMColorTransform hint);
 
 private:
   DisplayError SetConfig(uint32_t width, uint32_t height);
 
   float min_lum_ = 0.0f;
   float max_lum_ = 0.0f;
+  bool force_gpu_comp_ = false;
 };
 
 } // namespace sdm
