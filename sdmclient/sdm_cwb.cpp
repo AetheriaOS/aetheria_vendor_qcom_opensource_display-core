@@ -91,9 +91,11 @@ DisplayError SDMConcurrentWriteBack::PostBuffer(const CwbConfig &cwb_config,
     }
   }
 
-  int cb_err = cb_->HandleCwbCallBack(dpy_index, hdl, cwb_config);
-  if (cb_err) {
-    error = kErrorParameters;
+  if (error == kErrorNone) {
+    int cb_err = cb_->HandleCwbCallBack(dpy_index, hdl, cwb_config);
+    if (cb_err) {
+      error = kErrorParameters;
+    }
   }
 
   if (error == kErrorNone) {
