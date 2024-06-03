@@ -771,6 +771,13 @@ struct HWScaleData {
   uint32_t cac_le_dst_h_offset = 0;
   uint32_t cac_le_dst_v_offset = 0;
   uint32_t cac_re_dst_v_offset = 0;
+
+  // Foveation params
+  uint32_t fov_mode = 0;
+  uint32_t cac_asym_phase_step_h = 0;
+  uint32_t cac_asym_phase_step_v = 0;
+  uint32_t cac_re_phase_step_v = 0;
+  uint32_t cac_re_asym_phase_step_v = 0;
 };
 
 struct HWDestScaleInfo {
