@@ -4112,6 +4112,9 @@ DisplayError DisplayBase::IsSupportedOnDisplay(const SupportedDisplayFeature fea
     case kDedicatedCwb:
       error = dpu_core_mux_->GetFeatureSupportStatus(kHasDedicatedCwb, supported);
       break;
+    case kCacV2:
+      *supported = IsCacV2Supported();
+      break;
     default:
       DLOGW("Feature:%d is not present for display %d:%d", feature, display_id_, display_type_);
       error = kErrorParameters;

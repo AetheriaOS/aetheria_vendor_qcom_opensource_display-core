@@ -135,6 +135,7 @@ public:
  virtual DisplayError SetDemuraState(int state);
  virtual DisplayError SetDemuraConfig(int demura_idx);
  virtual DisplayError PerformCacConfig(CacConfig config, bool enable);
+ virtual DisplayError IsCacV2Supported(bool *supported);
  virtual DisplayError SetSsrcMode(const std::string &mode);
  virtual DisplayError SetupVRRConfig();
  virtual int GetNotifyEptConfig();
