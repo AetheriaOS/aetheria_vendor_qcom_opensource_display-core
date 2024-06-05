@@ -198,7 +198,8 @@ const char* GetSocName() {
       return kAnorakSocName;
     case kSunSocId:
       return kSunSocName;
-    case kNiobeSocId:
+    case kNiobeSocId1:
+    case kNiobeSocId2:
       return kNiobeSocName;
     default:
       return "";
