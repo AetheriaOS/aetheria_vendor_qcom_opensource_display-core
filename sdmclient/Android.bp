@@ -13,7 +13,6 @@ cc_library_shared {
         "snapalloc_interface_headers",
         "common_interface_headers",
         "sdmclient_interface_headers",
-        "display_proprietary_headers",
     ],
     shared_libs: [
         "libutils",
@@ -22,7 +21,7 @@ cc_library_shared {
         "libdisplaydebug",
         "libsdmutils",
         "libdrm",
-        "libtinyxml2_1",
+        "libtinyxml2",
     ],
     cflags: [
         "-DLOG_TAG=\"SDM\"",
