@@ -874,6 +874,14 @@ class DisplayInterface {
   */
   virtual DisplayError GetPanelBrightness(float *brightness) = 0;
 
+  /*! @brief Method to get the brightness level of the display
+
+    @param[out] brightness brightness value
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError GetPanelBrightnessLevel(int *level) = 0;
+
   /*! @brief Method to get the max brightness level of the display
 
     @param[out] max_brightness level

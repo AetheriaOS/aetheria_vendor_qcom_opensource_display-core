@@ -127,6 +127,7 @@ class DisplayNull : public DisplayInterface {
   MAKE_NO_OP(SetCursorPosition(int, int))
   MAKE_NO_OP(SetRefreshRate(uint32_t, bool, bool))
   MAKE_NO_OP(GetPanelBrightness(float *))
+  MAKE_NO_OP(GetPanelBrightnessLevel(int *))
   MAKE_NO_OP(GetPanelMaxBrightness(uint32_t *))
   MAKE_NO_OP(GetRefreshRate(uint32_t *))
   MAKE_NO_OP(SetVSyncState(bool))

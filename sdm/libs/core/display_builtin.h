@@ -186,6 +186,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError SetPanelBrightness(float brightness) override;
   DisplayError GetPanelBrightness(float *brightness) override;
   DisplayError GetPanelBrightnessFromLevel(float level, float *brightness);
+  DisplayError GetPanelBrightnessLevel(int *level) override;
   DisplayError GetPanelMaxBrightness(uint32_t *max_brightness_level) override;
   DisplayError GetRefreshRate(uint32_t *refresh_rate) override;
   DisplayError SetDisplayDppsAdROI(void *payload) override;

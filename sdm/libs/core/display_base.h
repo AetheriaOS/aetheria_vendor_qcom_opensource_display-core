@@ -170,6 +170,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   virtual DisplayError GetPanelBrightness(float *brightness) {
     return kErrorNotSupported;
   }
+  virtual DisplayError GetPanelBrightnessLevel(int *level) { return kErrorNotSupported; }
   virtual DisplayError GetPanelMaxBrightness(uint32_t *max_brightness_level) {
     return kErrorNotSupported;
   }
