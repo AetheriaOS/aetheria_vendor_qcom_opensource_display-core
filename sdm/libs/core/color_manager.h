@@ -257,6 +257,7 @@ class ColorManagerProxy : public ColorManagerIntf {
   snapdragoncolor::ColorMode curr_mode_;
   bool needs_update_ = false;
   uint32_t core_id_;
+  bool has_native_mode_ = false;
   bool prev_idle_fallback_hint_ = false;
   ColorMode prev_idle_fallback_mode_ = {};
   struct snapdragoncolor::ColorTransform curr_color_xform_ = {};

@@ -480,20 +480,20 @@ bool ColorManagerProxy::NeedAssetsUpdate() {
 }
 
 bool ColorManagerProxy::HasNativeModeSupport() {
-  bool native_mode_support = false;
+  has_native_mode_ = false;
   if (!stc_intf_) {
-    return native_mode_support;
+    return has_native_mode_;
   }
 
   snapdragoncolor::ColorModeList stc_color_modes = {};
   ColorMgrGetStcModes(&stc_color_modes);
   for (auto &iter : stc_color_modes.list) {
     if (iter.intent == snapdragoncolor::kNative) {
-      native_mode_support = true;
+      has_native_mode_ = true;
     }
   }
 
-  return native_mode_support;
+  return has_native_mode_;
 }
 
 DisplayError ColorManagerProxy::ColorMgrGetNumOfModes(uint32_t *mode_cnt) {
@@ -930,6 +930,11 @@ DisplayError ColorManagerProxy::ColorMgrIdleFallback(bool idle_fallback_hint) {
 
   if(prev_idle_fallback_hint_ == idle_fallback_hint) {
     return kErrorNone;
+  }
+
+  if (!has_native_mode_) {
+    DLOGE("Native mode is missing from the calibration file");
+    return kErrorNotSupported;
   }
 
   prev_idle_fallback_hint_ = idle_fallback_hint;
