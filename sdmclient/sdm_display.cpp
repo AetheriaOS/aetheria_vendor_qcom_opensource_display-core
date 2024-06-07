@@ -2351,10 +2351,13 @@ void SDMDisplay::GetPanelResolution(uint32_t *x_pixels, uint32_t *y_pixels) {
   uint32_t active_index = 0;
 
   GetSDMActiveConfig(false, &active_index);
-  display_intf_->GetConfig(active_index, &display_config);
-
-  *x_pixels = display_config.x_pixels;
-  *y_pixels = display_config.y_pixels;
+  if (display_intf_->GetConfig(active_index, &display_config) == kErrorNone) {
+    *x_pixels = display_config.x_pixels;
+    *y_pixels = display_config.y_pixels;
+  } else {
+    *x_pixels = variable_config_map_[active_index].x_pixels;
+    *y_pixels = variable_config_map_[active_index].y_pixels;
+  }
 }
 
 void SDMDisplay::GetRealPanelResolution(uint32_t *x_pixels,
@@ -2362,7 +2365,7 @@ void SDMDisplay::GetRealPanelResolution(uint32_t *x_pixels,
   DisplayConfigVariableInfo display_config;
   uint32_t active_index = 0;
 
-  GetSDMActiveConfig(false, &active_index);
+  GetSDMActiveConfig(true, &active_index);
   display_intf_->GetRealConfig(active_index, &display_config);
 
   *x_pixels = display_config.x_pixels;
