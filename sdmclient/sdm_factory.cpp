@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 #include "sdm_factory.h"
-#include "concurrency_mgr.h"
 #include <debug_handler.h>
 #include <dlfcn.h>
 
@@ -15,8 +14,29 @@ static SDMInterfaceFactoryImpl factory_ = {};
 
 SDMInterfaceFactory *GetSDMInterfaceFactory() { return &factory_; }
 
-SDMDisplayCapsIntf *SDMInterfaceFactoryImpl::CreateCapsIntf() {
-  SDMDisplayCapsIntf *caps = ConcurrencyMgr::GetInstance();
+// only used by sdm_display, not to be called by clients
+SDMInterfaceFactoryImpl *SDMInterfaceFactoryImpl::GetSDMFactoryInternal() {
+  return &factory_;
+}
+
+std::shared_ptr<ConcurrencyMgr> SDMInterfaceFactoryImpl::GetConcurrencyMgrInstance() {
+  if (!concurrency_mgr_) {
+    concurrency_mgr_ = std::make_shared<ConcurrencyMgr>();
+  }
+
+  return concurrency_mgr_;
+}
+
+std::shared_ptr<SDMLayerBuilder> SDMInterfaceFactoryImpl::GetLayerBuilderInstance() {
+  if (!layer_builder_) {
+    layer_builder_ = std::make_shared<SDMLayerBuilder>();
+  }
+
+  return layer_builder_;
+}
+
+std::shared_ptr<SDMDisplayCapsIntf> SDMInterfaceFactoryImpl::CreateCapsIntf() {
+  std::shared_ptr<SDMDisplayCapsIntf> caps = GetConcurrencyMgrInstance();
   if (!caps) {
     DLOGE("Unable to open sdm capabilities interface");
     return nullptr;
@@ -25,8 +45,8 @@ SDMDisplayCapsIntf *SDMInterfaceFactoryImpl::CreateCapsIntf() {
   return caps;
 }
 
-SDMDisplayDrawCycleIntf *SDMInterfaceFactoryImpl::CreateDrawCycleIntf() {
-  SDMDisplayDrawCycleIntf *draw_cycle = ConcurrencyMgr::GetInstance();
+std::shared_ptr<SDMDisplayDrawCycleIntf> SDMInterfaceFactoryImpl::CreateDrawCycleIntf() {
+  std::shared_ptr<SDMDisplayDrawCycleIntf> draw_cycle = GetConcurrencyMgrInstance();
   if (!draw_cycle) {
     DLOGE("Unable to open sdm draw cycle interface");
     return nullptr;
@@ -35,8 +55,8 @@ SDMDisplayDrawCycleIntf *SDMInterfaceFactoryImpl::CreateDrawCycleIntf() {
   return draw_cycle;
 }
 
-SDMDisplayLayerBuilderIntf *SDMInterfaceFactoryImpl::CreateLayerBuilderIntf() {
-  SDMDisplayLayerBuilderIntf *layer_builder = SDMLayerBuilder::GetInstance();
+std::shared_ptr<SDMDisplayLayerBuilderIntf> SDMInterfaceFactoryImpl::CreateLayerBuilderIntf() {
+  std::shared_ptr<SDMDisplayLayerBuilderIntf> layer_builder = GetLayerBuilderInstance();
   if (!layer_builder) {
     DLOGE("Unable to open sdm layer builder interface");
     return nullptr;
@@ -45,8 +65,8 @@ SDMDisplayLayerBuilderIntf *SDMInterfaceFactoryImpl::CreateLayerBuilderIntf() {
   return layer_builder;
 }
 
-SDMDisplayLifeCycleIntf *SDMInterfaceFactoryImpl::CreateLifeCycleIntf() {
-  SDMDisplayLifeCycleIntf *life_cycle = ConcurrencyMgr::GetInstance();
+std::shared_ptr<SDMDisplayLifeCycleIntf> SDMInterfaceFactoryImpl::CreateLifeCycleIntf() {
+  std::shared_ptr<SDMDisplayLifeCycleIntf> life_cycle = GetConcurrencyMgrInstance();
   if (!life_cycle) {
     DLOGE("Unable to open sdm life cycle interface");
     return nullptr;
@@ -55,8 +75,8 @@ SDMDisplayLifeCycleIntf *SDMInterfaceFactoryImpl::CreateLifeCycleIntf() {
   return life_cycle;
 }
 
-SDMDisplaySettingsIntf *SDMInterfaceFactoryImpl::CreateSettingsIntf() {
-  SDMDisplaySettingsIntf *settings = ConcurrencyMgr::GetInstance();
+std::shared_ptr<SDMDisplaySettingsIntf> SDMInterfaceFactoryImpl::CreateSettingsIntf() {
+  std::shared_ptr<SDMDisplaySettingsIntf> settings = GetConcurrencyMgrInstance();
   if (!settings) {
     DLOGE("Unable to open sdm settings interface");
     return nullptr;
@@ -65,8 +85,8 @@ SDMDisplaySettingsIntf *SDMInterfaceFactoryImpl::CreateSettingsIntf() {
   return settings;
 }
 
-SDMDisplaySideBandIntf *SDMInterfaceFactoryImpl::CreateSideBandIntf() {
-  SDMDisplaySideBandIntf *sideband = ConcurrencyMgr::GetInstance();
+std::shared_ptr<SDMDisplaySideBandIntf> SDMInterfaceFactoryImpl::CreateSideBandIntf() {
+  std::shared_ptr<SDMDisplaySideBandIntf> sideband = GetConcurrencyMgrInstance();
   if (!sideband) {
     DLOGE("Unable to open sdm sideband interface");
     return nullptr;
@@ -75,42 +95,14 @@ SDMDisplaySideBandIntf *SDMInterfaceFactoryImpl::CreateSideBandIntf() {
   return sideband;
 }
 
-SDMDisplayAiqeIntf *SDMInterfaceFactoryImpl::CreateAiqeIntf() {
-  SDMDisplayAiqeIntf *aqie_intf = ConcurrencyMgr::GetInstance();
+std::shared_ptr<SDMDisplayAiqeIntf> SDMInterfaceFactoryImpl::CreateAiqeIntf() {
+  std::shared_ptr<SDMDisplayAiqeIntf> aqie_intf = GetConcurrencyMgrInstance();
   if (!aqie_intf) {
     DLOGI("Unable to retrieve aiqe intf");
     return nullptr;
   }
 
   return aqie_intf;
-}
-
-void SDMInterfaceFactoryImpl::DestroyCapsIntf() {
-  ConcurrencyMgr::RemoveInstance();
-}
-
-void SDMInterfaceFactoryImpl::DestroyDrawCycleIntf() {
-  ConcurrencyMgr::RemoveInstance();
-}
-
-void SDMInterfaceFactoryImpl::DestroyLayerBuilderIntf() {
-  SDMLayerBuilder::PutInstance();
-}
-
-void SDMInterfaceFactoryImpl::DestroyLifeCycleIntf() {
-  ConcurrencyMgr::RemoveInstance();
-}
-
-void SDMInterfaceFactoryImpl::DestroySideBandIntf() {
-  ConcurrencyMgr::RemoveInstance();
-}
-
-void SDMInterfaceFactoryImpl::DestroyAiqeIntf() {
-  ConcurrencyMgr::RemoveInstance();
-}
-
-void SDMInterfaceFactoryImpl::DestroySettingsIntf() {
-  ConcurrencyMgr::RemoveInstance();
 }
 
 } // namespace sdm

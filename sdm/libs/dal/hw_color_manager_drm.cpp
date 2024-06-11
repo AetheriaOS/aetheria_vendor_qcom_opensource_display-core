@@ -492,9 +492,10 @@ DisplayError HWColorManagerDrm::GetDrmIGC(const PPFeatureInfo &in_data,
     return kErrorMemory;
   }
 
+  mdp_igc->flags = 0;
   if (sde_igc) {
     if (sde_igc->flags & IGC_DITHER_EN)
-      mdp_igc->flags = IGC_DITHER_ENABLE;
+      mdp_igc->flags |= IGC_DITHER_ENABLE;
     mdp_igc->strength = sde_igc->strength;
 
     c0_c1_data_ptr = reinterpret_cast<uint32_t *>(sde_igc->c0_c1_data);
@@ -520,7 +521,7 @@ DisplayError HWColorManagerDrm::GetDrmIGC(const PPFeatureInfo &in_data,
     out_data->payload = mdp_igc;
   } else if (sde_igc_v5) {
     if (sde_igc_v5->flags & IGC_DITHER_EN)
-      mdp_igc->flags = IGC_DITHER_ENABLE;
+      mdp_igc->flags |= IGC_DITHER_ENABLE;
     mdp_igc->strength = sde_igc_v5->strength;
 
     c0_c1_data_ptr = reinterpret_cast<uint32_t *>(sde_igc_v5->c0_c1_data);
@@ -544,7 +545,7 @@ DisplayError HWColorManagerDrm::GetDrmIGC(const PPFeatureInfo &in_data,
     mdp_igc->c2_last = c2_data_ptr[i] & kRegU16Mask;
  #ifdef IGC_HIGH_PREC_ENABLE
     if (sde_igc_v5->flags & SDM_IGC_HIGH_PREC_EN) {
-      mdp_igc->flags = IGC_HIGH_PREC_ENABLE;
+      mdp_igc->flags |= IGC_HIGH_PREC_ENABLE;
       for (i = 0; i < IGC_TBL_LEN_EXTENDED; i++) {
         mdp_igc->c0_extended[i] = c0_c1_data_ptr[i + 1 + IGC_TBL_LEN] & kRegU16Mask;
         mdp_igc->c1_extended[i] =

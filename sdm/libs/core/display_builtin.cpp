@@ -1866,6 +1866,24 @@ DisplayError DisplayBuiltIn::GetPanelBrightnessFromLevel(float level, float *bri
   return kErrorNone;
 }
 
+DisplayError DisplayBuiltIn::GetPanelBrightnessLevel(int *level) {
+  lock_guard<recursive_mutex> obj(brightness_lock_);
+
+  if (!level) {
+    DLOGE("Invalid input pointer is null");
+    return kErrorParameters;
+  }
+
+  DisplayError err = dpu_core_mux_->GetPanelBrightness(level);
+  if (err != kErrorNone) {
+    DLOGE("Failed to get panel brightness, err %d", err);
+    return err;
+  }
+
+  DLOGI_IF(kTagDisplay, "Current panel level %d", *level);
+  return err;
+}
+
 DisplayError DisplayBuiltIn::GetPanelMaxBrightness(uint32_t *max_brightness_level) {
   lock_guard<recursive_mutex> obj(brightness_lock_);
 

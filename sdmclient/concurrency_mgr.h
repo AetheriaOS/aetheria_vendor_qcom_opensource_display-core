@@ -121,6 +121,7 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   DisplayError CreatePrimaryDisplay();
 
   ConcurrencyMgr();
+  ~ConcurrencyMgr();
   DisplayError Init(BufferAllocator *buffer_allocator, SocketHandler *socket_handler,
                     DebugCallbackIntf *debug) override;
   DisplayError Deinit();
@@ -154,9 +155,6 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
 
   void SetHpdData(int hpd_bpp, int hpd_pattern, int hpd_connected) override;
   void GetHpdData(int *hpd_bpp, int *hpd_pattern, int *hpd_connected) override;
-
-  static ConcurrencyMgr *GetInstance();
-  static void RemoveInstance();
 
   DisplayError
   GetAllDisplayAttributes(uint64_t display_id,

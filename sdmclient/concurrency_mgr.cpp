@@ -63,10 +63,6 @@ void __llvm_profile_try_write_file(void);
 #endif
 
 namespace sdm {
-ConcurrencyMgr *ConcurrencyMgr::cm_ = nullptr;
-uint32_t ConcurrencyMgr::cm_ref_count_ = 0;
-std::mutex ConcurrencyMgr::cm_lock_;
-
 Locker ConcurrencyMgr::locker_[locker_count_];
 bool ConcurrencyMgr::pending_power_mode_[kNumDisplays];
 std::bitset<kClientMax>
@@ -119,30 +115,8 @@ void GetColorMetadataFromColorMode(SDMColorMode mode, Dataspace &ds) {
 
 ConcurrencyMgr::ConcurrencyMgr() {}
 
-ConcurrencyMgr *ConcurrencyMgr::GetInstance() {
-  std::lock_guard<std::mutex> lock(cm_lock_);
-
-  if (!cm_ref_count_) {
-    cm_ = new ConcurrencyMgr();
-  }
-
-  cm_ref_count_++;
-  return cm_;
-}
-
-void ConcurrencyMgr::RemoveInstance() {
-  std::lock_guard<std::mutex> lock(cm_lock_);
-
-  if (!cm_ref_count_) {
-    cm_->Deinit();
-
-    delete cm_;
-    cm_ = nullptr;
-
-    return;
-  }
-
-  cm_ref_count_--;
+ConcurrencyMgr::~ConcurrencyMgr() {
+  Deinit();
 }
 
 int ConcurrencyMgr::GetDisplayIndex(int dpy) {
@@ -2609,4 +2583,4 @@ DisplayError ConcurrencyMgr::SetPanelFeatureConfig(Display display, int32_t type
   return CallDisplayFunction(display, &SDMDisplay::SetPanelFeatureConfig, type, data);
 }
 
-} // namespace sdm
+}  // namespace sdm
