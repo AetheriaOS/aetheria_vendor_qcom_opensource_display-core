@@ -976,6 +976,7 @@ void HWDeviceDRM::PopulateHWPanelInfo() {
 
   if (enable_ai_scaler || enable_abc || enable_ssrc) {
     hw_panel_info_.partial_update = false;
+    hw_panel_info_.ssip_enabled = true;
   } else {
     hw_panel_info_.partial_update = connector_info_.modes[index].num_roi;
   }
