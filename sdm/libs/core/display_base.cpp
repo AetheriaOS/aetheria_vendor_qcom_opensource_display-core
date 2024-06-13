@@ -4186,11 +4186,18 @@ DisplayError DisplayBase::HandleSecureEvent(SecureEvent secure_event, bool *need
     comp_manager_->GetDefaultQosData(display_comp_ctx_, &cached_qos_data_);
   } else if (secure_event == kTUITransitionPrepare) {
     DisplayState state = state_;
+    DisplayState pending_state = kStateOff;
+    bool pending_state_available = false;
+    if (GetPendingDisplayState(&pending_state) == kErrorNone) {
+      pending_state_available = true;
+    }
     err = SetDisplayState(kStateOff, true /* teardown */, &release_fence);
     if (err != kErrorNone) {
       DLOGE("SetDisplay state off failed for %d err %d", display_id_, err);
       return err;
     }
+
+    state = pending_state_available ? pending_state : state_;
     SetPendingPowerState(state);
   }
 
