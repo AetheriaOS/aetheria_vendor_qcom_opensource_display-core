@@ -60,6 +60,7 @@ enum PanelFeaturePropertyID {
   kPanelFeatureAiqeMdnieArt,
   kPanelFeatureAiqeCopr,
   kPanelFeatureABCCfg,
+  kPanelFeatureDemuraBacklight,
   kPanelFeaturePropertyIDMax
 };
 

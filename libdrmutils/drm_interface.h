@@ -1211,6 +1211,7 @@ enum DRMPanelFeatureID {
   kDRMPanelFeatureAiqeMdnieArt,
   kDRMPanelFeatureAiqeCopr,
   kDRMPanelFeatureABC,
+  kDRMPanelFeatureDemuraBacklight,
   kDRMPanelFeatureMax,
 };
 
