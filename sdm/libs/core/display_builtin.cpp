@@ -457,8 +457,15 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
   lower_fps_ = disp_layer_stack_->stack_info.lower_fps;
 
   if (color_mgr_ && client_ctx_.hw_panel_info.mode == kModeVideo && idle_fallback_on_dspp_) {
-    color_mgr_->ColorMgrIdleFallback(lower_fps_);
-    needs_validate_ |= color_mgr_->IsValidateNeeded();
+    CwbTapPoint tap_point = CwbTapPoint::kDsppTapPoint;
+    bool destination_scaler =
+        (client_ctx_.display_attributes.x_pixels != client_ctx_.mixer_attributes.width ||
+         client_ctx_.display_attributes.y_pixels != client_ctx_.mixer_attributes.height);
+    tap_point = destination_scaler ? CwbTapPoint::kLmTapPoint : CwbTapPoint::kDsppTapPoint;
+    if (tap_point == CwbTapPoint::kDsppTapPoint) {
+      color_mgr_->ColorMgrIdleFallback(lower_fps_);
+      needs_validate_ |= color_mgr_->IsValidateNeeded();
+    }
   }
 
   if (ssrc_feature_enabled_) {
