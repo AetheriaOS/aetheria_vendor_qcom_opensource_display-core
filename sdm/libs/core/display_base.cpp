@@ -4197,7 +4197,7 @@ DisplayError DisplayBase::HandleSecureEvent(SecureEvent secure_event, bool *need
       return err;
     }
 
-    state = pending_state_available ? pending_state : state_;
+    state = pending_state_available ? pending_state : state;
     SetPendingPowerState(state);
   }
 
