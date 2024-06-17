@@ -3350,6 +3350,13 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
       *new_mixer_height = display_height;
     }
     return ((*new_mixer_width != mixer_width) || (*new_mixer_height != mixer_height));
+  } else if ((num_active_displays > 1) &&
+             ((mixer_width != fb_width) || (mixer_height != fb_height))) {
+    // when more than one display are active, set LM size to FB size so that built-in displays
+    // dont need to acquire VIG pipes leading to composition strategies exhausted.
+    *new_mixer_width = fb_width;
+    *new_mixer_height = fb_height;
+    return true;
   }
 
   return false;
