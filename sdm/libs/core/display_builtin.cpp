@@ -457,8 +457,15 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
   lower_fps_ = disp_layer_stack_->stack_info.lower_fps;
 
   if (color_mgr_ && client_ctx_.hw_panel_info.mode == kModeVideo && idle_fallback_on_dspp_) {
-    color_mgr_->ColorMgrIdleFallback(lower_fps_);
-    needs_validate_ |= color_mgr_->IsValidateNeeded();
+    CwbTapPoint tap_point = CwbTapPoint::kDsppTapPoint;
+    bool destination_scaler =
+        (client_ctx_.display_attributes.x_pixels != client_ctx_.mixer_attributes.width ||
+         client_ctx_.display_attributes.y_pixels != client_ctx_.mixer_attributes.height);
+    tap_point = destination_scaler ? CwbTapPoint::kLmTapPoint : CwbTapPoint::kDsppTapPoint;
+    if (tap_point == CwbTapPoint::kDsppTapPoint) {
+      color_mgr_->ColorMgrIdleFallback(lower_fps_);
+      needs_validate_ |= color_mgr_->IsValidateNeeded();
+    }
   }
 
   if (ssrc_feature_enabled_) {
@@ -2962,6 +2969,21 @@ DisplayError DisplayBuiltIn::ReconfigureDisplay() {
     dpps_info_.DppsNotifyOps(kDppsUpdateFpsEvent, &dpps_payload, sizeof(dpps_payload));
   }
 
+  // Notify Demura when refresh rate changes
+  if (demura_) {
+    GenericPayload demura_fps_pl = {};
+    uint32_t *demura_fps_ptr = nullptr;
+    int ret = demura_fps_pl.CreatePayload<uint32_t>(demura_fps_ptr);
+    if (ret) {
+      DLOGE("Failed to create payload for demura fps, error = %d", ret);
+    } else {
+      *demura_fps_ptr = client_ctx_.display_attributes.fps;
+      ret = demura_->SetParameter(kDemuraFeatureParamRefreshRate, demura_fps_pl);
+      if (ret) {
+        DLOGE("Failed to set refresh rate for demura, error = %d", ret);
+      }
+    }
+  }
   return kErrorNone;
 }
 
