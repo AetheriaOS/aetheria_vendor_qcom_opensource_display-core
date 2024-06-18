@@ -1199,6 +1199,7 @@ enum DRMPanelFeatureID {
   kDRMPanelFeatureDsppRCInfo,
   kDRMPanelFeatureSPRInit,
   kDRMPanelFeatureSPRPackType,
+  kDRMPanelFeatureSPRPackTypeMode,
   kDRMPanelFeatureDemuraInit,
   kDRMPanelFeatureRCInit,
   kDRMPanelFeatureDemuraResources,
