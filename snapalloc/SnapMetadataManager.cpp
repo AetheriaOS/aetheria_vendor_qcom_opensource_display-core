@@ -616,7 +616,9 @@ Error SnapMetadataManager::AlignedWidthInPixelsHelper(SnapMetadata *metadata,
       ALOGE("Invalid allocation - unable to get allocation size");
       return err;
     }
-    uint64_t width = layout.aligned_width_in_bytes / layout.bpp;
+    int width = 0;
+    constraint_mgr_->ConvertAlignedWidthFromBytesToPixels(buf_des->format,
+                                                          layout.aligned_width_in_bytes, &width);
     *static_cast<uint32_t *>(out_get) = width;
     return Error::NONE;
   } else if (out_get != nullptr) {
