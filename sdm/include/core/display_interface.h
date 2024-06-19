@@ -366,6 +366,9 @@ enum PanelFeatureVendorServiceType {
   kTypeDemuraTnCWBSamplingPeriod = 0,
   /* Setter: int */
   kTypeDemuraTnEventsCtrl = 1,
+  kTypeDemuraTnUserCtrl = 2,
+  kTypeDeleteDemuraConfig = 3,
+  kTypeDeleteDemuraTnConfig = 4,
   PanelFeatureVendorServiceTypeMax,
 };
 
