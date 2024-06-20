@@ -1624,6 +1624,14 @@ DisplayError SDMDisplayBuiltIn::RetrieveDemuraTnFiles() {
   return kErrorNone;
 }
 
+DisplayError SDMDisplayBuiltIn::IsCacV2Supported(bool *supported) {
+  uint32_t cac_supported = 0;
+  auto error = display_intf_->IsSupportedOnDisplay(kCacV2, &cac_supported);
+  *supported = cac_supported ? true : false;
+
+  return error;
+}
+
 DisplayError SDMDisplayBuiltIn::PerformCacConfig(CacConfig config, bool enable) {
   DLOGV("Display ID: %" PRId64 " cac_enable: %d", id_, enable);
   DisplayError error = display_intf_->PerformCacConfig(config, enable);

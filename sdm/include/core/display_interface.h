@@ -332,6 +332,7 @@ enum SupportedDisplayFeature {
   kCwbDemuraTapPoint,
   kCwbCrop,
   kDedicatedCwb,
+  kCacV2,
 };
 
 /*! @brief This struct stores the state of Qsync

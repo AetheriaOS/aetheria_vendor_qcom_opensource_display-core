@@ -227,6 +227,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError SetDemuraState(int state) override;
   DisplayError SetDemuraConfig(int demura_idx) override;
   DisplayError PerformCacConfig(CacConfig config, bool enable) override;
+  bool IsCacV2Supported() override;
   DisplayError
   PanelOprInfo(const std::string &client_name, bool enable,
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) override;

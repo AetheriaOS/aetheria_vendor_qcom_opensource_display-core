@@ -3751,13 +3751,21 @@ DisplayError DisplayBuiltIn::GetPanelBrightnessBasePath(std::string *base_path) 
   return dpu_core_mux_->GetPanelBrightnessBasePath(base_path);
 }
 
+bool DisplayBuiltIn::IsCacV2Supported() {
+  for (auto &res_info : hw_resource_info_) {
+    if (res_info.cac_version != kCacVersion2) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 DisplayError DisplayBuiltIn::PerformCacConfig(CacConfig config, bool enable) {
   ClientLock lock(disp_mutex_);
 
-  for (auto res_info : hw_resource_info_) {
-    if (res_info.cac_version != kCacVersion2) {
-      return kErrorNotSupported;
-    }
+  if (!IsCacV2Supported()) {
+    return kErrorNotSupported;
   }
 
   DLOGV_IF(kTagDisplay, "CAC enable: %d Config:: k0r: %f k1r: %f k0b: %f k1b: %f pixel_pitch: %f"
