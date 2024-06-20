@@ -23,7 +23,7 @@
 */
 
 /*
- * ​Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
+ * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
  *
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -186,6 +186,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError SetPanelBrightness(float brightness) override;
   DisplayError GetPanelBrightness(float *brightness) override;
   DisplayError GetPanelBrightnessFromLevel(float level, float *brightness);
+  DisplayError GetPanelBrightnessLevel(int *level) override;
   DisplayError GetPanelMaxBrightness(uint32_t *max_brightness_level) override;
   DisplayError GetRefreshRate(uint32_t *refresh_rate) override;
   DisplayError SetDisplayDppsAdROI(void *payload) override;
@@ -373,7 +374,6 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   uint32_t hfc_buffer_height_ = 0;
   int hfc_buffer_fd_ = -1;
   uint32_t hfc_buffer_size_ = 0;
-  DisplayIPCVmCallbackImpl *vm_cb_intf_ = nullptr;
   Layer cwb_layer_ = {};
   bool lower_fps_ = false;
   bool cwb_buffer_initialized_ = false;

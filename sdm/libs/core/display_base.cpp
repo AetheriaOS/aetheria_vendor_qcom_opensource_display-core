@@ -2239,11 +2239,10 @@ DisplayError DisplayBase::SetDisplayState(DisplayState state, bool teardown,
       if (IsPrimaryDisplayLocked()) {
         primary_active_ = active;
       }
-      // To handle pending vsync-enabling on resume, need to wait on power-on retire fence after
-      // occurance of either sync or async power commit, to avoid early vsync-enabling hit,
-      // such that driver couldn't face corner case concurrency race condition.
+      // Handle vsync pending on resume, Since the power on commit is synchronous we pass -1 as
+      // retire fence otherwise pass valid retire fence
       if (state == kStateOn) {
-        HandlePendingVSyncEnable(sync_points.retire_fence);
+        HandlePendingVSyncEnable(nullptr /* retire fence */);
       }
     }
     comp_manager_->SetDisplayState(display_comp_ctx_, state, sync_points);
@@ -2976,9 +2975,7 @@ DisplayError DisplayBase::HandlePendingVSyncEnable(const shared_ptr<Fence> &reti
   if (vsync_enable_pending_) {
     // Retire fence signalling confirms that CRTC enabled, hence wait for retire fence before
     // we enable vsync
-    if (retire_fence) {
-      Fence::Wait(retire_fence);
-    }
+    Fence::Wait(retire_fence_);
 
     DisplayError error = SetVSyncStateLocked(true /* enable */);
     if (error != kErrorNone) {

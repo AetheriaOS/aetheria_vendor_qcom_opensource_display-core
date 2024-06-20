@@ -599,6 +599,7 @@ public:
   virtual void HandleFrameCapture(){};
 
   std::shared_ptr<ISnapMapper> snapmapper_;
+  std::shared_ptr<SDMLayerBuilder> layer_builder_;
   bool layer_stack_invalid_ = true;
   CoreInterface *core_intf_ = nullptr;
   BufferAllocator *buffer_allocator_ = NULL;

@@ -141,12 +141,19 @@ DisplayError SDMTrustedUI::TUITransitionPrepare(int disp_id) {
   }
 
   std::bitset<kSecureMax> secure_sessions = 0;
+  SDMPowerMode current_power_mode = SDMPowerMode::POWER_MODE_OFF;
   {
     SEQUENCE_WAIT_SCOPE_LOCK(locker_[target_display]);
     auto display = cb_->GetDisplayFromClientId(target_display);
     if (display) {
       display->GetActiveSecureSession(&secure_sessions);
+      current_power_mode = display->GetCurrentPowerMode();
     }
+  }
+
+  if (current_power_mode != SDMPowerMode::POWER_MODE_ON) {
+    DLOGW("TUI session not allowed as target display is not powered On");
+    return kErrorNotSupported;
   }
 
   if (secure_sessions[kSecureCamera]) {

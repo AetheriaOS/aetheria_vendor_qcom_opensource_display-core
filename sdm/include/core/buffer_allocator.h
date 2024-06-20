@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2015 - 2018, 2021 The Linux Foundation. All rights reserved.
 *
-* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -86,17 +86,14 @@ struct BufferConfig {
   bool gfx_client = false;                    //!< Specifies whether buffer is used by gfx.
   bool trusted_ui = false;                    //!< Specifies buffer to be allocated from non-secure
                                               //!< contiguous memory.
+  bool tui_demura = false;                    //!< Specifies if it is demura feature in tui
   BufferAccessControlMap access_control;      //!< Specifies the access permission for this buffer
 
   bool operator!=(const BufferConfig& config) const {
-    return width != config.width   ||
-           height != config.height ||
-           format != config.format ||
-           secure != config.secure ||
-           cache != config.cache   ||
-           secure_camera != config.secure_camera ||
-           gfx_client != config.gfx_client ||
-           trusted_ui != config.trusted_ui;
+    return width != config.width || height != config.height || format != config.format ||
+           secure != config.secure || cache != config.cache ||
+           secure_camera != config.secure_camera || gfx_client != config.gfx_client ||
+           tui_demura != config.tui_demura || trusted_ui != config.trusted_ui;
   }
 };
 

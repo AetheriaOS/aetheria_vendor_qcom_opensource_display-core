@@ -56,6 +56,7 @@
 #include "sdm_debugger.h"
 #include "sdm_display.h"
 #include "sdm_display_resolution_extn.h"
+#include "sdm_factory.h"
 
 #ifdef QTI_BSP
 #include <hardware/display_defs.h>
@@ -538,10 +539,11 @@ SDMDisplay::SDMDisplay(CoreInterface *core_intf, BufferAllocator *buffer_allocat
       display_class_(display_class) {
   buffer_allocator_ = buffer_allocator;
 
-  auto lb = SDMLayerBuilder::GetInstance();
-  lb->Init(buffer_allocator, id);
+  auto sdm_factory = SDMInterfaceFactoryImpl::GetSDMFactoryInternal();
+  layer_builder_ = sdm_factory->GetLayerBuilderInternal();
+  layer_builder_->Init(buffer_allocator, id);
 
-  auto error = lb->GetSDMLayerStack(id, &sdm_layer_stack_);
+  auto error = layer_builder_->GetSDMLayerStack(id, &sdm_layer_stack_);
   if (error != kErrorNone) {
     DLOGE("failed to get layer builder");
   }
@@ -753,10 +755,8 @@ DisplayError SDMDisplay::Deinit() {
     delete color_mode_;
   }
 
-  SDMLayerBuilder *layer_builder = SDMLayerBuilder::GetInstance();
-  layer_builder->DeInit(id_);
-  layer_builder = nullptr;
-  SDMLayerBuilder::PutInstance();
+  layer_builder_->DeInit(id_);
+  layer_builder_ = nullptr;
 
   return kErrorNone;
 }
@@ -865,6 +865,9 @@ void SDMDisplay::BuildLayerStack() {
       layer_stack_.flags.single_buffered_layer_present = true;
     }
 
+    // hdr flag is reset since same layer can switch b/w hdr & non-hdr content
+    // eg: switching b/w hdr & sdr videos in pip
+    layer->input_buffer.flags.hdr = false;
     bool hdr_layer = IsHDRLayerPresent(layer);
     if (hdr_layer && !disable_hdr_handling_) {
       // Dont honor HDR when its handling is disabled
@@ -3383,7 +3386,7 @@ DisplayError SDMDisplay::HandleSecureEvent(SecureEvent secure_event,
     DLOGI("Resume display %d-%d", sdm_id_, type_);
     display_paused_ = false;
     display_pause_pending_ = false;
-    if (*needs_refresh == false) {
+    if (*needs_refresh == false || secure_event == kTUITransitionUnPrepare) {
       secure_event_ = kSecureEventMax;
       return kErrorNone;
     }

@@ -362,8 +362,10 @@ struct PanelFeatureInfo {
   @sa DisplayInterface::PanelFeatureVendorServiceType
 */
 enum PanelFeatureVendorServiceType {
-  kTypeDemuraTnCWBSamplingPeriod,
-  kTypeDemuraTnEventsCtrl,
+  /* Setter: int */
+  kTypeDemuraTnCWBSamplingPeriod = 0,
+  /* Setter: int */
+  kTypeDemuraTnEventsCtrl = 1,
   PanelFeatureVendorServiceTypeMax,
 };
 
@@ -871,6 +873,14 @@ class DisplayInterface {
     @return \link DisplayError \endlink
   */
   virtual DisplayError GetPanelBrightness(float *brightness) = 0;
+
+  /*! @brief Method to get the brightness level of the display
+
+    @param[out] brightness brightness value
+
+    @return \link DisplayError \endlink
+  */
+  virtual DisplayError GetPanelBrightnessLevel(int *level) = 0;
 
   /*! @brief Method to get the max brightness level of the display
 
