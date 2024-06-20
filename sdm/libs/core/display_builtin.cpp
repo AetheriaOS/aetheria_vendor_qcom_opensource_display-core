@@ -366,6 +366,10 @@ DisplayError DisplayBuiltIn::Init() {
     idle_fallback_on_dspp_ = (value == 1);
   }
 
+  value = 0;
+  DebugHandler::Get()->GetProperty(FORCE_LM_TO_FB_CONFIG, &value);
+  force_lm_to_fb_config_ = (value == 1);
+
   NoiseInit();
   InitCWBBuffer();
   SetupAiqe();

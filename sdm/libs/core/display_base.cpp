@@ -3248,20 +3248,22 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
   bool valid_lm_tappoint = layer_stack->cwb_config
                                ? layer_stack->cwb_config->tap_point == CwbTapPoint::kLmTapPoint
                                : false;
-  // Resize mixer attributes to fb config when client requests CWB at LM tap-point
-  // TODO(user): remove below check when clients request buffer with mixer resolution
-  if ((HasConcurrentWriteback() && layer_stack->output_buffer && valid_lm_tappoint) ||
-      xr_variant_) {
-    DLOGV_IF(kTagDisplay, "Found concurrent writeback, configure LM width:%d height:%d", fb_width,
-             fb_height);
-    *new_mixer_width = fb_width;
-    *new_mixer_height = fb_height;
-    return ((*new_mixer_width != mixer_width) || (*new_mixer_height != mixer_height));
-  }
 
   if (secure_event_ == kSecureDisplayStart || secure_event_ == kTUITransitionStart) {
     *new_mixer_width = display_width;
     *new_mixer_height = display_height;
+    return ((*new_mixer_width != mixer_width) || (*new_mixer_height != mixer_height));
+  }
+
+  // Resize mixer attributes to fb config when client requests CWB at LM tap-point
+  // TODO(user): remove below check when clients request buffer with mixer resolution
+  if (force_lm_to_fb_config_ ||
+      (HasConcurrentWriteback() && layer_stack->output_buffer && valid_lm_tappoint)) {
+    DLOGV_IF(kTagDisplay, "CWB:%d, force_lm_to_fb_config_:%d, configure LM width:%d height:%d",
+             (HasConcurrentWriteback() && layer_stack->output_buffer), force_lm_to_fb_config_,
+             fb_width, fb_height);
+    *new_mixer_width = fb_width;
+    *new_mixer_height = fb_height;
     return ((*new_mixer_width != mixer_width) || (*new_mixer_height != mixer_height));
   }
 
