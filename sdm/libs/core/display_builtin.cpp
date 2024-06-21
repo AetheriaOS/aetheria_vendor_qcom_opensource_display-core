@@ -366,6 +366,10 @@ DisplayError DisplayBuiltIn::Init() {
     idle_fallback_on_dspp_ = (value == 1);
   }
 
+  value = 0;
+  DebugHandler::Get()->GetProperty(FORCE_LM_TO_FB_CONFIG, &value);
+  force_lm_to_fb_config_ = (value == 1);
+
   NoiseInit();
   InitCWBBuffer();
   SetupAiqe();
@@ -392,6 +396,11 @@ DisplayError DisplayBuiltIn::Deinit() {
       EnableDemuraTn(false);
       if (demuratn_->Deinit() != 0) {
         DLOGE("Unable to DeInit DemuraTn on Display %d", display_id_);
+      }
+    }
+    if (demuratn_cleanup_intf_) {
+      if (demuratn_cleanup_intf_->Deinit() != 0) {
+        DLOGE("Unable to DeInit demuratn_cleanup_intf_ on Display %d", display_id_);
       }
     }
     demura_dynamic_enabled_ = true;
@@ -1149,6 +1158,7 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
 
   DLOGI("Demura enable allowed %d, Anti-aging enable allowed %d", demura_allowed, demuratn_allowed);
   if (demura_allowed) {
+    demuratn_user_ctrl_ = GetDemuraTnUserCtrl();
     error = SetupDemura();
     if (error != kErrorNone) {
       // Non-fatal but not expected, log error
@@ -1159,7 +1169,7 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
       if (demura_) {
         SetDemuraIntfStatus(false);
       }
-    } else if (demuratn_allowed && demuratn_factory_) {
+    } else if (demuratn_allowed && demuratn_factory_ && demuratn_user_ctrl_) {
       error = SetupDemuraTn();
       if (error != kErrorNone) {
         DLOGW("Failed to setup DemuraTn, Error = %d", error);
@@ -1179,7 +1189,6 @@ DisplayError DisplayBuiltIn::SetupDemuraTn() {
 
   demuratn_ = demuratn_factory_->CreateDemuraTnCoreUvmIntf(demura_, buffer_allocator_, this);
   if (!demuratn_) {
-    demuratn_factory_ = nullptr;
     DLOGE("Failed to create demuraTnCoreUvmIntf");
     return kErrorUndefined;
   }
@@ -1187,7 +1196,6 @@ DisplayError DisplayBuiltIn::SetupDemuraTn() {
   ret = demuratn_->Init();
   if (ret) {
     DLOGE("Failed to init demuraTnCoreUvmIntf, ret %d", ret);
-    demuratn_factory_ = nullptr;
     demuratn_.reset();
     demuratn_ = nullptr;
     return kErrorUndefined;
@@ -1237,7 +1245,6 @@ DisplayError DisplayBuiltIn::EnableDemuraTn(bool enable) {
       int rc = demuratn_->Deinit();
       if (rc)
         DLOGE("Failed to deinit DemuraTn ret %d", rc);
-      demuratn_factory_ = nullptr;
       demuratn_.reset();
       demuratn_ = nullptr;
       return kErrorUndefined;
@@ -1364,7 +1371,7 @@ DisplayError DisplayBuiltIn::PostCommit() {
   }
   dpps_info_.Init(this, client_ctx_.hw_panel_info.panel_name, this, prop_intf_);
 
-  if (demuratn_)
+  if (demuratn_ && demuratn_user_ctrl_)
     EnableDemuraTn(true);
 
   HandleQsyncPostCommit();
@@ -3744,13 +3751,21 @@ DisplayError DisplayBuiltIn::GetPanelBrightnessBasePath(std::string *base_path) 
   return dpu_core_mux_->GetPanelBrightnessBasePath(base_path);
 }
 
+bool DisplayBuiltIn::IsCacV2Supported() {
+  for (auto &res_info : hw_resource_info_) {
+    if (res_info.cac_version != kCacVersion2) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 DisplayError DisplayBuiltIn::PerformCacConfig(CacConfig config, bool enable) {
   ClientLock lock(disp_mutex_);
 
-  for (auto res_info : hw_resource_info_) {
-    if (res_info.cac_version != kCacVersion2) {
-      return kErrorNotSupported;
-    }
+  if (!IsCacV2Supported()) {
+    return kErrorNotSupported;
   }
 
   DLOGV_IF(kTagDisplay, "CAC enable: %d Config:: k0r: %f k1r: %f k0b: %f k1b: %f pixel_pitch: %f"
@@ -4152,6 +4167,14 @@ DisplayError DisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) {
       break;
     case kTypeDemuraTnEventsCtrl:
       ret = SetDemuraTnEventsCtrl(data);
+    case kTypeDemuraTnUserCtrl:
+      ret = SetDemuraTnUserCtrl(data);
+      break;
+    case kTypeDeleteDemuraConfig:
+      ret = CleanupDemuraConfig(data, kDeleteDemuraConfig);
+      break;
+    case kTypeDeleteDemuraTnConfig:
+      ret = CleanupDemuraConfig(data, kDeleteDemuraTnConfig);
       break;
     default:
       DLOGE("Invalid type %d", type);
@@ -4239,6 +4262,19 @@ DisplayError DisplayBuiltIn::StartTvmServices() {
     DLOGI("VmFiletransfer service is started successfully");
   }
 
+  if (demuratn_factory_) {
+    demuratn_cleanup_intf_ = demuratn_factory_->CreateDemuraTnCleanupIntf(buffer_allocator_);
+    if (!demuratn_cleanup_intf_) {
+      DLOGW("Failed to create DemuraTnCleanupIntf");
+    } else {
+      int ret = demuratn_cleanup_intf_->Init();
+      if (ret) {
+        DLOGE("Failed to init DemuraTnCleanupIntf, ret %d", ret);
+        demuratn_cleanup_intf_.reset();
+      }
+    }
+  }
+
   if (enable_demura) {
     error = ExportDemuraFiles();
     if (error) {
@@ -4316,6 +4352,109 @@ DisplayError DisplayBuiltIn::SetDemuraTnEventsCtrl(void *data) {
 
   DLOGI("Set events ctrl %d success", *ctrl_ptr);
   return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetDemuraTnUserCtrl(void *data) {
+  DisplayError ret = kErrorNone;
+  if (!data) {
+    DLOGE("Invalid parameters");
+    return kErrorParameters;
+  }
+
+  bool user_ctrl = *(reinterpret_cast<uint32_t *>(data)) ? true : false;
+  if (!user_ctrl) {
+    ret = EnableDemuraTn(user_ctrl);
+    if (ret != kErrorNone) {
+      return ret;
+    }
+  }
+  demuratn_user_ctrl_ = user_ctrl;
+
+  int error = UpdateDemuraTnUserCtrl(user_ctrl);
+  if (error) {
+    DLOGE("Failed to update demura user ctrl, error = %d", error);
+    return kErrorUndefined;
+  }
+
+  return ret;
+}
+
+DisplayError DisplayBuiltIn::CleanupDemuraConfig(void *data, DemuraTnCleanupType type) {
+  int ret = 0;
+  if (!data) {
+    DLOGE("Invalid parameters");
+    return kErrorParameters;
+  }
+  if (!demuratn_cleanup_intf_) {
+    DLOGW("Demuratn cleanup intf is not created");
+    return kErrorNotSupported;
+  }
+
+  uint64_t panel_id = *(reinterpret_cast<uint64_t *>(data));
+
+  DemuraTnCleanupDeleteConfigInput *input = nullptr;
+  GenericPayload payload;
+  ret = payload.CreatePayload(input);
+  if (ret || !input) {
+    DLOGE("Failed to create payload for DeleteConfigInput, ret %d", ret);
+    return kErrorParameters;
+  }
+
+  input->panel_id = panel_id;
+  if (type == kDeleteDemuraConfig) {
+    input->delete_t0 = true;
+  }
+  if (type == kDeleteDemuraTnConfig) {
+    input->delete_tn = true;
+  }
+
+  ret = demuratn_cleanup_intf_->SetParameter(kDemuraTnCleanupDeleteConfig, payload);
+  if (ret) {
+    DLOGE("Failed to SetParameter, param %d, ret %d", kDemuraTnCleanupDeleteConfig, ret);
+    return kErrorParameters;
+  }
+
+  return kErrorNone;
+}
+
+bool DisplayBuiltIn::GetDemuraTnUserCtrl() {
+  std::ifstream in(kDemuraTnUserCtrlFile, std::ios::binary);
+  if (!in.is_open()) {
+    DLOGW("Failed to open the file %s", kDemuraTnUserCtrlFile.c_str());
+    return false;
+  }
+
+  in.seekg(0, in.end);
+  int length = in.tellg();
+  in.seekg(0, in.beg);
+  std::string file_data(length, '\0');
+  in.read(&file_data[0], length);
+
+  if (static_cast<int>(file_data.size()) != length) {
+    DLOGE("Couldn't read the whole file");
+    return false;
+  }
+
+  auto pos = file_data.find("true");
+  if (pos != std::string::npos) {
+    return true;
+  }
+
+  return false;
+}
+
+int DisplayBuiltIn::UpdateDemuraTnUserCtrl(bool user_ctrl) {
+  int ret = 0;
+  std::ofstream out(kDemuraTnUserCtrlFile, std::ios::binary | std::ios::trunc);
+
+  if (out.fail()) {
+    DLOGW("Failed to open the file %s %s", kDemuraTnUserCtrlFile.c_str(), strerror(errno));
+    return -ENOENT;
+  }
+
+  std::string value = user_ctrl ? "true" : "false";
+  out << value << '\n';
+  return ret;
 }
 
 }  // namespace sdm

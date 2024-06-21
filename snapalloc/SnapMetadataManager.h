@@ -228,6 +228,9 @@ class SnapMetadataManager {
   Error BufferDequeueDurationHelper(SnapMetadata *metadata, SnapHandleInternal *handle,
                                     void *in_set = nullptr, void *out_get = nullptr,
                                     BufferDescriptor *buf_des = nullptr);
+  Error AnamorphicCompressionHelper(SnapMetadata *metadata, SnapHandleInternal *handle,
+                                    void *in_set = nullptr, void *out_get = nullptr,
+                                    BufferDescriptor *buf_des = nullptr);
 
   struct DRMFormatDescriptor {
     uint32_t drm_format;
@@ -451,12 +454,12 @@ class SnapMetadataManager {
           {HEAP_NAME, &SnapMetadataManager::HeapNameHelper},
           {PIXEL_FORMAT_ALLOCATED, &SnapMetadataManager::PixelFormatAllocatedHelper},
           {BUFFER_DEQUEUE_DURATION, &SnapMetadataManager::BufferDequeueDurationHelper},
+          {ANAMORPHIC_COMPRESSION_METADATA, &SnapMetadataManager::AnamorphicCompressionHelper},
   };
   struct metadata_traits {
     bool is_settable;
   };
-  std::unordered_map<vendor_qti_hardware_display_common_MetadataType,
-                     metadata_traits>
+  std::unordered_map<vendor_qti_hardware_display_common_MetadataType, metadata_traits>
       metadatatype_traits_map{
           {BUFFER_ID, {false}},
           {NAME, {false}},
@@ -518,6 +521,7 @@ class SnapMetadataManager {
           {HEAP_NAME, {false}},
           {PIXEL_FORMAT_ALLOCATED, {false}},
           {BUFFER_DEQUEUE_DURATION, {true}},
+          {ANAMORPHIC_COMPRESSION_METADATA, {true}},
       };
 };
 }  // namespace snapalloc

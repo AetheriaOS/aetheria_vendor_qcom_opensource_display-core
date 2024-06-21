@@ -616,7 +616,9 @@ Error SnapMetadataManager::AlignedWidthInPixelsHelper(SnapMetadata *metadata,
       ALOGE("Invalid allocation - unable to get allocation size");
       return err;
     }
-    uint64_t width = layout.aligned_width_in_bytes / layout.bpp;
+    int width = 0;
+    constraint_mgr_->ConvertAlignedWidthFromBytesToPixels(buf_des->format,
+                                                          layout.aligned_width_in_bytes, &width);
     *static_cast<uint32_t *>(out_get) = width;
     return Error::NONE;
   } else if (out_get != nullptr) {
@@ -969,6 +971,21 @@ Error SnapMetadataManager::ColorRemappingInfoHelper(SnapMetadata *metadata,
   } else if (in_set != nullptr) {
     metadata->color.cRI =
         *static_cast<vendor_qti_hardware_display_common_QtiColorRemappingInfo *>(in_set);
+    return Error::NONE;
+  }
+  return Error::BAD_VALUE;
+}
+
+Error SnapMetadataManager::AnamorphicCompressionHelper(SnapMetadata *metadata,
+                                                       SnapHandleInternal *handle, void *in_set,
+                                                       void *out_get, BufferDescriptor *buf_des) {
+  if (out_get != nullptr) {
+    *static_cast<vendor_qti_hardware_display_common_QtiAnamorphicMetadata *>(out_get) =
+        metadata->anamorphic_compression;
+    return Error::NONE;
+  } else if (in_set != nullptr) {
+    metadata->anamorphic_compression =
+        *static_cast<vendor_qti_hardware_display_common_QtiAnamorphicMetadata *>(in_set);
     return Error::NONE;
   }
   return Error::BAD_VALUE;

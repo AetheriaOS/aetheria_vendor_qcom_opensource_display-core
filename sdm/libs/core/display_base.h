@@ -281,6 +281,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   virtual DisplayError PerformCacConfig(CacConfig config, bool enable) {
     return kErrorNotSupported;
   }
+  virtual bool IsCacV2Supported() { return false; }
   virtual DisplayError
   PanelOprInfo(const std::string &client_name, bool enable,
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) {
@@ -459,6 +460,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   HWPowerState pending_power_state_ = kPowerStateNone;
   QSyncMode qsync_mode_ = kQSyncModeNone;
   std::bitset<kUpdateAVRFlagMax> needs_avr_update_ = {};
+  bool force_lm_to_fb_config_ = false;
 
   static Locker display_power_reset_lock_;
   static bool display_power_reset_pending_;

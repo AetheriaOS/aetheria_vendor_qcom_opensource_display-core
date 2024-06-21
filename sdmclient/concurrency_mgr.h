@@ -597,7 +597,12 @@ private:
 
   // QClient methods
   DisplayError GetDisplayPortId(uint32_t disp_id, int *port_id);
-
+  DisplayError IsCacV2Supported(uint32_t disp_id, bool *supported) {
+    return CallDisplayFunction(disp_id, &SDMDisplay::IsCacV2Supported, supported);
+  }
+  DisplayError PerformCacConfig(uint64_t disp_id, CacConfig cac_config, bool enable) {
+    return CallDisplayFunction(disp_id, &SDMDisplay::PerformCacConfig, cac_config, enable);
+  }
   // Internal methods
   void HandleSecureSession();
   void HandlePendingPowerMode(Display display,

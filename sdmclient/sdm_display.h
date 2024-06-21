@@ -502,6 +502,10 @@ public:
   virtual DisplayError PerformCacConfig(CacConfig config, bool enable) {
     return kErrorNotSupported;
   }
+  virtual DisplayError IsCacV2Supported(bool *supported) {
+    *supported = false;
+    return kErrorNotSupported;
+  }
   int32_t GetDisplayConfigGroup(DisplayConfigGroupInfo variable_config);
 
   void LayerStackUpdated() {
