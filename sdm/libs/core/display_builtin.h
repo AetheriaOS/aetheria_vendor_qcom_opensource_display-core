@@ -321,6 +321,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError CleanupDemuraConfig(void *data, DemuraTnCleanupType type);
   bool GetDemuraTnUserCtrl();
   int UpdateDemuraTnUserCtrl(bool user_ctrl);
+  DisplayError TriggerDemuraOemPlugIn(void *data);
 
   const uint32_t kPuTimeOutMs = 1000;
   std::vector<HWEvent> event_list_;

@@ -83,6 +83,11 @@ struct DemuraInputConfig {
   DisplayInterface *display_intf = nullptr;
 };
 
+struct DemuraBacklightInfo {
+  uint32_t os_brightness_max;
+  uint32_t os_brightness;
+};
+
 // Demura specific param as strings
 const std::string kDemuraFeatureParamActive = "Active";
 const std::string kDemuraFeatureParamCorrectionBuffer = "CorrectionBuffer";

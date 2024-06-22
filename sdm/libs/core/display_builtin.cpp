@@ -4176,6 +4176,9 @@ DisplayError DisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) {
     case kTypeDeleteDemuraTnConfig:
       ret = CleanupDemuraConfig(data, kDeleteDemuraTnConfig);
       break;
+    case kTypeTriggerDemuraOemPlugIn:
+      ret = TriggerDemuraOemPlugIn(data);
+      break;
     default:
       DLOGE("Invalid type %d", type);
       ret = kErrorParameters;
@@ -4455,6 +4458,49 @@ int DisplayBuiltIn::UpdateDemuraTnUserCtrl(bool user_ctrl) {
   std::string value = user_ctrl ? "true" : "false";
   out << value << '\n';
   return ret;
+}
+
+DisplayError DisplayBuiltIn::TriggerDemuraOemPlugIn(void *data) {
+  (void)data;
+  int ret = 0;
+  int current_brightness_level = 0;
+  struct DemuraBacklightInfo *demura_bl_info = nullptr;
+  GenericPayload payload = {};
+
+  if (!demura_intended_ || !demura_dynamic_enabled_) {
+    DLOGW("Demura is not enabled");
+    return kErrorNone;
+  }
+
+  ret = payload.CreatePayload<struct DemuraBacklightInfo>(demura_bl_info);
+  if (ret) {
+    DLOGE("Failed to create payload");
+    return kErrorUndefined;
+  }
+
+  // Get current brightness level
+  DisplayError error = dpu_core_mux_->GetPanelBrightness(&current_brightness_level);
+  if (error != kErrorNone) {
+    DLOGE("Failed to get current brightness level, error %d", error);
+    return error;
+  }
+
+  // Fill demura backlight info
+  demura_bl_info->os_brightness = current_brightness_level;
+  demura_bl_info->os_brightness_max = client_ctx_.hw_panel_info.panel_max_brightness;
+
+  // Call demura backlight event for trigger oem plugin
+  ret = demura_->SetParameter(kDemuraFeatureParamBacklightEvent, payload);
+  if (ret) {
+    DLOGE("Failed to set backlight event");
+    return kErrorUndefined;
+  }
+
+  // Trigger refresh, new config take effect
+  event_handler_->Refresh();
+
+  DLOGI("Trigger demura oem plugin success");
+  return kErrorNone;
 }
 
 }  // namespace sdm
