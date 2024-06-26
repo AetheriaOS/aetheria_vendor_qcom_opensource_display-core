@@ -712,9 +712,9 @@ private:
   void PopulateSDMExtendedDisplayResolution();
   DisplayError GetSDMActiveConfig(bool get_real_config, Config *config_index);
   bool IsVirtualConfig(Config config);
-  DisplayError SetFBForExtendedResolution(Config config,
-                                         Config *real_config_for_fps_switch);
-  void GetParentConfigInfo(DisplayConfigVariableInfo *config_info);
+  DisplayError SetFBForExtendedResolution(Config config, bool *is_virtual_config_fps_switched);
+  DisplayError FinalizeDisplayConfig(bool check_pending_config, Config new_config);
+  DisplayError GetParentConfig(Config *config);
   bool NotifyIdleNow();
 
   DisplayClass display_class_;
@@ -730,9 +730,7 @@ private:
   bool draw_method_set_ = false;
   bool client_target_3_1_set_ = false;
   bool is_client_up_ = false;
-  uint64_t expected_present_time_ =
-      0; // Expected Present time for current frame
-  bool virtual_config_fps_switch_ = false;
+  uint64_t expected_present_time_ = 0;  // Expected Present time for current frame
   int idle_active_ms_ = 0;
   uint32_t frame_interval_ns_ = 0;  // FrameInterval for current frame
 };
