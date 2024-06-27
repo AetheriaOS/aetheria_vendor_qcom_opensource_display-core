@@ -1106,8 +1106,9 @@ uint32_t SnapMetadataManager::GetCustomContentMetadataSize(
 }
 
 Error SnapMetadataManager::InitializeMetadata(
-    SnapHandleInternal *hnd, BufferDescriptor in_desc, BufferDescriptor out_desc,
-    const AllocData ad, vendor_qti_hardware_display_common_BufferLayout *layout) {
+    SnapHandleInternal *hnd, vendor_qti_hardware_display_common_PixelFormat pixel_format_requested,
+    BufferDescriptor out_desc, const AllocData ad,
+    vendor_qti_hardware_display_common_BufferLayout *layout) {
   UBWCPolicy *ubwc_policy = UBWCPolicy::GetInstance();
   bool ubwc_enable = ubwc_policy->IsUBWCAlloc(out_desc);
   auto err = Error::NONE;
@@ -1173,7 +1174,7 @@ Error SnapMetadataManager::InitializeMetadata(
   data->heapName[heap_name_length] = '\0';
 
   // Populate pixel format requested
-  data->pixel_format_requested = in_desc.format;
+  data->pixel_format_requested = pixel_format_requested;
 
   UnmapAndReset(hnd);
   return Error::NONE;

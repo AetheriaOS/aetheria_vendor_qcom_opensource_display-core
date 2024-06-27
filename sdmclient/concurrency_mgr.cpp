@@ -1436,8 +1436,9 @@ void ConcurrencyMgr::HandlePendingPowerMode(
         pending_mode == SDMPowerMode::POWER_MODE_DOZE_SUSPEND) {
       disp_->GetActiveDisplays().erase(display);
     } else {
-      disp_->GetActiveDisplays().insert(
-          std::make_pair(disp_map_info->client_id, disp_map_info));
+      if (disp_map_info != nullptr) {
+        disp_->GetActiveDisplays().insert(std::make_pair(disp_map_info->client_id, disp_map_info));
+      }
     }
     DisplayError error =
         sdm_display_[display]->SetPowerMode(pending_mode, false);
