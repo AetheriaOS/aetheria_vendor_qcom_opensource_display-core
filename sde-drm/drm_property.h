@@ -273,15 +273,23 @@ struct DRMPropertyManager {
   DRMProperty GetPropertyEnum(const std::string &name) const;
 
   void SetPropertyId(DRMProperty prop_enum, uint32_t prop_id) {
-    properties_[(uint32_t)prop_enum] = prop_id;
+    if ((uint32_t)prop_enum < (uint32_t)DRMProperty::MAX) {
+      properties_[(uint32_t)prop_enum] = prop_id;
+    }
   }
 
   uint32_t GetPropertyId(DRMProperty prop_enum) const {
-    return properties_[(uint32_t)prop_enum];
+    if ((uint32_t)prop_enum < (uint32_t)DRMProperty::MAX) {
+      return properties_[(uint32_t)prop_enum];
+    }
+    return 0;
   }
 
   bool IsPropertyAvailable(DRMProperty prop_enum) const {
-    return !!properties_[(uint32_t)prop_enum];
+    if ((uint32_t)prop_enum < (uint32_t)DRMProperty::MAX) {
+      return !!properties_[(uint32_t)prop_enum];
+    }
+    return 0;
   }
 
  private:

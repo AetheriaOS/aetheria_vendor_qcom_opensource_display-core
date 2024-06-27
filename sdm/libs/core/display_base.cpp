@@ -323,6 +323,10 @@ DisplayError DisplayBase::Init() {
   if (Debug::Get()->GetProperty(ENABLE_CWB_CPU_BOOSTING, &prop) == kErrorNone) {
     enable_cwb_cpu_boosting_ = (prop == 1);
   }
+  prop = 0;
+  if (Debug::GetProperty(ENABLE_AI_SCALER_PROP, &prop) == kErrorNone) {
+    enable_ai_scaler_ = (prop == 1);
+  }
 
   Debug::GetIdleTimeoutMs(&idle_active_ms_, &inactive_ms);
 
@@ -3250,8 +3254,13 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
                                : false;
 
   if (secure_event_ == kSecureDisplayStart || secure_event_ == kTUITransitionStart) {
-    *new_mixer_width = display_width;
-    *new_mixer_height = display_height;
+    if (enable_ai_scaler_) {
+      *new_mixer_width = mixer_width;
+      *new_mixer_height = mixer_height;
+    } else {
+      *new_mixer_width = display_width;
+      *new_mixer_height = display_height;
+    }
     return ((*new_mixer_width != mixer_width) || (*new_mixer_height != mixer_height));
   }
 

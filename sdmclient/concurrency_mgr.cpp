@@ -1436,8 +1436,9 @@ void ConcurrencyMgr::HandlePendingPowerMode(
         pending_mode == SDMPowerMode::POWER_MODE_DOZE_SUSPEND) {
       disp_->GetActiveDisplays().erase(display);
     } else {
-      disp_->GetActiveDisplays().insert(
-          std::make_pair(disp_map_info->client_id, disp_map_info));
+      if (disp_map_info != nullptr) {
+        disp_->GetActiveDisplays().insert(std::make_pair(disp_map_info->client_id, disp_map_info));
+      }
     }
     DisplayError error =
         sdm_display_[display]->SetPowerMode(pending_mode, false);
@@ -2493,11 +2494,35 @@ DisplayError ConcurrencyMgr::SetSsrcMode(uint64_t display_id, const std::string 
 }
 
 DisplayError ConcurrencyMgr::EnableCopr(uint64_t display_id, bool enable) {
-  return kErrorNone;
+  int disp_idx = GetDisplayIndex(display_id);
+  if (disp_idx == -1) {
+    DLOGW("Invalid display = %d", display_id);
+    return kErrorParameters;
+  }
+
+  SCOPE_LOCK(locker_[disp_idx]);
+  if (!sdm_display_[disp_idx]) {
+    DLOGW("Display %d is not connected.", display_id);
+    return kErrorResources;
+  }
+
+  return sdm_display_[disp_idx]->EnableCopr(enable);
 }
 
-DisplayError ConcurrencyMgr::GetCoprStatus(uint64_t display_id, std::vector<int32_t> *copr_status) {
-  return kErrorNone;
+DisplayError ConcurrencyMgr::GetCoprStats(uint64_t display_id, std::vector<int32_t> *copr_stats) {
+  int disp_idx = GetDisplayIndex(display_id);
+  if (disp_idx == -1) {
+    DLOGW("Invalid display = %d", display_id);
+    return kErrorParameters;
+  }
+
+  SCOPE_LOCK(locker_[disp_idx]);
+  if (!sdm_display_[disp_idx]) {
+    DLOGW("Display %d is not connected.", display_id);
+    return kErrorResources;
+  }
+
+  return sdm_display_[disp_idx]->GetCoprStats(copr_stats);
 }
 
 DisplayError ConcurrencyMgr::SetupVRRConfig(uint64_t display) {

@@ -307,6 +307,8 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
                                           SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) {
     return kErrorNotSupported;
   }
+  virtual DisplayError EnableCopr(bool en) { return kErrorNotSupported; }
+  virtual DisplayError GetCoprStats(std::vector<int> *stats) { return kErrorNotSupported; }
 
  protected:
   struct DisplayMutex {
@@ -560,6 +562,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   HWDisplayMode default_panel_mode_ = kModeDefault;
   bool idle_hint_set_ = false;
   uint32_t idle_active_ms_ = 0;
+  bool enable_ai_scaler_ = false;
 };
 
 }  // namespace sdm

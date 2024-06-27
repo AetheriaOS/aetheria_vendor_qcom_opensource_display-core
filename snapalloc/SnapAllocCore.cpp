@@ -87,6 +87,10 @@ Error SnapAllocCore::Allocate(BufferDescriptor desc, int count,
         out_desc.format, layout.aligned_width_in_bytes, &aligned_width_in_pixels);
 
     SnapHandleInternal *hnd = static_cast<SnapHandleInternal *>(malloc(sizeof(SnapHandleInternal)));
+    if (hnd == nullptr) {
+      ALOGE("%s:: Invalid Handle", __FUNCTION__);
+      return Error::BAD_BUFFER;
+    }
     hnd->Init(ad.fd, m_data.fd, ad.flags, layout.aligned_width_in_bytes, aligned_width_in_pixels,
               layout.aligned_height, desc.width, desc.height, out_desc.format, buffer_type, ad.size,
               desc.usage);
@@ -106,7 +110,7 @@ Error SnapAllocCore::Allocate(BufferDescriptor desc, int count,
     hnd->custom_content_md_reserved_size = custom_content_md_size;
     hnd->pixel_format_modifier = GetPixelFormatModifier(out_desc);
 
-    err = metadata_mgr_->InitializeMetadata(hnd, desc, out_desc, ad, &layout);
+    err = metadata_mgr_->InitializeMetadata(hnd, desc.format, out_desc, ad, &layout);
     if (err != Error::NONE) {
       ALOGE("Failed to initialize metadata for hnd %lu", hnd->id);
     }

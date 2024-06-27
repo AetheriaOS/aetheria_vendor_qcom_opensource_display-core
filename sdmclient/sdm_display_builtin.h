@@ -137,6 +137,8 @@ public:
  virtual DisplayError PerformCacConfig(CacConfig config, bool enable);
  virtual DisplayError IsCacV2Supported(bool *supported);
  virtual DisplayError SetSsrcMode(const std::string &mode);
+ virtual DisplayError EnableCopr(bool en);
+ virtual DisplayError GetCoprStats(std::vector<int> *stats);
  virtual DisplayError SetupVRRConfig();
  virtual int GetNotifyEptConfig();
  virtual DisplayError SetABCState(bool state);

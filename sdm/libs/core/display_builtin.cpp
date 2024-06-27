@@ -268,8 +268,9 @@ DisplayError DisplayBuiltIn::Init() {
   Debug::Get()->GetProperty(DEFER_FPS_FRAME_COUNT, &value);
   deferred_config_.frame_count = (value > 0) ? UINT32(value) : 0;
 
-  if (event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this, extension_lib_) !=
-      kErrorNone) {
+  error = event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this, extension_lib_,
+                                 prop_intf_);
+  if (error != kErrorNone) {
     DLOGW("Failed to initialize event proxy info");
     event_proxy_info_.Deinit();
   }
@@ -3113,6 +3114,8 @@ void DisplayBuiltIn::SendDisplayConfigs() {
     disp_configs->fps = client_ctx_.display_attributes.fps;
     disp_configs->smart_panel = client_ctx_.display_attributes.smart_panel;
     disp_configs->is_primary = IsPrimaryDisplayLocked();
+    disp_configs->mixer_width = client_ctx_.mixer_attributes.width;
+    disp_configs->mixer_height = client_ctx_.mixer_attributes.height;
     if ((ret = ipc_intf_->SetParameter(kIpcParamDisplayConfigs, in))) {
       DLOGW("Failed to send display config, error = %d", ret);
     }
@@ -3804,13 +3807,41 @@ DisplayError DisplayBuiltIn::PanelBacklightInfo(
   return event_proxy_info_.PanelBacklightInfo(client_name, enable, cb_intf);
 }
 
-DisplayError EventProxyInfo::Init(const std::string &panel_name,
-                                  DisplayInterface *intf,
-                                  DynLib &extension_lib) {
+DisplayError DisplayBuiltIn::EnableCopr(bool en) {
+  DisplayError ret = kErrorNone;
+
+  DLOGI("%s COPR", en ? "Enable" : "Disable");
+  ret = event_proxy_info_.EnableCopr("copr_test", en, &copr_info_);
+  if (ret) {
+    DLOGW("Failed to enable COPR ret %d", ret);
+  } else {
+    event_handler_->Refresh();
+    copr_enabled_ = en;
+  }
+
+  return ret;
+}
+
+DisplayError DisplayBuiltIn::GetCoprStats(std::vector<int> *stats) {
+  DisplayError ret = kErrorNone;
+
+  if (!copr_enabled_) {
+    DLOGW("COPR is not enabled");
+    return kErrorResources;
+  }
+
+  ret = copr_info_.GetStats(stats);
+  if (ret)
+    DLOGE("Failed to get COPR stats ret %d", ret);
+  return ret;
+}
+
+DisplayError EventProxyInfo::Init(const std::string &panel_name, DisplayInterface *intf,
+                                  DynLib &extension_lib, PanelFeaturePropertyIntf *prop_intf) {
   std::lock_guard<std::mutex> guard(lock_);
 
-  if (!intf) {
-    DLOGE("Invalid display interface");
+  if (!intf || !prop_intf) {
+    DLOGE("Invalid display_intf %pK prop_intf %pK", intf, prop_intf);
     return kErrorParameters;
   }
 
@@ -3837,7 +3868,7 @@ DisplayError EventProxyInfo::Init(const std::string &panel_name,
   }
 
   std::shared_ptr<DisplayEventProxyIntf> proxy_intf =
-      factory_intf->CreateDispEventProxyIntf(panel_name, intf);
+      factory_intf->CreateDispEventProxyIntf(panel_name, intf, prop_intf);
   if (!proxy_intf) {
     DLOGW("Failed to create display event proxy interface");
     return kErrorMemory;
@@ -3890,6 +3921,59 @@ EventProxyInfo::PanelOprInfo(const std::string &client_name, bool enable,
   }
 
   return kErrorNone;
+}
+
+DisplayError EventProxyInfo::EnableCopr(const std::string &client_name, bool enable,
+                                        SdmDisplayCbInterface<CoprEventPayload> *cb_intf) {
+  if (!event_proxy_intf_.get()) {
+    DLOGW("Event proxy intf is not available");
+    return kErrorParameters;
+  }
+
+  CoprParam *copr_info = nullptr;
+  GenericPayload payload;
+  int ret = payload.CreatePayload(copr_info);
+  if (ret || !copr_info) {
+    DLOGE("Failed to create payload for COPR info, ret %d", ret);
+    return kErrorParameters;
+  }
+
+  copr_info->name = client_name;
+  copr_info->enable = enable;
+  copr_info->cb_intf = cb_intf;
+
+  ret = event_proxy_intf_->SetParameter(kSetCoprEnable, payload);
+  if (ret) {
+    DLOGE("Failed to set Copr info enablement, ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  return kErrorNone;
+}
+
+DisplayError CoprInfo::GetStats(std::vector<int32_t> *stats) {
+  std::lock_guard<std::mutex> guard(lock_);
+
+  if (!stats) {
+    DLOGE("Invalid input parameter stats %pK", stats);
+    return kErrorUndefined;
+  }
+
+  *stats = copr_stats_;
+  return kErrorNone;
+}
+
+int CoprInfo::Notify(const CoprEventPayload &payload) {
+  std::lock_guard<std::mutex> guard(lock_);
+  struct drm_msm_copr_status *copr_info =
+      reinterpret_cast<struct drm_msm_copr_status *>(payload.payload);
+
+  copr_stats_.clear();
+  for (auto i = 0; i < AIQE_COPR_STATUS_LEN; i++) {
+    copr_stats_.push_back(copr_info->status[i]);
+  }
+
+  return 0;
 }
 
 DisplayError EventProxyInfo::SetPaHistCollection(
@@ -4176,6 +4260,9 @@ DisplayError DisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) {
     case kTypeDeleteDemuraTnConfig:
       ret = CleanupDemuraConfig(data, kDeleteDemuraTnConfig);
       break;
+    case kTypeTriggerDemuraOemPlugIn:
+      ret = TriggerDemuraOemPlugIn(data);
+      break;
     default:
       DLOGE("Invalid type %d", type);
       ret = kErrorParameters;
@@ -4455,6 +4542,49 @@ int DisplayBuiltIn::UpdateDemuraTnUserCtrl(bool user_ctrl) {
   std::string value = user_ctrl ? "true" : "false";
   out << value << '\n';
   return ret;
+}
+
+DisplayError DisplayBuiltIn::TriggerDemuraOemPlugIn(void *data) {
+  (void)data;
+  int ret = 0;
+  int current_brightness_level = 0;
+  struct DemuraBacklightInfo *demura_bl_info = nullptr;
+  GenericPayload payload = {};
+
+  if (!demura_intended_ || !demura_dynamic_enabled_) {
+    DLOGW("Demura is not enabled");
+    return kErrorNone;
+  }
+
+  ret = payload.CreatePayload<struct DemuraBacklightInfo>(demura_bl_info);
+  if (ret) {
+    DLOGE("Failed to create payload");
+    return kErrorUndefined;
+  }
+
+  // Get current brightness level
+  DisplayError error = dpu_core_mux_->GetPanelBrightness(&current_brightness_level);
+  if (error != kErrorNone) {
+    DLOGE("Failed to get current brightness level, error %d", error);
+    return error;
+  }
+
+  // Fill demura backlight info
+  demura_bl_info->os_brightness = current_brightness_level;
+  demura_bl_info->os_brightness_max = client_ctx_.hw_panel_info.panel_max_brightness;
+
+  // Call demura backlight event for trigger oem plugin
+  ret = demura_->SetParameter(kDemuraFeatureParamBacklightEvent, payload);
+  if (ret) {
+    DLOGE("Failed to set backlight event");
+    return kErrorUndefined;
+  }
+
+  // Trigger refresh, new config take effect
+  event_handler_->Refresh();
+
+  DLOGI("Trigger demura oem plugin success");
+  return kErrorNone;
 }
 
 }  // namespace sdm
