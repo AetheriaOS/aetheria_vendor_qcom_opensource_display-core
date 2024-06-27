@@ -3114,6 +3114,8 @@ void DisplayBuiltIn::SendDisplayConfigs() {
     disp_configs->fps = client_ctx_.display_attributes.fps;
     disp_configs->smart_panel = client_ctx_.display_attributes.smart_panel;
     disp_configs->is_primary = IsPrimaryDisplayLocked();
+    disp_configs->mixer_width = client_ctx_.mixer_attributes.width;
+    disp_configs->mixer_height = client_ctx_.mixer_attributes.height;
     if ((ret = ipc_intf_->SetParameter(kIpcParamDisplayConfigs, in))) {
       DLOGW("Failed to send display config, error = %d", ret);
     }
