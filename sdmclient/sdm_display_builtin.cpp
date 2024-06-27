@@ -1453,10 +1453,6 @@ SDMDisplayBuiltIn::PostCommitLayerStack(shared_ptr<Fence> *out_retire_fence) {
   HandleFrameOutput();
   PostCommitStitchLayers();
 
-  if (flush_ && layer_stack_.output_buffer == nullptr) {
-    display_intf_->FlushConcurrentWriteback();
-  }
-
   auto status = SDMDisplay::PostCommitLayerStack(out_retire_fence);
   /*  display_intf_->GetConfig(&fixed_info);
     is_cmd_mode_ = fixed_info.is_cmdmode;
