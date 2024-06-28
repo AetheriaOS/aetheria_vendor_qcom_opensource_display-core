@@ -688,10 +688,17 @@ DisplayError DisplayBuiltIn::colorSamplingOff() {
 DisplayError DisplayBuiltIn::SetupSPR() {
   int spr_prop_value = 0;
   int spr_bypass_prop_value = 0;
+  int spr_disable_value = 0;
   Debug::GetProperty(ENABLE_SPR, &spr_prop_value);
   Debug::GetProperty(ENABLE_SPR_BYPASS, &spr_bypass_prop_value);
 
-  if (spr_prop_value) {
+  if (IsPrimaryDisplay()) {
+    Debug::Get()->GetProperty(DISABLE_SPR_PRIMARY, &spr_disable_value);
+  } else {
+    Debug::Get()->GetProperty(DISABLE_SPR_SECONDARY, &spr_disable_value);
+  }
+
+  if (spr_prop_value && !spr_disable_value) {
     SPRInputConfig spr_cfg;
     spr_cfg.panel_name = std::string(client_ctx_.hw_panel_info.panel_name);
     spr_cfg.spr_bypassed = (spr_bypass_prop_value) ? true : false;
