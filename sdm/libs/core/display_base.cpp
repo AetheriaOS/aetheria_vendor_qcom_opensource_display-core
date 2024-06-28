@@ -327,6 +327,14 @@ DisplayError DisplayBase::Init() {
   if (Debug::GetProperty(ENABLE_AI_SCALER_PROP, &prop) == kErrorNone) {
     enable_ai_scaler_ = (prop == 1);
   }
+  prop = 0;
+  if (Debug::Get()->GetProperty(FORCE_REFRESH_TO_PROCESS_CWB, &prop) == kErrorNone) {
+    force_refresh_to_process_cwb_ = (prop == 1);
+  }
+  prop = 0;
+  if (Debug::Get()->GetProperty(ENABLE_CLIENT_CONTROL_CWB_REFRESH, &prop) == kErrorNone) {
+    enable_client_control_cwb_refresh_ = (prop == 1);
+  }
 
   Debug::GetIdleTimeoutMs(&idle_active_ms_, &inactive_ms);
 
@@ -1608,6 +1616,8 @@ void DisplayBase::CommitThread() {
       } else {
         IdleTimeout();
       }
+
+      RefreshOnIdleTimeoutForCwb(false);
       continue;
     }
 
@@ -1648,6 +1658,15 @@ DisplayError DisplayBase::SetUpCommit(LayerStack *layer_stack) {
   if (first_cycle_ && display_type_ == kBuiltIn) {
     // Register for panel dead since notification is sent at any time
     hw_events_intf_->SetEventState(HWEvent::PANEL_DEAD, true);
+  }
+
+  // Drop commits for external, if CWB is enabled and primary display is already down.
+  // TODO(user): Expecting mirroring hint for secondary display from composer client and need to
+  // remove the primary display power state dependency.
+  if (layer_stack->output_buffer && display_type_ != kPrimary &&
+      !comp_manager_->IsPrimaryDisplayActive()) {
+    validated_ = false;
+    return kErrorPermission;
   }
 
   // Allow commit as pending doze/pending_power_on is handled as a part of draw cycle
@@ -4768,12 +4787,18 @@ DisplayError DisplayBase::CaptureCwb(const LayerBuffer &output_buffer, const Cwb
     return error;
   }
 
+  if (!enable_client_control_cwb_refresh_) {
+    cwb_config.avoid_refresh = !force_refresh_to_process_cwb_;
+  }
+
   error = comp_manager_->CaptureCwb(display_comp_ctx_, output_buffer, cwb_config);
   if (error != kErrorNone) {
     DLOGW("CWB request rejected for display %d-%d (Display Error code: %d).", display_id_,
           display_type_, error);
     return error;
   }
+
+  RefreshOnIdleTimeoutForCwb(true);
 
   cwb_output_buf_.width = output_buffer.width;
   cwb_output_buf_.height = output_buffer.height;
@@ -4807,6 +4832,16 @@ uint32_t DisplayBase::GetAvailableMixerCount() {
   }
 
   return max_count - cur_count;
+}
+
+void DisplayBase::RefreshOnIdleTimeoutForCwb(bool is_cwb_requested) {
+  // TODO(user): Expecting mirroring hint for secondary display from composer client and need to
+  // remove the primary display power state dependency.
+  if (!enable_client_control_cwb_refresh_ && !force_refresh_to_process_cwb_ &&
+      comp_manager_->IsPrimaryDisplayActive() && (handle_idle_timeout_ || idle_hint_set_) &&
+      (is_cwb_requested || comp_manager_->HasPendingCwbRequest(display_comp_ctx_))) {
+    event_handler_->Refresh();
+  }
 }
 
 void DisplayBase::ResetDispLayerStack() {
