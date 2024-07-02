@@ -23,7 +23,7 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *
 * Changes from Qualcomm Innovation Center are provided under the following license:
-* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 // clang-format on
@@ -47,6 +47,7 @@
 #include <QtiMatrixCoEfficients.h>
 #include <QtiContentLightLevel.h>
 #include <QtiDynamicMetadata.h>
+#include <QtiAnamorphicMetadata.h>
 #include <Dataspace.h>
 
 namespace sdm {
@@ -61,6 +62,9 @@ using QtiDynamicMetadata = vendor_qti_hardware_display_common_QtiDynamicMetadata
 using QtiColorPrimaries = vendor_qti_hardware_display_common_QtiColorPrimaries;
 using QtiColorRange = vendor_qti_hardware_display_common_QtiColorRange;
 using QtiGammaTransfer = vendor_qti_hardware_display_common_QtiGammaTransfer;
+
+// Anamorphic metadata value
+using QtiAnamorphicMetadata = vendor_qti_hardware_display_common_QtiAnamorphicMetadata;
 
 #define NUM_UBWC_CR_STATS_LAYERS 2
 typedef std::vector<std::pair<int, int>> UbwcCrStatsVector;
@@ -352,6 +356,7 @@ struct LayerBuffer {
   QtiContentLightLevel contentLightLevel;
   QtiColorRemappingInfo cRI;
   QtiDynamicMetadata dynamicMetadata = { .dynamicMetaDataValid = false, .dynamicMetaDataLen = 0 };
+  QtiAnamorphicMetadata anamorphicMetadata;
 };
 
 // This enum represents buffer layout types.
