@@ -605,7 +605,7 @@ int SDMDisplayBuilder::HandlePluggableDisplays(bool delay_hotplug) {
   HWDisplaysInfo hw_displays_info = {};
   DisplayError error = core_intf_->GetDisplaysStatus(&hw_displays_info);
   if (error != kErrorNone) {
-    DLOGE("Failed to get connected display list. Error = %d", error);
+    DLOGW("Failed to get connected display list. Error = %d", error);
     return -EINVAL;
   }
 
