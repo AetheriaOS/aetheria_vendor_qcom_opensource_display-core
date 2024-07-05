@@ -268,8 +268,9 @@ DisplayError DisplayBuiltIn::Init() {
   Debug::Get()->GetProperty(DEFER_FPS_FRAME_COUNT, &value);
   deferred_config_.frame_count = (value > 0) ? UINT32(value) : 0;
 
-  if (event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this, extension_lib_) !=
-      kErrorNone) {
+  error = event_proxy_info_.Init(client_ctx_.hw_panel_info.panel_name, this, extension_lib_,
+                                 prop_intf_);
+  if (error != kErrorNone) {
     DLOGW("Failed to initialize event proxy info");
     event_proxy_info_.Deinit();
   }
@@ -366,6 +367,10 @@ DisplayError DisplayBuiltIn::Init() {
     idle_fallback_on_dspp_ = (value == 1);
   }
 
+  value = 0;
+  DebugHandler::Get()->GetProperty(FORCE_LM_TO_FB_CONFIG, &value);
+  force_lm_to_fb_config_ = (value == 1);
+
   NoiseInit();
   InitCWBBuffer();
   SetupAiqe();
@@ -392,6 +397,11 @@ DisplayError DisplayBuiltIn::Deinit() {
       EnableDemuraTn(false);
       if (demuratn_->Deinit() != 0) {
         DLOGE("Unable to DeInit DemuraTn on Display %d", display_id_);
+      }
+    }
+    if (demuratn_cleanup_intf_) {
+      if (demuratn_cleanup_intf_->Deinit() != 0) {
+        DLOGE("Unable to DeInit demuratn_cleanup_intf_ on Display %d", display_id_);
       }
     }
     demura_dynamic_enabled_ = true;
@@ -457,8 +467,15 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
   lower_fps_ = disp_layer_stack_->stack_info.lower_fps;
 
   if (color_mgr_ && client_ctx_.hw_panel_info.mode == kModeVideo && idle_fallback_on_dspp_) {
-    color_mgr_->ColorMgrIdleFallback(lower_fps_);
-    needs_validate_ |= color_mgr_->IsValidateNeeded();
+    CwbTapPoint tap_point = CwbTapPoint::kDsppTapPoint;
+    bool destination_scaler =
+        (client_ctx_.display_attributes.x_pixels != client_ctx_.mixer_attributes.width ||
+         client_ctx_.display_attributes.y_pixels != client_ctx_.mixer_attributes.height);
+    tap_point = destination_scaler ? CwbTapPoint::kLmTapPoint : CwbTapPoint::kDsppTapPoint;
+    if (tap_point == CwbTapPoint::kDsppTapPoint) {
+      color_mgr_->ColorMgrIdleFallback(lower_fps_);
+      needs_validate_ |= color_mgr_->IsValidateNeeded();
+    }
   }
 
   if (ssrc_feature_enabled_) {
@@ -1142,6 +1159,7 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
 
   DLOGI("Demura enable allowed %d, Anti-aging enable allowed %d", demura_allowed, demuratn_allowed);
   if (demura_allowed) {
+    demuratn_user_ctrl_ = GetDemuraTnUserCtrl();
     error = SetupDemura();
     if (error != kErrorNone) {
       // Non-fatal but not expected, log error
@@ -1152,7 +1170,7 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
       if (demura_) {
         SetDemuraIntfStatus(false);
       }
-    } else if (demuratn_allowed && demuratn_factory_) {
+    } else if (demuratn_allowed && demuratn_factory_ && demuratn_user_ctrl_) {
       error = SetupDemuraTn();
       if (error != kErrorNone) {
         DLOGW("Failed to setup DemuraTn, Error = %d", error);
@@ -1172,7 +1190,6 @@ DisplayError DisplayBuiltIn::SetupDemuraTn() {
 
   demuratn_ = demuratn_factory_->CreateDemuraTnCoreUvmIntf(demura_, buffer_allocator_, this);
   if (!demuratn_) {
-    demuratn_factory_ = nullptr;
     DLOGE("Failed to create demuraTnCoreUvmIntf");
     return kErrorUndefined;
   }
@@ -1180,7 +1197,6 @@ DisplayError DisplayBuiltIn::SetupDemuraTn() {
   ret = demuratn_->Init();
   if (ret) {
     DLOGE("Failed to init demuraTnCoreUvmIntf, ret %d", ret);
-    demuratn_factory_ = nullptr;
     demuratn_.reset();
     demuratn_ = nullptr;
     return kErrorUndefined;
@@ -1230,7 +1246,6 @@ DisplayError DisplayBuiltIn::EnableDemuraTn(bool enable) {
       int rc = demuratn_->Deinit();
       if (rc)
         DLOGE("Failed to deinit DemuraTn ret %d", rc);
-      demuratn_factory_ = nullptr;
       demuratn_.reset();
       demuratn_ = nullptr;
       return kErrorUndefined;
@@ -1357,7 +1372,7 @@ DisplayError DisplayBuiltIn::PostCommit() {
   }
   dpps_info_.Init(this, client_ctx_.hw_panel_info.panel_name, this, prop_intf_);
 
-  if (demuratn_)
+  if (demuratn_ && demuratn_user_ctrl_)
     EnableDemuraTn(true);
 
   HandleQsyncPostCommit();
@@ -2962,6 +2977,21 @@ DisplayError DisplayBuiltIn::ReconfigureDisplay() {
     dpps_info_.DppsNotifyOps(kDppsUpdateFpsEvent, &dpps_payload, sizeof(dpps_payload));
   }
 
+  // Notify Demura when refresh rate changes
+  if (demura_) {
+    GenericPayload demura_fps_pl = {};
+    uint32_t *demura_fps_ptr = nullptr;
+    int ret = demura_fps_pl.CreatePayload<uint32_t>(demura_fps_ptr);
+    if (ret) {
+      DLOGE("Failed to create payload for demura fps, error = %d", ret);
+    } else {
+      *demura_fps_ptr = client_ctx_.display_attributes.fps;
+      ret = demura_->SetParameter(kDemuraFeatureParamRefreshRate, demura_fps_pl);
+      if (ret) {
+        DLOGE("Failed to set refresh rate for demura, error = %d", ret);
+      }
+    }
+  }
   return kErrorNone;
 }
 
@@ -3084,6 +3114,8 @@ void DisplayBuiltIn::SendDisplayConfigs() {
     disp_configs->fps = client_ctx_.display_attributes.fps;
     disp_configs->smart_panel = client_ctx_.display_attributes.smart_panel;
     disp_configs->is_primary = IsPrimaryDisplayLocked();
+    disp_configs->mixer_width = client_ctx_.mixer_attributes.width;
+    disp_configs->mixer_height = client_ctx_.mixer_attributes.height;
     if ((ret = ipc_intf_->SetParameter(kIpcParamDisplayConfigs, in))) {
       DLOGW("Failed to send display config, error = %d", ret);
     }
@@ -3722,13 +3754,21 @@ DisplayError DisplayBuiltIn::GetPanelBrightnessBasePath(std::string *base_path) 
   return dpu_core_mux_->GetPanelBrightnessBasePath(base_path);
 }
 
+bool DisplayBuiltIn::IsCacV2Supported() {
+  for (auto &res_info : hw_resource_info_) {
+    if (res_info.cac_version != kCacVersion2) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 DisplayError DisplayBuiltIn::PerformCacConfig(CacConfig config, bool enable) {
   ClientLock lock(disp_mutex_);
 
-  for (auto res_info : hw_resource_info_) {
-    if (res_info.cac_version != kCacVersion2) {
-      return kErrorNotSupported;
-    }
+  if (!IsCacV2Supported()) {
+    return kErrorNotSupported;
   }
 
   DLOGV_IF(kTagDisplay, "CAC enable: %d Config:: k0r: %f k1r: %f k0b: %f k1b: %f pixel_pitch: %f"
@@ -3767,13 +3807,41 @@ DisplayError DisplayBuiltIn::PanelBacklightInfo(
   return event_proxy_info_.PanelBacklightInfo(client_name, enable, cb_intf);
 }
 
-DisplayError EventProxyInfo::Init(const std::string &panel_name,
-                                  DisplayInterface *intf,
-                                  DynLib &extension_lib) {
+DisplayError DisplayBuiltIn::EnableCopr(bool en) {
+  DisplayError ret = kErrorNone;
+
+  DLOGI("%s COPR", en ? "Enable" : "Disable");
+  ret = event_proxy_info_.EnableCopr("copr_test", en, &copr_info_);
+  if (ret) {
+    DLOGW("Failed to enable COPR ret %d", ret);
+  } else {
+    event_handler_->Refresh();
+    copr_enabled_ = en;
+  }
+
+  return ret;
+}
+
+DisplayError DisplayBuiltIn::GetCoprStats(std::vector<int> *stats) {
+  DisplayError ret = kErrorNone;
+
+  if (!copr_enabled_) {
+    DLOGW("COPR is not enabled");
+    return kErrorResources;
+  }
+
+  ret = copr_info_.GetStats(stats);
+  if (ret)
+    DLOGE("Failed to get COPR stats ret %d", ret);
+  return ret;
+}
+
+DisplayError EventProxyInfo::Init(const std::string &panel_name, DisplayInterface *intf,
+                                  DynLib &extension_lib, PanelFeaturePropertyIntf *prop_intf) {
   std::lock_guard<std::mutex> guard(lock_);
 
-  if (!intf) {
-    DLOGE("Invalid display interface");
+  if (!intf || !prop_intf) {
+    DLOGE("Invalid display_intf %pK prop_intf %pK", intf, prop_intf);
     return kErrorParameters;
   }
 
@@ -3800,7 +3868,7 @@ DisplayError EventProxyInfo::Init(const std::string &panel_name,
   }
 
   std::shared_ptr<DisplayEventProxyIntf> proxy_intf =
-      factory_intf->CreateDispEventProxyIntf(panel_name, intf);
+      factory_intf->CreateDispEventProxyIntf(panel_name, intf, prop_intf);
   if (!proxy_intf) {
     DLOGW("Failed to create display event proxy interface");
     return kErrorMemory;
@@ -3853,6 +3921,59 @@ EventProxyInfo::PanelOprInfo(const std::string &client_name, bool enable,
   }
 
   return kErrorNone;
+}
+
+DisplayError EventProxyInfo::EnableCopr(const std::string &client_name, bool enable,
+                                        SdmDisplayCbInterface<CoprEventPayload> *cb_intf) {
+  if (!event_proxy_intf_.get()) {
+    DLOGW("Event proxy intf is not available");
+    return kErrorParameters;
+  }
+
+  CoprParam *copr_info = nullptr;
+  GenericPayload payload;
+  int ret = payload.CreatePayload(copr_info);
+  if (ret || !copr_info) {
+    DLOGE("Failed to create payload for COPR info, ret %d", ret);
+    return kErrorParameters;
+  }
+
+  copr_info->name = client_name;
+  copr_info->enable = enable;
+  copr_info->cb_intf = cb_intf;
+
+  ret = event_proxy_intf_->SetParameter(kSetCoprEnable, payload);
+  if (ret) {
+    DLOGE("Failed to set Copr info enablement, ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  return kErrorNone;
+}
+
+DisplayError CoprInfo::GetStats(std::vector<int32_t> *stats) {
+  std::lock_guard<std::mutex> guard(lock_);
+
+  if (!stats) {
+    DLOGE("Invalid input parameter stats %pK", stats);
+    return kErrorUndefined;
+  }
+
+  *stats = copr_stats_;
+  return kErrorNone;
+}
+
+int CoprInfo::Notify(const CoprEventPayload &payload) {
+  std::lock_guard<std::mutex> guard(lock_);
+  struct drm_msm_copr_status *copr_info =
+      reinterpret_cast<struct drm_msm_copr_status *>(payload.payload);
+
+  copr_stats_.clear();
+  for (auto i = 0; i < AIQE_COPR_STATUS_LEN; i++) {
+    copr_stats_.push_back(copr_info->status[i]);
+  }
+
+  return 0;
 }
 
 DisplayError EventProxyInfo::SetPaHistCollection(
@@ -4130,6 +4251,17 @@ DisplayError DisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) {
       break;
     case kTypeDemuraTnEventsCtrl:
       ret = SetDemuraTnEventsCtrl(data);
+    case kTypeDemuraTnUserCtrl:
+      ret = SetDemuraTnUserCtrl(data);
+      break;
+    case kTypeDeleteDemuraConfig:
+      ret = CleanupDemuraConfig(data, kDeleteDemuraConfig);
+      break;
+    case kTypeDeleteDemuraTnConfig:
+      ret = CleanupDemuraConfig(data, kDeleteDemuraTnConfig);
+      break;
+    case kTypeTriggerDemuraOemPlugIn:
+      ret = TriggerDemuraOemPlugIn(data);
       break;
     default:
       DLOGE("Invalid type %d", type);
@@ -4217,6 +4349,19 @@ DisplayError DisplayBuiltIn::StartTvmServices() {
     DLOGI("VmFiletransfer service is started successfully");
   }
 
+  if (demuratn_factory_) {
+    demuratn_cleanup_intf_ = demuratn_factory_->CreateDemuraTnCleanupIntf(buffer_allocator_);
+    if (!demuratn_cleanup_intf_) {
+      DLOGW("Failed to create DemuraTnCleanupIntf");
+    } else {
+      int ret = demuratn_cleanup_intf_->Init();
+      if (ret) {
+        DLOGE("Failed to init DemuraTnCleanupIntf, ret %d", ret);
+        demuratn_cleanup_intf_.reset();
+      }
+    }
+  }
+
   if (enable_demura) {
     error = ExportDemuraFiles();
     if (error) {
@@ -4293,6 +4438,152 @@ DisplayError DisplayBuiltIn::SetDemuraTnEventsCtrl(void *data) {
   }
 
   DLOGI("Set events ctrl %d success", *ctrl_ptr);
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetDemuraTnUserCtrl(void *data) {
+  DisplayError ret = kErrorNone;
+  if (!data) {
+    DLOGE("Invalid parameters");
+    return kErrorParameters;
+  }
+
+  bool user_ctrl = *(reinterpret_cast<uint32_t *>(data)) ? true : false;
+  if (!user_ctrl) {
+    ret = EnableDemuraTn(user_ctrl);
+    if (ret != kErrorNone) {
+      return ret;
+    }
+  }
+  demuratn_user_ctrl_ = user_ctrl;
+
+  int error = UpdateDemuraTnUserCtrl(user_ctrl);
+  if (error) {
+    DLOGE("Failed to update demura user ctrl, error = %d", error);
+    return kErrorUndefined;
+  }
+
+  return ret;
+}
+
+DisplayError DisplayBuiltIn::CleanupDemuraConfig(void *data, DemuraTnCleanupType type) {
+  int ret = 0;
+  if (!data) {
+    DLOGE("Invalid parameters");
+    return kErrorParameters;
+  }
+  if (!demuratn_cleanup_intf_) {
+    DLOGW("Demuratn cleanup intf is not created");
+    return kErrorNotSupported;
+  }
+
+  uint64_t panel_id = *(reinterpret_cast<uint64_t *>(data));
+
+  DemuraTnCleanupDeleteConfigInput *input = nullptr;
+  GenericPayload payload;
+  ret = payload.CreatePayload(input);
+  if (ret || !input) {
+    DLOGE("Failed to create payload for DeleteConfigInput, ret %d", ret);
+    return kErrorParameters;
+  }
+
+  input->panel_id = panel_id;
+  if (type == kDeleteDemuraConfig) {
+    input->delete_t0 = true;
+  }
+  if (type == kDeleteDemuraTnConfig) {
+    input->delete_tn = true;
+  }
+
+  ret = demuratn_cleanup_intf_->SetParameter(kDemuraTnCleanupDeleteConfig, payload);
+  if (ret) {
+    DLOGE("Failed to SetParameter, param %d, ret %d", kDemuraTnCleanupDeleteConfig, ret);
+    return kErrorParameters;
+  }
+
+  return kErrorNone;
+}
+
+bool DisplayBuiltIn::GetDemuraTnUserCtrl() {
+  std::ifstream in(kDemuraTnUserCtrlFile, std::ios::binary);
+  if (!in.is_open()) {
+    DLOGW("Failed to open the file %s", kDemuraTnUserCtrlFile.c_str());
+    return false;
+  }
+
+  in.seekg(0, in.end);
+  int length = in.tellg();
+  in.seekg(0, in.beg);
+  std::string file_data(length, '\0');
+  in.read(&file_data[0], length);
+
+  if (static_cast<int>(file_data.size()) != length) {
+    DLOGE("Couldn't read the whole file");
+    return false;
+  }
+
+  auto pos = file_data.find("true");
+  if (pos != std::string::npos) {
+    return true;
+  }
+
+  return false;
+}
+
+int DisplayBuiltIn::UpdateDemuraTnUserCtrl(bool user_ctrl) {
+  int ret = 0;
+  std::ofstream out(kDemuraTnUserCtrlFile, std::ios::binary | std::ios::trunc);
+
+  if (out.fail()) {
+    DLOGW("Failed to open the file %s %s", kDemuraTnUserCtrlFile.c_str(), strerror(errno));
+    return -ENOENT;
+  }
+
+  std::string value = user_ctrl ? "true" : "false";
+  out << value << '\n';
+  return ret;
+}
+
+DisplayError DisplayBuiltIn::TriggerDemuraOemPlugIn(void *data) {
+  (void)data;
+  int ret = 0;
+  int current_brightness_level = 0;
+  struct DemuraBacklightInfo *demura_bl_info = nullptr;
+  GenericPayload payload = {};
+
+  if (!demura_intended_ || !demura_dynamic_enabled_) {
+    DLOGW("Demura is not enabled");
+    return kErrorNone;
+  }
+
+  ret = payload.CreatePayload<struct DemuraBacklightInfo>(demura_bl_info);
+  if (ret) {
+    DLOGE("Failed to create payload");
+    return kErrorUndefined;
+  }
+
+  // Get current brightness level
+  DisplayError error = dpu_core_mux_->GetPanelBrightness(&current_brightness_level);
+  if (error != kErrorNone) {
+    DLOGE("Failed to get current brightness level, error %d", error);
+    return error;
+  }
+
+  // Fill demura backlight info
+  demura_bl_info->os_brightness = current_brightness_level;
+  demura_bl_info->os_brightness_max = client_ctx_.hw_panel_info.panel_max_brightness;
+
+  // Call demura backlight event for trigger oem plugin
+  ret = demura_->SetParameter(kDemuraFeatureParamBacklightEvent, payload);
+  if (ret) {
+    DLOGE("Failed to set backlight event");
+    return kErrorUndefined;
+  }
+
+  // Trigger refresh, new config take effect
+  event_handler_->Refresh();
+
+  DLOGI("Trigger demura oem plugin success");
   return kErrorNone;
 }
 

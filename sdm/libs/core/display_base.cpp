@@ -323,6 +323,10 @@ DisplayError DisplayBase::Init() {
   if (Debug::Get()->GetProperty(ENABLE_CWB_CPU_BOOSTING, &prop) == kErrorNone) {
     enable_cwb_cpu_boosting_ = (prop == 1);
   }
+  prop = 0;
+  if (Debug::GetProperty(ENABLE_AI_SCALER_PROP, &prop) == kErrorNone) {
+    enable_ai_scaler_ = (prop == 1);
+  }
 
   Debug::GetIdleTimeoutMs(&idle_active_ms_, &inactive_ms);
 
@@ -3248,20 +3252,27 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
   bool valid_lm_tappoint = layer_stack->cwb_config
                                ? layer_stack->cwb_config->tap_point == CwbTapPoint::kLmTapPoint
                                : false;
-  // Resize mixer attributes to fb config when client requests CWB at LM tap-point
-  // TODO(user): remove below check when clients request buffer with mixer resolution
-  if ((HasConcurrentWriteback() && layer_stack->output_buffer && valid_lm_tappoint) ||
-      xr_variant_) {
-    DLOGV_IF(kTagDisplay, "Found concurrent writeback, configure LM width:%d height:%d", fb_width,
-             fb_height);
-    *new_mixer_width = fb_width;
-    *new_mixer_height = fb_height;
+
+  if (secure_event_ == kSecureDisplayStart || secure_event_ == kTUITransitionStart) {
+    if (enable_ai_scaler_) {
+      *new_mixer_width = mixer_width;
+      *new_mixer_height = mixer_height;
+    } else {
+      *new_mixer_width = display_width;
+      *new_mixer_height = display_height;
+    }
     return ((*new_mixer_width != mixer_width) || (*new_mixer_height != mixer_height));
   }
 
-  if (secure_event_ == kSecureDisplayStart || secure_event_ == kTUITransitionStart) {
-    *new_mixer_width = display_width;
-    *new_mixer_height = display_height;
+  // Resize mixer attributes to fb config when client requests CWB at LM tap-point
+  // TODO(user): remove below check when clients request buffer with mixer resolution
+  if (force_lm_to_fb_config_ ||
+      (HasConcurrentWriteback() && layer_stack->output_buffer && valid_lm_tappoint)) {
+    DLOGV_IF(kTagDisplay, "CWB:%d, force_lm_to_fb_config_:%d, configure LM width:%d height:%d",
+             (HasConcurrentWriteback() && layer_stack->output_buffer), force_lm_to_fb_config_,
+             fb_width, fb_height);
+    *new_mixer_width = fb_width;
+    *new_mixer_height = fb_height;
     return ((*new_mixer_width != mixer_width) || (*new_mixer_height != mixer_height));
   }
 
@@ -3350,6 +3361,13 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
       *new_mixer_height = display_height;
     }
     return ((*new_mixer_width != mixer_width) || (*new_mixer_height != mixer_height));
+  } else if ((num_active_displays > 1) &&
+             ((mixer_width != fb_width) || (mixer_height != fb_height))) {
+    // when more than one display are active, set LM size to FB size so that built-in displays
+    // dont need to acquire VIG pipes leading to composition strategies exhausted.
+    *new_mixer_width = fb_width;
+    *new_mixer_height = fb_height;
+    return true;
   }
 
   return false;
@@ -4105,6 +4123,9 @@ DisplayError DisplayBase::IsSupportedOnDisplay(const SupportedDisplayFeature fea
     case kDedicatedCwb:
       error = dpu_core_mux_->GetFeatureSupportStatus(kHasDedicatedCwb, supported);
       break;
+    case kCacV2:
+      *supported = IsCacV2Supported();
+      break;
     default:
       DLOGW("Feature:%d is not present for display %d:%d", feature, display_id_, display_type_);
       error = kErrorParameters;
@@ -4186,11 +4207,18 @@ DisplayError DisplayBase::HandleSecureEvent(SecureEvent secure_event, bool *need
     comp_manager_->GetDefaultQosData(display_comp_ctx_, &cached_qos_data_);
   } else if (secure_event == kTUITransitionPrepare) {
     DisplayState state = state_;
+    DisplayState pending_state = kStateOff;
+    bool pending_state_available = false;
+    if (GetPendingDisplayState(&pending_state) == kErrorNone) {
+      pending_state_available = true;
+    }
     err = SetDisplayState(kStateOff, true /* teardown */, &release_fence);
     if (err != kErrorNone) {
       DLOGE("SetDisplay state off failed for %d err %d", display_id_, err);
       return err;
     }
+
+    state = pending_state_available ? pending_state : state;
     SetPendingPowerState(state);
   }
 

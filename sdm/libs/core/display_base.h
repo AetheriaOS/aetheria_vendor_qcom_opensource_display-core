@@ -281,6 +281,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   virtual DisplayError PerformCacConfig(CacConfig config, bool enable) {
     return kErrorNotSupported;
   }
+  virtual bool IsCacV2Supported() { return false; }
   virtual DisplayError
   PanelOprInfo(const std::string &client_name, bool enable,
                SdmDisplayCbInterface<PanelOprPayload> *cb_intf) {
@@ -306,6 +307,8 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
                                           SdmDisplayCbInterface<PanelBacklightPayload> *cb_intf) {
     return kErrorNotSupported;
   }
+  virtual DisplayError EnableCopr(bool en) { return kErrorNotSupported; }
+  virtual DisplayError GetCoprStats(std::vector<int> *stats) { return kErrorNotSupported; }
 
  protected:
   struct DisplayMutex {
@@ -459,6 +462,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   HWPowerState pending_power_state_ = kPowerStateNone;
   QSyncMode qsync_mode_ = kQSyncModeNone;
   std::bitset<kUpdateAVRFlagMax> needs_avr_update_ = {};
+  bool force_lm_to_fb_config_ = false;
 
   static Locker display_power_reset_lock_;
   static bool display_power_reset_pending_;
@@ -558,6 +562,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   HWDisplayMode default_panel_mode_ = kModeDefault;
   bool idle_hint_set_ = false;
   uint32_t idle_active_ms_ = 0;
+  bool enable_ai_scaler_ = false;
 };
 
 }  // namespace sdm

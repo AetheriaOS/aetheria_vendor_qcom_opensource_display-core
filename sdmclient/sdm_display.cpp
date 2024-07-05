@@ -961,7 +961,7 @@ void SDMDisplay::BuildLayerStack() {
   }
 
   // TODO(user): Set correctly when SDM supports geometry_changes as bitmask
-
+  geometry_changes_ |= sdm_layer_stack_->geometry_changes_;
   layer_stack_.flags.geometry_changed =
       UINT32((geometry_changes_ || geometry_changes_on_doze_suspend_) > 0);
   layer_stack_.flags.advance_fb_present = client_target_3_1_set_;
@@ -1941,12 +1941,9 @@ SDMDisplay::PostCommitLayerStack(shared_ptr<Fence> *out_retire_fence) {
   client_target_->GetSDMLayer()->request.flags = {};
 
   layer_stack_.flags.geometry_changed = false;
+  sdm_layer_stack_->geometry_changes_ = GeometryChanges::kNone;
   geometry_changes_ = GeometryChanges::kNone;
-  flush_ = false;
-  skip_commit_ = false;
 
-  layer_stack_.flags.geometry_changed = false;
-  geometry_changes_ = GeometryChanges::kNone;
   flush_ = false;
   skip_commit_ = false;
   client_target_3_1_set_ = false;
@@ -2351,10 +2348,13 @@ void SDMDisplay::GetPanelResolution(uint32_t *x_pixels, uint32_t *y_pixels) {
   uint32_t active_index = 0;
 
   GetSDMActiveConfig(false, &active_index);
-  display_intf_->GetConfig(active_index, &display_config);
-
-  *x_pixels = display_config.x_pixels;
-  *y_pixels = display_config.y_pixels;
+  if (display_intf_->GetConfig(active_index, &display_config) == kErrorNone) {
+    *x_pixels = display_config.x_pixels;
+    *y_pixels = display_config.y_pixels;
+  } else {
+    *x_pixels = variable_config_map_[active_index].x_pixels;
+    *y_pixels = variable_config_map_[active_index].y_pixels;
+  }
 }
 
 void SDMDisplay::GetRealPanelResolution(uint32_t *x_pixels,
@@ -2362,7 +2362,7 @@ void SDMDisplay::GetRealPanelResolution(uint32_t *x_pixels,
   DisplayConfigVariableInfo display_config;
   uint32_t active_index = 0;
 
-  GetSDMActiveConfig(false, &active_index);
+  GetSDMActiveConfig(true, &active_index);
   display_intf_->GetRealConfig(active_index, &display_config);
 
   *x_pixels = display_config.x_pixels;

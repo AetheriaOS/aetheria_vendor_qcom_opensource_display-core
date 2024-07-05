@@ -616,7 +616,9 @@ Error SnapMetadataManager::AlignedWidthInPixelsHelper(SnapMetadata *metadata,
       ALOGE("Invalid allocation - unable to get allocation size");
       return err;
     }
-    uint64_t width = layout.aligned_width_in_bytes / layout.bpp;
+    int width = 0;
+    constraint_mgr_->ConvertAlignedWidthFromBytesToPixels(buf_des->format,
+                                                          layout.aligned_width_in_bytes, &width);
     *static_cast<uint32_t *>(out_get) = width;
     return Error::NONE;
   } else if (out_get != nullptr) {
@@ -974,6 +976,21 @@ Error SnapMetadataManager::ColorRemappingInfoHelper(SnapMetadata *metadata,
   return Error::BAD_VALUE;
 }
 
+Error SnapMetadataManager::AnamorphicCompressionHelper(SnapMetadata *metadata,
+                                                       SnapHandleInternal *handle, void *in_set,
+                                                       void *out_get, BufferDescriptor *buf_des) {
+  if (out_get != nullptr) {
+    *static_cast<vendor_qti_hardware_display_common_QtiAnamorphicMetadata *>(out_get) =
+        metadata->anamorphic_compression;
+    return Error::NONE;
+  } else if (in_set != nullptr) {
+    metadata->anamorphic_compression =
+        *static_cast<vendor_qti_hardware_display_common_QtiAnamorphicMetadata *>(in_set);
+    return Error::NONE;
+  }
+  return Error::BAD_VALUE;
+}
+
 Error SnapMetadataManager::BaseAddressHelper(SnapMetadata *metadata, SnapHandleInternal *handle,
                                              void *in_set, void *out_get,
                                              BufferDescriptor *buf_des) {
@@ -1089,8 +1106,9 @@ uint32_t SnapMetadataManager::GetCustomContentMetadataSize(
 }
 
 Error SnapMetadataManager::InitializeMetadata(
-    SnapHandleInternal *hnd, BufferDescriptor in_desc, BufferDescriptor out_desc,
-    const AllocData ad, vendor_qti_hardware_display_common_BufferLayout *layout) {
+    SnapHandleInternal *hnd, vendor_qti_hardware_display_common_PixelFormat pixel_format_requested,
+    BufferDescriptor out_desc, const AllocData ad,
+    vendor_qti_hardware_display_common_BufferLayout *layout) {
   UBWCPolicy *ubwc_policy = UBWCPolicy::GetInstance();
   bool ubwc_enable = ubwc_policy->IsUBWCAlloc(out_desc);
   auto err = Error::NONE;
@@ -1156,7 +1174,7 @@ Error SnapMetadataManager::InitializeMetadata(
   data->heapName[heap_name_length] = '\0';
 
   // Populate pixel format requested
-  data->pixel_format_requested = in_desc.format;
+  data->pixel_format_requested = pixel_format_requested;
 
   UnmapAndReset(hnd);
   return Error::NONE;
