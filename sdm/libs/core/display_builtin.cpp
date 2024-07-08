@@ -1159,7 +1159,7 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
 
   DLOGI("Demura enable allowed %d, Anti-aging enable allowed %d", demura_allowed, demuratn_allowed);
   if (demura_allowed) {
-    demuratn_user_ctrl_ = GetDemuraTnUserCtrl();
+    demuratn_permanent_disabled_ = GetDemuraTnUserCtrl();
     error = SetupDemura();
     if (error != kErrorNone) {
       // Non-fatal but not expected, log error
@@ -1170,7 +1170,7 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
       if (demura_) {
         SetDemuraIntfStatus(false);
       }
-    } else if (demuratn_allowed && demuratn_factory_ && demuratn_user_ctrl_) {
+    } else if (demuratn_allowed && demuratn_factory_ && !demuratn_permanent_disabled_) {
       error = SetupDemuraTn();
       if (error != kErrorNone) {
         DLOGW("Failed to setup DemuraTn, Error = %d", error);
@@ -1372,7 +1372,7 @@ DisplayError DisplayBuiltIn::PostCommit() {
   }
   dpps_info_.Init(this, client_ctx_.hw_panel_info.panel_name, this, prop_intf_);
 
-  if (demuratn_ && demuratn_user_ctrl_)
+  if (demuratn_ && !demuratn_permanent_disabled_)
     EnableDemuraTn(true);
 
   HandleQsyncPostCommit();
@@ -4455,7 +4455,7 @@ DisplayError DisplayBuiltIn::SetDemuraTnUserCtrl(void *data) {
       return ret;
     }
   }
-  demuratn_user_ctrl_ = user_ctrl;
+  demuratn_permanent_disabled_ = user_ctrl;
 
   int error = UpdateDemuraTnUserCtrl(user_ctrl);
   if (error) {
@@ -4507,7 +4507,6 @@ DisplayError DisplayBuiltIn::CleanupDemuraConfig(void *data, DemuraTnCleanupType
 bool DisplayBuiltIn::GetDemuraTnUserCtrl() {
   std::ifstream in(kDemuraTnUserCtrlFile, std::ios::binary);
   if (!in.is_open()) {
-    DLOGW("Failed to open the file %s", kDemuraTnUserCtrlFile.c_str());
     return false;
   }
 
@@ -4522,7 +4521,7 @@ bool DisplayBuiltIn::GetDemuraTnUserCtrl() {
     return false;
   }
 
-  auto pos = file_data.find("true");
+  auto pos = file_data.find("demuratn_permanent_disabled=true");
   if (pos != std::string::npos) {
     return true;
   }
@@ -4540,7 +4539,8 @@ int DisplayBuiltIn::UpdateDemuraTnUserCtrl(bool user_ctrl) {
   }
 
   std::string value = user_ctrl ? "true" : "false";
-  out << value << '\n';
+  std::string prefix = "demuratn_permanent_disabled=";
+  out << prefix << value << '\n';
   return ret;
 }
 
