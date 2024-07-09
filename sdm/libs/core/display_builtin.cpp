@@ -4082,6 +4082,7 @@ DisplayError DisplayBuiltIn::SetSsrcMode(const std::string &mode) {
     }
   }
 
+  needs_validate_ = true;
   return ret;
 }
 
@@ -4160,6 +4161,7 @@ DisplayError DisplayBuiltIn::SetABCState(bool state) {
   comp_manager_->SetDemuraStatusForDisplay(display_id_, state);
   abc_enabled_ = state;
 
+  needs_validate_ = true;
   // Disable Partial Update for one frame.
   DisablePartialUpdateOneFrameInternal();
   return kErrorNone;
@@ -4192,6 +4194,7 @@ DisplayError DisplayBuiltIn::SetABCReconfig() {
     return kErrorUndefined;
   }
 
+  needs_validate_ = true;
   return kErrorNone;
 }
 
@@ -4237,6 +4240,7 @@ DisplayError DisplayBuiltIn::SetABCMode(const string &mode_name) {
     }
   }
 
+  needs_validate_ = true;
   return kErrorNone;
 }
 

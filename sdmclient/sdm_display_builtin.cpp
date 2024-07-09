@@ -1762,7 +1762,17 @@ void SDMDisplayBuiltIn::ReqPerfHintRelease() {
 }
 
 DisplayError SDMDisplayBuiltIn::SetSsrcMode(const std::string &mode) {
-  return display_intf_->SetSsrcMode(mode);
+  DLOGV("Display ID: %" PRId64 " mode: %s", id_, mode.c_str());
+  DisplayError error = display_intf_->SetSsrcMode(mode);
+
+  if (error != kErrorNone) {
+    DLOGE("Failed. mode = %s, error = %d", mode.c_str(), error);
+    return kErrorParameters;
+  }
+
+  callbacks_->OnRefresh(id_);
+
+  return error;
 }
 
 DisplayError SDMDisplayBuiltIn::SetupVRRConfig() {
