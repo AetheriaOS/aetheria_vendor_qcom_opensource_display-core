@@ -2131,7 +2131,7 @@ DisplayError ConcurrencyMgr::ControlPartialUpdate(uint64_t disp_id,
 
   // Todo(user): Unlock it before sending events to client. It may cause
   // deadlocks in future. Wait until partial update control is complete
-  auto error = WaitForCommitDone(SDM_DISPLAY_PRIMARY, kClientPartialUpdate);
+  auto error = WaitForCommitDone(GetDisplayIndex(disp_id), kClientPartialUpdate);
   if (error != kErrorNone) {
     DLOGW("%s Partial update failed with error %d",
           enable ? "Enable" : "Disable", error);
