@@ -4253,6 +4253,7 @@ DisplayError DisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) {
       break;
     case kTypeDemuraTnEventsCtrl:
       ret = SetDemuraTnEventsCtrl(data);
+      break;
     case kTypeDemuraTnUserCtrl:
       ret = SetDemuraTnUserCtrl(data);
       break;
