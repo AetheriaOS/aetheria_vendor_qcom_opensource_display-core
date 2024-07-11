@@ -207,6 +207,40 @@ Error SnapAllocCore::Retain(SnapHandle *hnd) {
   return err;
 }
 
+Error SnapAllocCore::RetainViewBuffer(SnapHandle *meta_hnd, uint32_t view,
+                                      SnapHandle **out_view_handle) {
+  if (meta_hnd == nullptr) {
+    return Error::BAD_BUFFER;
+  }
+
+  auto err = Error::NONE;
+  std::lock_guard<std::mutex> lock(buffer_lock_);
+  auto buf = GetBufferFromHandleLocked(meta_hnd);
+  if (buf == nullptr) {
+    DLOGE("Retain MetaHandle before retaining auxillary view buffer");
+    return Error::UNSUPPORTED;
+  }
+
+  SnapHandle *view_handle = buf->CreateViewHandle(view);
+
+  if (!view_handle) {
+    return Error::UNSUPPORTED;
+  }
+
+  err = ImportHandleLocked(view_handle);
+  DLOGD_IF(enable_logs, "%s: line %d: handles_map_ size %d", __FUNCTION__, __LINE__,
+           handles_map_.size());
+
+  DLOGD_IF(enable_logs, "===============");
+
+  for (auto &entry : handles_map_) {
+    DLOGD_IF(enable_logs, "SnapAllocCore::Retain: handles_map: buf->id %lu", entry.second->id());
+  }
+  DLOGD_IF(enable_logs, "===============");
+  *out_view_handle = view_handle;
+  return err;
+}
+
 Error SnapAllocCore::Release(SnapHandle *hnd) {
   if (hnd == nullptr) {
     return Error::BAD_BUFFER;

@@ -76,6 +76,7 @@ class SnapHandleInternal : public SnapHandle {
   std::vector<FdPair> getFds();
   void closeFds();
   uint32_t getViewInfo();
+  SnapHandleInternal *CreateViewHandle(uint32_t view);
 
  private:
   SnapHandleInternal(const SnapHandleInternal &other) = delete;
