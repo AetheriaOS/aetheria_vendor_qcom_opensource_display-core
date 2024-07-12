@@ -161,6 +161,16 @@ Error SnapConstraintManager::GetAllocationData(
       return Error::BAD_VALUE;
     }
   }
+
+  if ((
+      in_desc.format == vendor_qti_hardware_display_common_PixelFormat::RAW10 ||
+      in_desc.format == vendor_qti_hardware_display_common_PixelFormat::RAW12 ||
+      in_desc.format == vendor_qti_hardware_display_common_PixelFormat::YCBCR_422_SP)
+      && (in_desc.usage & GPU_RENDER_TARGET || in_desc.usage & GPU_TEXTURE)) {
+        DLOGE("Failing allocation for unsupported formats for GPU render/texture");
+        return Error::BAD_VALUE;
+  }
+
   if (in_desc.format == vendor_qti_hardware_display_common_PixelFormat::IMPLEMENTATION_DEFINED ||
       in_desc.format == vendor_qti_hardware_display_common_PixelFormat::YCBCR_420_888) {
     vendor_qti_hardware_display_common_PixelFormatModifier modifier = PIXEL_FORMAT_MODIFIER_NONE;
@@ -332,6 +342,7 @@ Error SnapConstraintManager::ConstraintsToBufferLayout(
 
     layout->planes[i].horizontal_stride_in_bytes = constraints->planes[i].stride.horizontal_stride;
     layout->planes[i].scanlines = constraints->planes[i].scanline.scanline;
+
     DLOGD_IF(enable_logs,
              "%s: format %d, i %d layout->planes[i].horizontal_stride_in_bytes %d  "
              "layout->planes[i].scanline %d",
@@ -343,14 +354,29 @@ Error SnapConstraintManager::ConstraintsToBufferLayout(
         ALIGN(layout->planes[i].horizontal_stride_in_bytes * layout->planes[i].scanlines,
               constraints->planes[i].size_align);
     layout->planes[i].offset_in_bytes = offset_sum;
+
+    if (desc.format == YCBCR_422_I) {
+      // For interleaved formats, the stride for all components is the same
+      // but the sizes must factor in subsampling
+      layout->planes[i].size_in_bytes =
+          ALIGN((layout->planes[i].horizontal_stride_in_bytes /
+                 layout->planes[i].horizontal_subsampling) *
+                    (layout->planes[i].scanlines / layout->planes[i].vertical_subsampling),
+                constraints->planes[i].size_align);
+
+      layout->planes[i].offset_in_bytes = layout->planes[i].components[0].offset_in_bits / 8.0;
+      layout->planes[i].components[0].offset_in_bits = 0;
+    }
+
     offset_sum += layout->planes[i].size_in_bytes;
     DLOGD_IF(enable_logs,
              "%s: format %d, layout->planes[i].horizontal_stride_in_bytes %d "
              "layout->planes[i].scanlines %d "
-             " constraints->planes[i].size_align %d layout->planes[i].size_in_bytes %d",
+             " constraints->planes[i].size_align %d layout->planes[i].size_in_bytes %d"
+             " layout->planes[%d].offset_in_bytes %d",
              __FUNCTION__, desc.format, layout->planes[i].horizontal_stride_in_bytes,
              layout->planes[i].scanlines, constraints->planes[i].size_align,
-             layout->planes[i].size_in_bytes);
+             layout->planes[i].size_in_bytes, i, layout->planes[i].offset_in_bytes);
     layout->size_in_bytes += layout->planes[i].size_in_bytes;
   }
   layout->size_in_bytes = ALIGN(layout->size_in_bytes, constraints->size_align_bytes);
