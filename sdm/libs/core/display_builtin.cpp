@@ -867,6 +867,7 @@ DisplayError DisplayBuiltIn::SetupABCLayer() {
     Layer demura_layer = {};
     demura_layer.input_buffer.size = corrdata->surfaces[buf_idx].alloc_buffer_info.size;
     demura_layer.input_buffer.buffer_id = corrdata->surfaces[buf_idx].alloc_buffer_info.id;
+    demura_layer.input_buffer.handle_id = corrdata->surfaces[buf_idx].alloc_buffer_info.id;
     demura_layer.input_buffer.format = corrdata->surfaces[buf_idx].alloc_buffer_info.format;
     demura_layer.input_buffer.width = corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_width;
     demura_layer.input_buffer.unaligned_width =
