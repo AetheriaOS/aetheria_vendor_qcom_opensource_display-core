@@ -342,6 +342,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError SendPanelIdToParserManager();
   DisplayError ReloadDemuraCalibFiles(void *data);
   DisplayError SetDemuraDisplayEventsCtrl(void *data);
+  DisplayError QueryDemuraTnInfo(void *data);
 
   const uint32_t kPuTimeOutMs = 1000;
   std::vector<HWEvent> event_list_;
