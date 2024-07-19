@@ -808,6 +808,7 @@ DisplayError DisplayBuiltIn::SetupDemuraLayer() {
     Layer demura_layer = {};
 #ifndef TRUSTED_VM
     demura_layer.input_buffer.buffer_id = corrdata->surfaces[buf_idx].alloc_buffer_info.id;
+    demura_layer.input_buffer.handle_id = corrdata->surfaces[buf_idx].alloc_buffer_info.id;
 #endif
     demura_layer.input_buffer.size = corrdata->surfaces[buf_idx].alloc_buffer_info.size;
     demura_layer.input_buffer.format = corrdata->surfaces[buf_idx].alloc_buffer_info.format;
@@ -3662,6 +3663,11 @@ DisplayError DisplayBuiltIn::SetDemuraState(int state) {
   }
 
   if (state && !comp_manager_->GetDemuraStatusForDisplay(display_id_)) {
+    if (SetupCorrectionLayer() != kErrorNone) {
+      DLOGE("Unable to setup Demura layer on Display %d", display_id_);
+      return kErrorUndefined;
+    }
+
     ret = SetDemuraIntfStatus(true);
     if (ret) {
       DLOGE("Failed to set demura status to true, ret = %d", ret);
@@ -3678,6 +3684,7 @@ DisplayError DisplayBuiltIn::SetDemuraState(int state) {
     }
     comp_manager_->SetDemuraStatusForDisplay(display_id_, false);
     demura_dynamic_enabled_ = false;
+    demura_layer_.clear();
   }
 
   // Disable Partial Update for one frame.
