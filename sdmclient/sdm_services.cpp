@@ -67,6 +67,9 @@ void SDMServices::Init(SDMDisplayBuilder *disp,
   for (int i = 0; i < PanelFeatureVendorServiceTypeMax; i++) {
     panel_feature_data_type_map_[static_cast<PanelFeatureVendorServiceType>(i)] = "int";
   }
+
+  panel_feature_data_type_map_[kTypeDeleteDemuraConfig] = "uint64_t";
+  panel_feature_data_type_map_[kTypeDeleteDemuraTnConfig] = "uint64_t";
 }
 
 void SDMServices::Deinit() {
