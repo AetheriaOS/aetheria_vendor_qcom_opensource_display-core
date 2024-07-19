@@ -1193,8 +1193,10 @@ void ConcurrencyMgr::Refresh(uint64_t display) {
 void ConcurrencyMgr::CompositorSync(CompositorSyncType sync_type) {
   if (sync_type == CompositorSyncTypeAcquire) {
     command_seq_mutex_.lock();
+    tui_mutex_.lock();
   } else {
     command_seq_mutex_.unlock();
+    tui_mutex_.unlock();
   }
 }
 
@@ -1203,6 +1205,7 @@ void ConcurrencyMgr::PerformDisplayPowerReset() {
 
   // Wait until all commands are flushed.
   std::lock_guard<std::mutex> lock(command_seq_mutex_);
+  std::lock_guard<std::mutex> tui_lock(tui_mutex_);
 
   // Acquire lock on all displays.
   for (Display display = SDM_DISPLAY_PRIMARY; display < kNumDisplays;
@@ -2040,6 +2043,7 @@ DisplayError ConcurrencyMgr::CreateVirtualDisplay(uint32_t width,
                                                   Display *out_display_id) {
   // Wait until all commands are flushed.
   std::lock_guard<std::mutex> sdm_lock(command_seq_mutex_);
+  std::lock_guard<std::mutex> tui_lock(tui_mutex_);
 
   return disp_->CreateVirtualDisplay(width, height, format, out_display_id);
 }
@@ -2047,6 +2051,7 @@ DisplayError ConcurrencyMgr::CreateVirtualDisplay(uint32_t width,
 DisplayError ConcurrencyMgr::DestroyVirtualDisplay(Display client_id) {
   // Wait until all commands are flushed.
   std::lock_guard<std::mutex> sdm_lock(command_seq_mutex_);
+  std::lock_guard<std::mutex> tui_lock(tui_mutex_);
 
   return disp_->DestroyVirtualDisplay(client_id);
 }
