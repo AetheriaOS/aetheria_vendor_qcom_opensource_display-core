@@ -24,7 +24,6 @@
 
 /*
 * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
-*
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
@@ -274,6 +273,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   virtual DisplayError SetABCState(bool state) { return kErrorNotSupported; }
   virtual DisplayError SetABCReconfig() { return kErrorNotSupported; }
   virtual DisplayError SetABCMode(const string &mode_name) { return kErrorNotSupported; }
+  virtual void RefreshOnIdleTimeoutForCwb(bool is_cwb_requested);
   virtual void ResetDispLayerStack();
   virtual bool HasNoiseLayer();
   virtual bool HasConcurrentWriteback();
@@ -555,6 +555,8 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   DisplayError ConfigureCwbForIdleFallback(LayerStack *layer_stack);
   bool cwb_fence_wait_ = false;
   bool enable_cwb_cpu_boosting_ = false;
+  bool force_refresh_to_process_cwb_ = false;
+  bool enable_client_control_cwb_refresh_ = false;
   std::vector<Layer> border_layers_;
   bool windowed_display_ = false;
   LayerRect window_rect_ = {};

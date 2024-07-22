@@ -24,7 +24,6 @@
 
 /*
 * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
-*
 * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
@@ -688,10 +687,17 @@ DisplayError DisplayBuiltIn::colorSamplingOff() {
 DisplayError DisplayBuiltIn::SetupSPR() {
   int spr_prop_value = 0;
   int spr_bypass_prop_value = 0;
+  int spr_disable_value = 0;
   Debug::GetProperty(ENABLE_SPR, &spr_prop_value);
   Debug::GetProperty(ENABLE_SPR_BYPASS, &spr_bypass_prop_value);
 
-  if (spr_prop_value) {
+  if (IsPrimaryDisplay()) {
+    Debug::Get()->GetProperty(DISABLE_SPR_PRIMARY, &spr_disable_value);
+  } else {
+    Debug::Get()->GetProperty(DISABLE_SPR_SECONDARY, &spr_disable_value);
+  }
+
+  if (spr_prop_value && !spr_disable_value) {
     SPRInputConfig spr_cfg;
     spr_cfg.panel_name = std::string(client_ctx_.hw_panel_info.panel_name);
     spr_cfg.spr_bypassed = (spr_bypass_prop_value) ? true : false;
@@ -919,15 +925,6 @@ void DisplayBuiltIn::PreCommit(LayerStack *layer_stack) {
     }
   }
 
-  if (vsync_enable_) {
-    DTRACE_BEGIN("RegisterVsync");
-    // wait for previous frame's retire fence to signal.
-    Fence::Wait(retire_fence_);
-
-    // Register for vsync and then commit the frame.
-    hw_events_intf_->SetEventState(HWEvent::VSYNC, true);
-    DTRACE_END();
-  }
   // effectively drmModeAtomicAddProperty for SDE_DSPP_HIST_IRQ_V1
   if (histogramSetup) {
     SetDppsFeatureLocked(&histogramIRQ, sizeof(histogramIRQ));
@@ -1159,7 +1156,7 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
 
   DLOGI("Demura enable allowed %d, Anti-aging enable allowed %d", demura_allowed, demuratn_allowed);
   if (demura_allowed) {
-    demuratn_user_ctrl_ = GetDemuraTnUserCtrl();
+    demuratn_permanent_disabled_ = GetDemuraTnUserCtrl();
     error = SetupDemura();
     if (error != kErrorNone) {
       // Non-fatal but not expected, log error
@@ -1170,7 +1167,7 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
       if (demura_) {
         SetDemuraIntfStatus(false);
       }
-    } else if (demuratn_allowed && demuratn_factory_ && demuratn_user_ctrl_) {
+    } else if (demuratn_allowed && demuratn_factory_ && !demuratn_permanent_disabled_) {
       error = SetupDemuraTn();
       if (error != kErrorNone) {
         DLOGW("Failed to setup DemuraTn, Error = %d", error);
@@ -1372,7 +1369,7 @@ DisplayError DisplayBuiltIn::PostCommit() {
   }
   dpps_info_.Init(this, client_ctx_.hw_panel_info.panel_name, this, prop_intf_);
 
-  if (demuratn_ && demuratn_user_ctrl_)
+  if (demuratn_ && !demuratn_permanent_disabled_)
     EnableDemuraTn(true);
 
   HandleQsyncPostCommit();
@@ -3756,7 +3753,7 @@ DisplayError DisplayBuiltIn::GetPanelBrightnessBasePath(std::string *base_path) 
 
 bool DisplayBuiltIn::IsCacV2Supported() {
   for (auto &res_info : hw_resource_info_) {
-    if (res_info.cac_version != kCacVersion2) {
+    if ((res_info.cac_version != kCacVersion2) && (res_info.cac_version != kCacVersionLoopback)) {
       return false;
     }
   }
@@ -4084,6 +4081,7 @@ DisplayError DisplayBuiltIn::SetSsrcMode(const std::string &mode) {
     }
   }
 
+  needs_validate_ = true;
   return ret;
 }
 
@@ -4162,6 +4160,7 @@ DisplayError DisplayBuiltIn::SetABCState(bool state) {
   comp_manager_->SetDemuraStatusForDisplay(display_id_, state);
   abc_enabled_ = state;
 
+  needs_validate_ = true;
   // Disable Partial Update for one frame.
   DisablePartialUpdateOneFrameInternal();
   return kErrorNone;
@@ -4194,6 +4193,7 @@ DisplayError DisplayBuiltIn::SetABCReconfig() {
     return kErrorUndefined;
   }
 
+  needs_validate_ = true;
   return kErrorNone;
 }
 
@@ -4239,6 +4239,7 @@ DisplayError DisplayBuiltIn::SetABCMode(const string &mode_name) {
     }
   }
 
+  needs_validate_ = true;
   return kErrorNone;
 }
 
@@ -4455,7 +4456,7 @@ DisplayError DisplayBuiltIn::SetDemuraTnUserCtrl(void *data) {
       return ret;
     }
   }
-  demuratn_user_ctrl_ = user_ctrl;
+  demuratn_permanent_disabled_ = user_ctrl;
 
   int error = UpdateDemuraTnUserCtrl(user_ctrl);
   if (error) {
@@ -4507,7 +4508,6 @@ DisplayError DisplayBuiltIn::CleanupDemuraConfig(void *data, DemuraTnCleanupType
 bool DisplayBuiltIn::GetDemuraTnUserCtrl() {
   std::ifstream in(kDemuraTnUserCtrlFile, std::ios::binary);
   if (!in.is_open()) {
-    DLOGW("Failed to open the file %s", kDemuraTnUserCtrlFile.c_str());
     return false;
   }
 
@@ -4522,7 +4522,7 @@ bool DisplayBuiltIn::GetDemuraTnUserCtrl() {
     return false;
   }
 
-  auto pos = file_data.find("true");
+  auto pos = file_data.find("demuratn_permanent_disabled=true");
   if (pos != std::string::npos) {
     return true;
   }
@@ -4540,7 +4540,8 @@ int DisplayBuiltIn::UpdateDemuraTnUserCtrl(bool user_ctrl) {
   }
 
   std::string value = user_ctrl ? "true" : "false";
-  out << value << '\n';
+  std::string prefix = "demuratn_permanent_disabled=";
+  out << prefix << value << '\n';
   return ret;
 }
 

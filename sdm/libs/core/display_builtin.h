@@ -24,7 +24,6 @@
 
 /*
  * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
- *
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
@@ -386,7 +385,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   int demura_current_idx_ = -1;
   const std::string kDemuraTnUserCtrlFile = "/mnt/vendor/persist/display/demuratn_user_ctrl";
   std::shared_ptr<DemuraTnCleanupIntf> demuratn_cleanup_intf_;
-  bool demuratn_user_ctrl_ = true;
+  bool demuratn_permanent_disabled_ = false;
   bool abc_enabled_ = false;
   bool abc_prop_ = false;
   bool enable_dpps_dyn_fps_ = false;

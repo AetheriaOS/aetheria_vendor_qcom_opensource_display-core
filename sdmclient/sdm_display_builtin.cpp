@@ -27,9 +27,7 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Changes from Qualcomm Innovation Center, Inc. are provided under the
- * following license:
- *
+ * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
@@ -1762,7 +1760,17 @@ void SDMDisplayBuiltIn::ReqPerfHintRelease() {
 }
 
 DisplayError SDMDisplayBuiltIn::SetSsrcMode(const std::string &mode) {
-  return display_intf_->SetSsrcMode(mode);
+  DLOGV("Display ID: %" PRId64 " mode: %s", id_, mode.c_str());
+  DisplayError error = display_intf_->SetSsrcMode(mode);
+
+  if (error != kErrorNone) {
+    DLOGE("Failed. mode = %s, error = %d", mode.c_str(), error);
+    return kErrorParameters;
+  }
+
+  callbacks_->OnRefresh(id_);
+
+  return error;
 }
 
 DisplayError SDMDisplayBuiltIn::SetupVRRConfig() {
