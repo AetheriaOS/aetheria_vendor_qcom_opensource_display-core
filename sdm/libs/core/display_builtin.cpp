@@ -1593,7 +1593,7 @@ DisplayError DisplayBuiltIn::SetPanelBrightness(float brightness) {
     DLOGI_IF(kTagDisplay, "Setting brightness to level %d (%f percent)", level,
              brightness * 100);
 
-    if (demura_intended_ && demura_dynamic_enabled_) {
+    if (demura_intended_ && comp_manager_->GetDemuraStatusForDisplay(display_id_)) {
       if (!demura_) {
         DLOGE("demura_ is nullptr");
         return kErrorParameters;
@@ -3259,6 +3259,7 @@ DisplayError DisplayBuiltIn::HandleSecureEvent(SecureEvent secure_event, bool *n
   }
 
   if (secure_event == kTUITransitionEnd) {
+    comp_manager_->SetDemuraStatusForDisplay(display_id_, true);
     // enable demura after TUI transition end
     if (demura_) {
       SetDemuraIntfStatus(true, demura_current_idx_);
@@ -3283,6 +3284,7 @@ DisplayError DisplayBuiltIn::PostHandleSecureEvent(SecureEvent secure_event) {
     }
 
     if (secure_event == kTUITransitionStart) {
+      comp_manager_->SetDemuraStatusForDisplay(display_id_, false);
       //  disable demura before TUI transition start
       if (demura_) {
         SetDemuraIntfStatus(false);
