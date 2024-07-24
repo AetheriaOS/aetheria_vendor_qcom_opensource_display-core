@@ -358,16 +358,16 @@ DisplayError SDMServices::ControlPartialUpdate(int disp_id, bool enable) {
     return kErrorNotSupported;
   }
 
-  if (disp_idx != SDM_DISPLAY_PRIMARY) {
-    DLOGW("CONTROL_PARTIAL_UPDATE is not applicable for display = %d",
-          disp_idx);
+  if (disp_id != qdutilsDisplayType::DISPLAY_PRIMARY &&
+      disp_id != qdutilsDisplayType::DISPLAY_BUILTIN_2) {
+    DLOGW("CONTROL_PARTIAL_UPDATE is not applicable for display = %d", disp_id);
     return kErrorNotSupported;
   }
   {
     SEQUENCE_WAIT_SCOPE_LOCK(locker_[disp_idx]);
-    SDMDisplay *sdm_display = cb_->GetDisplayFromClientId(SDM_DISPLAY_PRIMARY);
+    SDMDisplay *sdm_display = cb_->GetDisplayFromClientId(disp_idx);
     if (!sdm_display) {
-      DLOGE("primary display object is not instantiated");
+      DLOGE("Display = %d object is not instantiated", disp_idx);
       return kErrorNotSupported;
     }
 
