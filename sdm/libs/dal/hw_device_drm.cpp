@@ -1628,6 +1628,7 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
         } else {
           panel_roi = roi;
           panel_roi.top += FLOAT(hw_layers_info->common_info->spr_overfetch_lines.top);
+          panel_roi.bottom -= FLOAT(hw_layers_info->common_info->spr_overfetch_lines.bottom);
         }
 
         crtc_rects[i].left = UINT32(roi.left);
@@ -1642,7 +1643,8 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
         spr_rects[i].right = UINT32(roi.right);
         spr_rects[i].top = UINT32(roi.top +
                            FLOAT(hw_layers_info->common_info->spr_overfetch_lines.top));
-        spr_rects[i].bottom = UINT32(roi.bottom);
+        spr_rects[i].bottom =
+            UINT32(roi.bottom - FLOAT(hw_layers_info->common_info->spr_overfetch_lines.bottom));
       }
 
       uint32_t num_rects = std::max(1u, UINT32(hw_layers_info->left_frame_roi.size()));
