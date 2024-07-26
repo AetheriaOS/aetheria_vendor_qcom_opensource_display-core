@@ -24,7 +24,7 @@ Error SnapAlloc::Allocate(const BufferDescriptor &in_descriptor, int in_count,
   }
 
   if (!handles.empty()) {
-    allocation_result->stride = handles[0]->aligned_width_in_pixels;
+    allocation_result->stride = handles[0]->aligned_width_in_pixels();
   }
 
   allocation_result->handles.reserve(in_count);
