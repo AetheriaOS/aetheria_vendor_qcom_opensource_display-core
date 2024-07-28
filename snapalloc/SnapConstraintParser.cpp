@@ -133,7 +133,7 @@ bool SnapConstraintParser::StringToEnumType(
     return true;
   }
 
-  DLOGE("Unable to find enum value for format string %s", input.c_str());
+  DLOGW("Unable to find enum value for format string %s", input.c_str());
   return false;
 }
 
@@ -147,7 +147,7 @@ bool SnapConstraintParser::StringToEnumType(
 
   // Empty string valid for formats where plane layout is not queried (e.g., depth stencil formats)
   if (input != "") {
-    DLOGE("Unable to find enum value for plane layout component string %s", input.c_str());
+    DLOGW("Unable to find enum value for plane layout component string %s", input.c_str());
   }
 
   return false;
@@ -172,7 +172,7 @@ int SnapConstraintParser::ParseFormats(
 
     vendor_qti_hardware_display_common_PixelFormat format;
     if (!StringToEnumType(format_data_set["format"].asString(), &format)) {
-      DLOGE("%s: Could not find format %s in format list", __FUNCTION__,
+      DLOGW("%s: Could not find format %s in format list", __FUNCTION__,
             format_data_set["format"].asString().c_str());
       continue;
     }
@@ -208,7 +208,7 @@ int SnapConstraintParser::ParseFormats(
         } else {
           // Empty string valid for formats where plane layout is not queried (e.g., depth stencil formats)
           if ((plane_component["component_type"].asString() != "")) {
-            DLOGE("Invalid component type %s in %s",
+            DLOGW("Invalid component type %s in %s",
                   plane_component["component_type"].asString().c_str(), json_path.c_str());
             continue;
           }
@@ -251,7 +251,7 @@ int SnapConstraintParser::ParseAlignments(const std::string &json_path,
     vendor_qti_hardware_display_common_PixelFormat format =
         vendor_qti_hardware_display_common_PixelFormat::PIXEL_FORMAT_UNSPECIFIED;
     if (!StringToEnumType(constraint_set["format"].asString(), &format)) {
-      DLOGE("%s: Could not find format %s in format list", __FUNCTION__,
+      DLOGW("%s: Could not find format %s in format list", __FUNCTION__,
             constraint_set["format"].asString().c_str());
       continue;
     }
@@ -297,7 +297,7 @@ int SnapConstraintParser::ParseAlignments(const std::string &json_path,
         if (StringToEnumType(plane_component["component_type"].asString(), &component_type)) {
           plane_constraints.components.push_back(component_type);
         } else {
-          DLOGE("Invalid component type %s in %s",
+          DLOGW("Invalid component type %s in %s",
                 plane_component["component_type"].asString().c_str(), json_path.c_str());
           continue;
         }
