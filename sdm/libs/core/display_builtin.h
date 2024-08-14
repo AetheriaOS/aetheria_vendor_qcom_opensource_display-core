@@ -339,6 +339,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError TriggerDemuraOemPlugIn(void *data);
   CacVersion GetCacVerion();
   DisplayError SendPanelIdToParserManager();
+  bool IsAnamorphicFoveationEnabled(LayerStack *layer_stack);
 
   const uint32_t kPuTimeOutMs = 1000;
   std::vector<HWEvent> event_list_;
