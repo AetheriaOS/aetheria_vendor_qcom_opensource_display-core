@@ -867,6 +867,7 @@ DisplayError DisplayBuiltIn::SetupABCLayer() {
     Layer demura_layer = {};
     demura_layer.input_buffer.size = corrdata->surfaces[buf_idx].alloc_buffer_info.size;
     demura_layer.input_buffer.buffer_id = corrdata->surfaces[buf_idx].alloc_buffer_info.id;
+    demura_layer.input_buffer.handle_id = corrdata->surfaces[buf_idx].alloc_buffer_info.id;
     demura_layer.input_buffer.format = corrdata->surfaces[buf_idx].alloc_buffer_info.format;
     demura_layer.input_buffer.width = corrdata->surfaces[buf_idx].alloc_buffer_info.aligned_width;
     demura_layer.input_buffer.unaligned_width =
@@ -1592,7 +1593,7 @@ DisplayError DisplayBuiltIn::SetPanelBrightness(float brightness) {
     DLOGI_IF(kTagDisplay, "Setting brightness to level %d (%f percent)", level,
              brightness * 100);
 
-    if (demura_intended_ && demura_dynamic_enabled_) {
+    if (demura_intended_ && comp_manager_->GetDemuraStatusForDisplay(display_id_)) {
       if (!demura_) {
         DLOGE("demura_ is nullptr");
         return kErrorParameters;
@@ -3160,7 +3161,7 @@ int DisplayBuiltIn::SetDemuraIntfStatus(bool enable, int current_idx) {
       return ret;
     }
 
-    config_mode_name->modeinfo = "normal_on_udc_off";
+    config_mode_name->modeinfo = "";
     if ((ret = demura_->SetParameter(kDemuraFeatureParamConfigIdx, config_pl))) {
       DLOGE("Failed to set Config Idx, error = %d", ret);
       return ret;
@@ -3258,6 +3259,7 @@ DisplayError DisplayBuiltIn::HandleSecureEvent(SecureEvent secure_event, bool *n
   }
 
   if (secure_event == kTUITransitionEnd) {
+    comp_manager_->SetDemuraStatusForDisplay(display_id_, true);
     // enable demura after TUI transition end
     if (demura_) {
       SetDemuraIntfStatus(true, demura_current_idx_);
@@ -3282,6 +3284,7 @@ DisplayError DisplayBuiltIn::PostHandleSecureEvent(SecureEvent secure_event) {
     }
 
     if (secure_event == kTUITransitionStart) {
+      comp_manager_->SetDemuraStatusForDisplay(display_id_, false);
       //  disable demura before TUI transition start
       if (demura_) {
         SetDemuraIntfStatus(false);
@@ -4166,6 +4169,11 @@ DisplayError DisplayBuiltIn::SetABCState(bool state) {
   // Update dispay abc state for current display
   comp_manager_->SetDemuraStatusForDisplay(display_id_, state);
   abc_enabled_ = state;
+
+  if (abc_enabled_ && (SetABCMode("normal_on_udc_off") != kErrorNone)) {
+    DLOGE("Failed to set mode to normal_on_udc_off");
+    return kErrorUndefined;
+  }
 
   needs_validate_ = true;
   // Disable Partial Update for one frame.

@@ -1024,6 +1024,7 @@ enum SelfRefreshState {
 
 struct SprOverfetchLines {
   uint32_t top = 0;  // Over fetch lines for SPR pu on Top
+  uint32_t bottom = 0;  // Over fetch lines for SPR pu at bottom
 };
 
 struct CommonStackInfo {
