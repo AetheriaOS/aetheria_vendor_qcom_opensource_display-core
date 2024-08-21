@@ -1160,6 +1160,7 @@ void HWPeripheralDRM::CreatePanelFeaturePropertyMap() {
   panel_feature_property_map_[kPanelFeatureAIScalerCfg] = sde_drm::kDRMPanelFeatureAIScalerCfg;
   panel_feature_property_map_[kPanelFeatureAiqeMdnie] = sde_drm::kDRMPanelFeatureAiqeMdnie;
   panel_feature_property_map_[kPanelFeatureAiqeMdnieArt] = sde_drm::kDRMPanelFeatureAiqeMdnieArt;
+  panel_feature_property_map_[kPanelFeatureAiqeMdnieIPC] = sde_drm::kDRMPanelFeatureAiqeMdnieIPC;
   panel_feature_property_map_[kPanelFeatureAiqeCopr] = sde_drm::kDRMPanelFeatureAiqeCopr;
   panel_feature_property_map_[kPanelFeatureABCCfg] = sde_drm::kDRMPanelFeatureABC;
   panel_feature_property_map_[kPanelFeatureDemuraBacklight] =
@@ -1199,6 +1200,7 @@ int HWPeripheralDRM::GetPanelFeature(PanelFeaturePropertyInfo *feature_info) {
     case kPanelFeatureAiqeSsrcData:
     case kPanelFeatureAiqeMdnie:
     case kPanelFeatureAiqeMdnieArt:
+    case kPanelFeatureAiqeMdnieIPC:
     case kPanelFeatureAiqeCopr:
     case kPanelFeatureABCCfg:
     case kPanelFeatureDemuraBacklight:
@@ -1243,6 +1245,7 @@ int HWPeripheralDRM::SetPanelFeature(const PanelFeaturePropertyInfo &feature_inf
     case kPanelFeatureAIScalerCfg:
     case kPanelFeatureAiqeMdnie:
     case kPanelFeatureAiqeMdnieArt:
+    case kPanelFeatureAiqeMdnieIPC:
     case kPanelFeatureAiqeCopr:
     case kPanelFeatureABCCfg:
     case kPanelFeatureDemuraBacklight:
