@@ -453,6 +453,9 @@ int HWDeviceDRM::Registry::CreateFbId(const LayerBuffer &buffer, std::vector<uin
   buf_info.format = buffer.format;
   buf_info.usage = buffer.usage;
   buffer_allocator_->GetBufferLayout(buf_info, layout.stride, layout.offset, &layout.num_planes);
+  if (buffer.format == kFormatRGBA8888UbwcLossy2To1) {
+    layout.height *= 2;
+  }
   for (int color = 0; color < fb_id->size(); color++) {
     GetBufInfoForTunnelPipe(static_cast<HWCacColorComponent>(color), loopback_cac_info, &buf_info,
                             &layout);
