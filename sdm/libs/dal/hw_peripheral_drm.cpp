@@ -474,20 +474,6 @@ void HWPeripheralDRM::SetDestScalarData(const DestScaleInfoMap dest_scale_info_m
     dest_scalar_data->lm_width = dest_scale_info->mixer_width;
     dest_scalar_data->lm_height = dest_scale_info->mixer_height;
     dest_scalar_data->scaler_cfg = reinterpret_cast<uint64_t>(&scale->scaler_v2);
-    switch (dest_scale_info->mixer_merge_mode) {
-      case kDestScalerSinglePipe:
-        dest_scalar_data->merge_mode = DEST_SCALER_SINGLE_PIPE;
-        break;
-      case kDestScalerDualPipe:
-        dest_scalar_data->merge_mode = DEST_SCALER_DUAL_PIPE;
-        break;
-      case kDestScalerQuadPipe:
-        dest_scalar_data->merge_mode = DEST_SCALER_QUAD_PIPE;
-        break;
-      default:
-        DLOGI("Invalid destination scaler merge mode");
-        break;
-    }
 
     if (std::memcmp(&dest_scalar_cache_[i].scalar_data, scale, sizeof(SDEScaler)) ||
         dest_scalar_cache_[i].flags != dest_scalar_data->flags) {
@@ -786,13 +772,7 @@ DisplayError HWPeripheralDRM::PowerOn(const HWQosData &qos_data, SyncPoints *syn
   if (sde_dest_scalar_data_.num_dest_scaler) {
     for (uint32_t i = 0; i < dest_scaler_blocks_used_; i++) {
       sde_drm_dest_scaler_cfg *dest_scalar_data = &sde_dest_scalar_data_.ds_cfg[i];
-      if ((dest_scalar_data->flags & SDE_DRM_DESTSCALER_ENABLE) &&
-          (hw_resource_.cac_version == kCacVersionLoopback)) {
-        // Disable DS during power On for DS and loopback CAC case.
-        // LM will contain overfetch pixels in case of loopback CAC and loopback connector
-        // is disabled during power off because loopabck CAC + borderfill not supported.
-        dest_scalar_data->flags &= ~SDE_DRM_DESTSCALER_ENABLE;
-      } else if (dest_scalar_data->flags & SDE_DRM_DESTSCALER_ENABLE) {
+      if (dest_scalar_data->flags & SDE_DRM_DESTSCALER_ENABLE) {
         dest_scalar_data->flags |= SDE_DRM_DESTSCALER_SCALE_UPDATE;
       }
     }
