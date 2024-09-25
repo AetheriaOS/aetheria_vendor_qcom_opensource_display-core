@@ -1106,7 +1106,8 @@ Error SnapMetadataManager::InitializeMetadata(
         DLOGE("Error initializing graphics metadata - ret val %d", ret);
       }
     } else {
-      DLOGE("Failed to get graphics metadata - retval %d", ret);
+      DLOGW("Failed to get graphics metadata - ret val %d, format %d, usage %d", ret,
+            out_desc.format, out_desc.usage);
     }
   } else {
     DLOGD_IF(enable_logs,
