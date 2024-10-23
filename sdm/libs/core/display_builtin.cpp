@@ -316,13 +316,25 @@ DisplayError DisplayBuiltIn::Init() {
     Debug::Get()->GetProperty(ENABLE_ABC, &enable_abc);
     abc_prop_ = enable_abc;
 
+    Debug::Get()->GetProperty(ENABLE_DEMURA, &demura_prop_);
+    if (demura_prop_) {  // Create parser manager for demura
+      pm_intf_ = pf_factory_->CreateDemuraParserManager(ipc_intf_, buffer_allocator_);
+      if (!pm_intf_) {
+        DLOGE("Failed to create Parser Manager intf");
+      } else if (pm_intf_->Init() != 0) {
+        DLOGE("Failed to init Parser Manager intf");
+        pm_intf_->Deinit();
+        pm_intf_ = nullptr;
+      }
+    }
+
 #ifndef TRUSTED_VM
     std::thread([=] { DisplayBuiltIn::StartTvmServices(); }).detach();
 #endif
 
     if (abc_prop_) {
       SetupABC();
-    } else {
+    } else if (demura_prop_) {
       SetupDemuraT0AndTn();
     }
   } else {
@@ -422,6 +434,18 @@ DisplayError DisplayBuiltIn::Deinit() {
       service_manager_intf_->Deinit();
       service_manager_intf_.reset();
       service_manager_intf_ = nullptr;
+    }
+
+    if (demura_prop_) {
+      if (pm_intf_ && pm_intf_.use_count() == 1) {
+        GenericPayload dummy;
+        int ret = pm_intf_->SetParameter(kDemuraParserManagerParamReleaseParsers, dummy);
+        if (ret < 0) {
+          DLOGW("Failed to release demura parsers");
+        }
+        pm_intf_->Deinit();
+      }
+      comp_manager_->FreeDemuraFetchResources(display_id_);
     }
   }
 
@@ -1059,13 +1083,6 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
   DisplayError error = kErrorNone;
   int ret = 0, value = 0, panel_id_w = 0;
   uint64_t panel_id = 0;
-  bool demura_allowed = false, demuratn_allowed = false;
-
-  if (!comp_manager_->GetDemuraStatus()) {
-    comp_manager_->FreeDemuraFetchResources(display_id_);
-    comp_manager_->SetDemuraStatusForDisplay(display_id_, false);
-    return kErrorNone;
-  }
 
   if (IsPrimaryDisplay()) {
     Debug::Get()->GetProperty(DEMURA_PRIMARY_PANEL_OVERRIDE_LOW, &panel_id_w);
@@ -1073,14 +1090,14 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
     Debug::Get()->GetProperty(DEMURA_PRIMARY_PANEL_OVERRIDE_HIGH, &panel_id_w);
     panel_id |= ((static_cast<uint64_t>(panel_id_w)) << 32);
     Debug::Get()->GetProperty(DISABLE_DEMURA_PRIMARY, &value);
-    DLOGI("panel overide total value %lx\n", panel_id);
+    DLOGI("panel overide total value for primary display %lx\n", panel_id);
   } else {
     Debug::Get()->GetProperty(DEMURA_SECONDARY_PANEL_OVERRIDE_LOW, &panel_id_w);
     panel_id = static_cast<uint32_t>(panel_id_w);
     Debug::Get()->GetProperty(DEMURA_SECONDARY_PANEL_OVERRIDE_HIGH, &panel_id_w);
     panel_id |= ((static_cast<uint64_t>(panel_id_w)) << 32);
     Debug::Get()->GetProperty(DISABLE_DEMURA_SECONDARY, &value);
-    DLOGI("panel overide total value %lx\n", panel_id);
+    DLOGI("panel overide total value for secondary display %lx\n", panel_id);
   }
 
   if (value > 0) {
@@ -1105,8 +1122,8 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
   DLOGI("panel_id 0x%lx", panel_id_);
 
 #if defined SDM_UNIT_TESTING || defined TRUSTED_VM
-  demura_allowed = true;
-  demuratn_allowed = true;
+  demura_allowed_ = true;
+  demuratn_allowed_ = true;
 #else
   if (!feature_license_factory_) {
     DLOGI("Feature license factory is not available");
@@ -1148,7 +1165,7 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
     DLOGE("Failed to get the license permission for Demura. Error:%d", ret);
     return kErrorUndefined;
   }
-  demura_allowed = *allowed;
+  demura_allowed_ = *allowed;
 
   AntiAgingValidatePermissionInput *aa_input = nullptr;
   ret = aa_pl.CreatePayload<AntiAgingValidatePermissionInput>(aa_input);
@@ -1163,30 +1180,79 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
     DLOGE("Failed to get the license permission for Anti-aging. Error:%d", ret);
     return kErrorUndefined;
   }
-  demuratn_allowed = *allowed;
+  demuratn_allowed_ = *allowed;
 #endif
 
-  DLOGI("Demura enable allowed %d, Anti-aging enable allowed %d", demura_allowed, demuratn_allowed);
-  if (demura_allowed) {
+  DLOGI("Demura enable allowed %d, Anti-aging enable allowed %d", demura_allowed_,
+        demuratn_allowed_);
+
+  // Setup Demura T0 and Tn
+  if (demura_allowed_) {
+    error = SetupDemuraT0();
+    if (error) {
+      DLOGE("Failed to setup demura T0, error %d", error);
+      return error;
+    }
+  }
+
+  if (demura_allowed_ && demuratn_allowed_ && demuratn_factory_) {
     demuratn_permanent_disabled_ = GetDemuraTnUserCtrl();
-    error = SetupDemura();
-    if (error != kErrorNone) {
-      // Non-fatal but not expected, log error
-      DLOGE("Demura failed to initialize on display %d-%d, Error = %d", display_id_, display_type_,
-            error);
-      comp_manager_->FreeDemuraFetchResources(display_id_);
-      comp_manager_->SetDemuraStatusForDisplay(display_id_, false);
-      if (demura_) {
-        SetDemuraIntfStatus(false);
-      }
-    } else if (demuratn_allowed && demuratn_factory_ && !demuratn_permanent_disabled_) {
+    if (!demuratn_permanent_disabled_) {
       error = SetupDemuraTn();
       if (error != kErrorNone) {
         DLOGW("Failed to setup DemuraTn, Error = %d", error);
       }
     }
   }
+
   return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetupDemuraT0() {
+  DisplayError error = SendPanelIdToParserManager();
+  if (error) {
+    DLOGE("Failed to setup parser manager, error %d", error);
+    return error;
+  }
+
+  error = SetupDemura();
+  if (error != kErrorNone) {
+    DLOGE("Demura failed to initialize on display %d-%d, Error %d", display_id_, display_type_,
+          error);
+    comp_manager_->FreeDemuraFetchResources(display_id_);
+    comp_manager_->SetDemuraStatusForDisplay(display_id_, false);
+    if (demura_) {
+      SetDemuraIntfStatus(false);
+    }
+  }
+
+  return error;
+}
+
+DisplayError DisplayBuiltIn::SendPanelIdToParserManager() {
+  DisplayError error = kErrorNone;
+  int ret = 0;
+
+  if (!pm_intf_) {
+    DLOGE("Invalid Parser Manager intf");
+    return kErrorUndefined;
+  }
+
+  std::vector<uint64_t> *panel_ids;
+  GenericPayload in;
+  ret = in.CreatePayload<std::vector<uint64_t>>(panel_ids);
+  if (ret) {
+    DLOGE("Failed to create payload for panel ids, error = %d", ret);
+    return kErrorResources;
+  }
+  panel_ids->push_back(panel_id_);
+
+  if ((ret = pm_intf_->SetParameter(kDemuraParserManagerParamPanelIds, in))) {
+    DLOGE("Failed to set the panel ids to the parser manager");
+    return kErrorResources;
+  }
+
+  return error;
 }
 
 DisplayError DisplayBuiltIn::SetupDemuraTn() {
@@ -1459,7 +1525,7 @@ DisplayError DisplayBuiltIn::SetDisplayState(DisplayState state, bool teardown,
   if (((demura_intended_ && demura_dynamic_enabled_) || abc_enabled_) &&
       comp_manager_->GetDemuraStatusForDisplay(display_id_) && (state == kStateOff)) {
     comp_manager_->SetDemuraStatusForDisplay(display_id_, false);
-    SetDemuraIntfStatus(false);
+    SetDemuraIntfStatus(false, demura_current_idx_);
   }
 
   error = DisplayBase::SetDisplayState(state, teardown, release_fence);
@@ -1797,7 +1863,7 @@ void DisplayBuiltIn::PingPongTimeout() {
 }
 
 void DisplayBuiltIn::IdlePowerCollapse() {
-  if (client_ctx_.hw_panel_info.mode == kModeCommand) {
+  if ((client_ctx_.hw_panel_info.mode == kModeCommand) || client_ctx_.hw_panel_info.vhm_support) {
     ClientLock lock(disp_mutex_);
     validated_ = false;
     comp_manager_->ProcessIdlePowerCollapse(display_comp_ctx_);
@@ -1997,7 +2063,7 @@ DisplayError DisplayBuiltIn::DppsProcessOps(enum DppsOps op, void *payload, size
       error = dpu_core_mux_->GetDppsFeatureInfo(payload, size);
       break;
     case kDppsScreenRefresh:
-      event_handler_->Refresh();
+      HandleSelfRefresh();
       break;
     case kDppsPartialUpdate: {
       int ret;
@@ -2872,9 +2938,9 @@ DisplayError DisplayBuiltIn::SetActiveConfig(uint32_t index) {
 
   if (vrr_enabled_) {
     // Set VRR State
-    bool enable = hw_intf_->IsAVRStepSupported(index);
-    SetQSyncMode(enable ? kQSyncModeContinuous : kQSyncModeNone);
-    SetAVRStepState(enable);
+    avr_step_ = hw_intf_->GetAVRStep(index);
+    SetQSyncMode(avr_step_ ? kQSyncModeContinuous : kQSyncModeNone);
+    SetAVRStepState(avr_step_ != 0);
   }
 
   auto error = DisplayBase::SetActiveConfig(index);
@@ -3268,12 +3334,10 @@ DisplayError DisplayBuiltIn::HandleSecureEvent(SecureEvent secure_event, bool *n
     return error;
   }
 
-  if (secure_event == kTUITransitionEnd) {
-    comp_manager_->SetDemuraStatusForDisplay(display_id_, true);
+  if (secure_event == kTUITransitionEnd && demura_intended_ && demura_dynamic_enabled_) {
     // enable demura after TUI transition end
-    if (demura_) {
-      SetDemuraIntfStatus(true, demura_current_idx_);
-    }
+    SetDemuraIntfStatus(true, demura_current_idx_);
+    comp_manager_->SetDemuraStatusForDisplay(display_id_, true);
   }
 
   return error;
@@ -3293,16 +3357,16 @@ DisplayError DisplayBuiltIn::PostHandleSecureEvent(SecureEvent secure_event) {
       SendDisplayConfigs();
     }
 
-    if (secure_event == kTUITransitionStart) {
+    if (secure_event == kTUITransitionStart &&
+        comp_manager_->GetDemuraStatusForDisplay(display_id_)) {
       comp_manager_->SetDemuraStatusForDisplay(display_id_, false);
       //  disable demura before TUI transition start
-      if (demura_) {
-        SetDemuraIntfStatus(false);
-      }
+      SetDemuraIntfStatus(false, demura_current_idx_);
     }
   }
   if (secure_event == kTUITransitionEnd) {
     comp_manager_->PostHandleSecureEvent(display_comp_ctx_, secure_event);
+    event_handler_->Refresh();
   }
   return kErrorNone;
 }
@@ -3699,9 +3763,27 @@ uint32_t DisplayBuiltIn::SanitizeRefreshRate(uint32_t req_refresh_rate, uint32_t
 
 DisplayError DisplayBuiltIn::SetDemuraState(int state) {
   int ret = 0;
+  DisplayError error = kErrorNone;
 
-  if (!demura_intended_) {
-    DLOGW("Demura has not enabled");
+  if (!comp_manager_->GetDemuraStatus()) {
+    DLOGI("Demura status is not ready, failed to set state %d", state);
+    return kErrorUndefined;
+  }
+
+  if (!demura_intended_ && state) {
+    if (demura_allowed_) {
+      DLOGI("Start Demura feature now");
+      if ((error = SetupDemuraT0()) != kErrorNone) {
+        DLOGE("Failed to enable Demura dynamically, error = %d", error);
+        return error;
+      }
+      demura_dynamic_enabled_ = true;
+      demura_current_idx_ = kDemuraDefaultIdx;
+      // Disable Partial Update for one frame.
+      DisablePartialUpdateOneFrameInternal();
+    } else {
+      DLOGI("Demura is not allowed by license");
+    }
     return kErrorNone;
   }
 
@@ -3781,7 +3863,7 @@ DisplayError DisplayBuiltIn::SetDemuraConfig(int demura_idx) {
 
   demura_current_idx_ = demura_idx;
   DLOGV("Demura config updated to config index %d", demura_idx);
-  event_handler_->Refresh();
+  HandleSelfRefresh();
 
   // disable partial update for one frame
   DisablePartialUpdateOneFrame();
@@ -4166,7 +4248,8 @@ DisplayError DisplayBuiltIn::SetVRRState(bool state) {
 
   uint32_t active_index = 0;
   dpu_core_mux_->GetActiveConfig(&active_index);
-  if (hw_intf_->IsAVRStepSupported(active_index)) {
+  avr_step_ = hw_intf_->GetAVRStep(active_index);
+  if (avr_step_ != 0) {
     DLOGI("Set VRR state %d in config %d", state, active_index);
     SetQSyncMode(state ? kQSyncModeContinuous : kQSyncModeNone);
     DisplayError error = SetAVRStepState(state);
@@ -4357,25 +4440,13 @@ DisplayError DisplayBuiltIn::SetDemuraTnCWBSamplingPeriod(void *data) {
 }
 
 DisplayError DisplayBuiltIn::ExportDemuraFiles() {
-  if (!pf_factory_) {
-    DLOGW("Invalid panel feature factory");
+  if (!pm_intf_) {
+    DLOGW("Invalid parser manager intf");
     return kErrorUndefined;
   }
 
-  std::shared_ptr<DemuraParserManagerIntf> pm_intf =
-      pf_factory_->CreateDemuraParserManager(ipc_intf_, buffer_allocator_);
-  if (!pm_intf) {
-    DLOGE("Failed to get Parser Manager intf");
-    return kErrorResources;
-  }
-
-  if (pm_intf->Init() != 0) {
-    DLOGE("Failed to init Parser Manager intf");
-    return kErrorResources;
-  }
-
   GenericPayload in;
-  int ret = pm_intf->SetParameter(kDemuraParserManagerExportDemuraFiles, in);
+  int ret = pm_intf_->SetParameter(kDemuraParserManagerExportDemuraFiles, in);
   if (ret) {
     DLOGE("Failed to export demura files, ret %d", ret);
     return kErrorUndefined;
@@ -4385,12 +4456,11 @@ DisplayError DisplayBuiltIn::ExportDemuraFiles() {
 }
 
 DisplayError DisplayBuiltIn::StartTvmServices() {
-  int enable_demura = 0, enable_anti_aging = 0;
+  int enable_anti_aging = 0;
 
-  Debug::Get()->GetProperty(ENABLE_DEMURA, &enable_demura);
   Debug::Get()->GetProperty(ENABLE_ANTI_AGING, &enable_anti_aging);
 
-  if (!abc_prop_ && !enable_demura && !enable_anti_aging) {
+  if (!abc_prop_ && !demura_prop_ && !enable_anti_aging) {
     return kErrorNone;
   }
 
@@ -4419,7 +4489,7 @@ DisplayError DisplayBuiltIn::StartTvmServices() {
     }
   }
 
-  if (enable_demura) {
+  if (demura_prop_) {
     error = ExportDemuraFiles();
     if (error) {
       DLOGE("Failed to export demura files, error %d", error);
