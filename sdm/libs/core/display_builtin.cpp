@@ -1570,6 +1570,12 @@ DisplayError DisplayBuiltIn::SetDisplayState(DisplayState state, bool teardown,
       !comp_manager_->GetDemuraStatusForDisplay(display_id_) &&
       (state == kStateOn || state == kStateDoze)) {
     comp_manager_->SetDemuraStatusForDisplay(display_id_, true);
+
+    // Enable default idx if demura calib files are reloaded
+    if (demura_calib_files_reloaded_) {
+      demura_calib_files_reloaded_ = false;
+      demura_current_idx_ = kDemuraDefaultIdx;
+    }
     SetDemuraIntfStatus(true, demura_current_idx_);
   }
 
@@ -4402,6 +4408,15 @@ DisplayError DisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) {
     case kTypeTriggerDemuraOemPlugIn:
       ret = TriggerDemuraOemPlugIn(data);
       break;
+    case kTypeReloadDemuraCalibFiles:
+      ret = ReloadDemuraCalibFiles(data);
+      break;
+    case kTypeDemuraDisplayEventsCtrl:
+      ret = SetDemuraDisplayEventsCtrl(data);
+      break;
+    case kTypeQueryDemuraTnInfo:
+      ret = QueryDemuraTnInfo(data);
+      break;
     default:
       DLOGE("Invalid type %d", type);
       ret = kErrorParameters;
@@ -4739,6 +4754,91 @@ DisplayError DisplayBuiltIn::TriggerDemuraOemPlugIn(void *data) {
   event_handler_->Refresh();
 
   DLOGI("Trigger demura oem plugin success");
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::ReloadDemuraCalibFiles(void *data) {
+  (void)data;
+  int ret = 0;
+
+  // OEM will reload demura calib files during device suspend
+  // the new calib files will take effect after device resume
+  if (state_ != kStateOff) {
+    DLOGW("Not supported in display state %d", state_);
+    return kErrorNotSupported;
+  }
+
+  if (!demura_intended_) {
+    DLOGW("Demura is not enabled");
+    return kErrorNone;
+  }
+
+  if (!pm_intf_) {
+    DLOGE("Invalid parser manager intf");
+    return kErrorUndefined;
+  }
+
+  // Re-parse all demura files
+  GenericPayload pl = {};
+  if ((ret = pm_intf_->SetParameter(kDemuraParserManagerReparseDemuraFiles, pl))) {
+    DLOGE("Failed to reparse demura calib files, ret %d", ret);
+    return kErrorResources;
+  }
+
+  // Reconfig demura with new data
+  bool *b = nullptr;
+  GenericPayload reconfig_pl = {};
+  if ((ret = reconfig_pl.CreatePayload<bool>(b))) {
+    DLOGE("Failed to create payload, ret %d", ret);
+    return kErrorUndefined;
+  }
+  *b = true;
+  if ((ret = demura_->SetParameter(kDemuraFeatureParamPendingReconfig, reconfig_pl))) {
+    DLOGE("Failed to set reconfig parameter for demura %d", ret);
+    return kErrorUndefined;
+  }
+
+  demura_calib_files_reloaded_ = true;
+  DLOGI("Reload demura calib files success");
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetDemuraDisplayEventsCtrl(void *data) {
+  (void)data;
+  int ret = 0;
+
+  if (!demura_intended_ || !demura_dynamic_enabled_) {
+    DLOGW("Demura is not enabled");
+    return kErrorNone;
+  }
+
+  GenericPayload pl = {};
+  if ((ret = demura_->SetParameter(kDemuraFeatureParamDispEventState, pl))) {
+    DLOGE("Failed to set DispEventState for demura %d", ret);
+    return kErrorUndefined;
+  }
+
+  DLOGI("Set demura disply event state success");
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::QueryDemuraTnInfo(void *data) {
+  (void)data;
+  int ret = 0;
+
+  if (!demuratn_) {
+    DLOGE("Not supported, demuratn intf is null");
+    return kErrorNotSupported;
+  }
+
+  GenericPayload payload = {};
+  ret = demuratn_->GetParameter(kDemuraTnCoreUvmParamQueryInfo, &payload);
+  if (ret) {
+    DLOGE("Failed to query information from Tn %d", ret);
+    return kErrorUndefined;
+  }
+
+  DLOGI("Query demuraTn infomation done");
   return kErrorNone;
 }
 

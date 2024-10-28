@@ -340,6 +340,9 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError HandleDemuraScreenRefresh();
   CacVersion GetCacVerion();
   DisplayError SendPanelIdToParserManager();
+  DisplayError ReloadDemuraCalibFiles(void *data);
+  DisplayError SetDemuraDisplayEventsCtrl(void *data);
+  DisplayError QueryDemuraTnInfo(void *data);
 
   const uint32_t kPuTimeOutMs = 1000;
   std::vector<HWEvent> event_list_;
@@ -421,6 +424,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   bool demura_allowed_ = false;
   bool demuratn_allowed_ = false;
   int demura_prop_ = 0;
+  bool demura_calib_files_reloaded_ = false;
 };
 
 }  // namespace sdm
