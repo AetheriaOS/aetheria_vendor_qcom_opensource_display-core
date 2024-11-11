@@ -169,7 +169,7 @@ ADRENOPIXELFORMAT GraphicsConstraintProvider::GetGpuPixelFormat(
   if (snap_to_adreno_pixel_format_.find(snap_desc) != snap_to_adreno_pixel_format_.end()) {
     format = snap_to_adreno_pixel_format_.at(snap_desc);
   } else {
-    DLOGE("%s: No map for format: 0x%x", __FUNCTION__, snap_format);
+    DLOGW("%s: No map for format: 0x%x", __FUNCTION__, snap_format);
   }
   return format;
 }
@@ -227,7 +227,7 @@ int GraphicsConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferCo
   int format = static_cast<uint64_t>(snap_format);
   uint64_t pixel_format_modifier = GetPixelFormatModifier(desc);
   if (format_data_map_.find(snap_format) == format_data_map_.end()) {
-    DLOGE("%s: could not find entry for format %lu", __FUNCTION__, static_cast<uint64_t>(format));
+    DLOGW("%s: could not find entry for format %lu", __FUNCTION__, static_cast<uint64_t>(format));
     return -1;
   }
 
@@ -334,13 +334,13 @@ int GraphicsConstraintProvider::GetConstraints(BufferDescriptor desc, BufferCons
   }
 #endif
   if (constraint_set_map_.empty()) {
-    DLOGE("Graphics constraint set map is empty");
+    DLOGW("Graphics constraint set map is empty");
     return -1;
   }
   if (constraint_set_map_.find(desc.format) != constraint_set_map_.end()) {
     *out = constraint_set_map_.at(desc.format);
   } else {
-    DLOGE("Graphics could not find entry for format %d", static_cast<uint64_t>(desc.format));
+    DLOGW("Graphics could not find entry for format %d", static_cast<uint64_t>(desc.format));
     return -1;
   }
   return 0;

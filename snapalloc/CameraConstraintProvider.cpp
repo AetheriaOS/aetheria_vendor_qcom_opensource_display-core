@@ -85,7 +85,7 @@ CamxPixelFormat CameraConstraintProvider::GetCameraPixelFormat(int snap_format, 
   if (snap_to_camera_pixel_format_.find(snap_desc) != snap_to_camera_pixel_format_.end()) {
     format = static_cast<CamxPixelFormat>(snap_to_camera_pixel_format_.at(snap_desc));
   } else {
-    DLOGE("%s: No map for format: 0x%x", __FUNCTION__, snap_format);
+    DLOGW("%s: No map for format: 0x%x", __FUNCTION__, snap_format);
   }
   return format;
 }
@@ -116,7 +116,7 @@ int CameraConstraintProvider::GetStrideInBytes(int format, int plane_type, int w
       result = LINK_camera_get_stride_in_bytes(cam_format, GetCamxPlaneType(plane_type), width,
                                                stride_bytes);
       if (result != 0) {
-        DLOGE("%s: Failed to get the stride in bytes. Error code: %d", __FUNCTION__, result);
+        DLOGW("%s: Failed to get the stride in bytes. Error code: %d", __FUNCTION__, result);
       }
     }
   } else {
@@ -443,7 +443,7 @@ CamxPlaneType CameraConstraintProvider::GetCamxPlaneType(int plane_type) {
       camx_plane_type = CAMERA_PLANE_TYPE_META_VU;
       break;
     default:
-      DLOGE("%s: No CamxPlane for plane_type: %d", __FUNCTION__, plane_type);
+      DLOGW("%s: No CamxPlane for plane_type: %d", __FUNCTION__, plane_type);
       break;
   }
 
@@ -473,7 +473,7 @@ int CameraConstraintProvider::GetCapabilities(BufferDescriptor desc, CapabilityS
 int CameraConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferConstraints *data) {
   int format = static_cast<uint64_t>(desc.format);
   if (format_data_map_.find(desc.format) == format_data_map_.end()) {
-    DLOGE("Could not find entry for format ", static_cast<uint64_t>(format));
+    DLOGW("Could not find entry for format ", static_cast<uint64_t>(format));
     return -1;
   }
   uint64_t pixel_format_modifier = GetPixelFormatModifier(desc);
@@ -494,14 +494,14 @@ int CameraConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferCons
     ret_val = GetStrideInBytes(format, plane_type, desc.width, pixel_format_modifier, &value);
     plane_layout.stride.horizontal_stride = value;
     if (ret_val) {
-      DLOGE("Error in GetStrideInBytes");
+      DLOGW("Error in GetStrideInBytes");
       return -1;
     }
     value = 0;
     ret_val = GetScanline(format, plane_type, desc.height, pixel_format_modifier, &value);
     plane_layout.scanline.scanline = value;
     if (ret_val) {
-      DLOGE("Error in GetScanline");
+      DLOGW("Error in GetScanline");
       return -1;
     }
     unsigned int alignment = 0;
@@ -516,7 +516,7 @@ int CameraConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferCons
       plane_layout.size_align = static_cast<uint64_t>(alignment);
     }
     if (ret_val) {
-      DLOGE("Error in GetPlaneAlignment");
+      DLOGW("Error in GetPlaneAlignment");
       return -1;
     }
     data->planes.push_back(plane_layout);
