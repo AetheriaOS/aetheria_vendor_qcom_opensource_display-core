@@ -1359,6 +1359,7 @@ DisplayError SDMDisplay::SetActiveConfig(Config config) {
       DisplayError error = SetFBForExtendedResolution(config, &is_vconfig_fps_switched);
       if (error != kErrorNone || !is_vconfig_fps_switched) {
         pending_config_ = false;
+        pending_refresh_rate_config_ = UINT_MAX; /* Invalid config to skip */
         return error;
       }
     }
@@ -3029,6 +3030,7 @@ DisplayError SDMDisplay::SetActiveConfigWithConstraints(
           fb_height_ = info_client_requested.y_pixels;
         }
         pending_config_ = false;
+        pending_refresh_rate_config_ = UINT_MAX; /* Invalid config to skip */
         return error;
       }
     }
