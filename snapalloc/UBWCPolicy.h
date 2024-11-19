@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #ifndef __UBWC_POLICY_H__
@@ -61,7 +61,6 @@ class UBWCPolicy {
   uint64_t GetMetaPlaneSize(uint64_t width, uint64_t height, uint32_t block_width,
                             uint32_t block_height, uint64_t stride_align, uint64_t scanline_align,
                             uint64_t size_align);
-  int GetBatchSize(vendor_qti_hardware_display_common_PixelFormatModifier modifier);
 };
 }  // namespace snapalloc
 
