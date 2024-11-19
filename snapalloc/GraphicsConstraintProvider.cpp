@@ -61,6 +61,8 @@ void GraphicsConstraintProvider::Init(
   } else {
     parser->ParseFormats(&format_data_map_);
   }
+
+  gfx_ubwc_disable_ = Debug::GetInstance()->IsUBWCDisabled();
 }
 
 static bool AdrenoAlignmentRequired(vendor_qti_hardware_display_common_BufferUsage usage,
@@ -167,7 +169,7 @@ ADRENOPIXELFORMAT GraphicsConstraintProvider::GetGpuPixelFormat(
   if (snap_to_adreno_pixel_format_.find(snap_desc) != snap_to_adreno_pixel_format_.end()) {
     format = snap_to_adreno_pixel_format_.at(snap_desc);
   } else {
-    DLOGE("%s: No map for format: 0x%x", __FUNCTION__, snap_format);
+    DLOGW("%s: No map for format: 0x%x", __FUNCTION__, snap_format);
   }
   return format;
 }
@@ -225,7 +227,7 @@ int GraphicsConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferCo
   int format = static_cast<uint64_t>(snap_format);
   uint64_t pixel_format_modifier = GetPixelFormatModifier(desc);
   if (format_data_map_.find(snap_format) == format_data_map_.end()) {
-    DLOGE("%s: could not find entry for format %lu", __FUNCTION__, static_cast<uint64_t>(format));
+    DLOGW("%s: could not find entry for format %lu", __FUNCTION__, static_cast<uint64_t>(format));
     return -1;
   }
 
@@ -260,7 +262,8 @@ int GraphicsConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferCo
       // This returns aligned width in pixels
       AlignUnCompressedRGB(desc.width, desc.height, format, tile_enabled, pixel_format_modifier,
                            &aligned_w, &aligned_h);
-      OVERFLOW_ERR_RETURN(static_cast<uint64_t>(aligned_w), (format_data.bits_per_pixel / 8.0f));
+      OVERFLOW_ERR_RETURN(static_cast<uint64_t>(aligned_w), (format_data.bits_per_pixel / 8.0f),
+                          OverflowType::MUL);
       plane_layout.stride.horizontal_stride =
           static_cast<uint64_t>(aligned_w) * (format_data.bits_per_pixel / 8.0f);
       plane_layout.scanline.scanline = static_cast<uint64_t>(aligned_h);
@@ -331,13 +334,13 @@ int GraphicsConstraintProvider::GetConstraints(BufferDescriptor desc, BufferCons
   }
 #endif
   if (constraint_set_map_.empty()) {
-    DLOGE("Graphics constraint set map is empty");
+    DLOGW("Graphics constraint set map is empty");
     return -1;
   }
   if (constraint_set_map_.find(desc.format) != constraint_set_map_.end()) {
     *out = constraint_set_map_.at(desc.format);
   } else {
-    DLOGE("Graphics could not find entry for format %d", static_cast<uint64_t>(desc.format));
+    DLOGW("Graphics could not find entry for format %d", static_cast<uint64_t>(desc.format));
     return -1;
   }
   return 0;

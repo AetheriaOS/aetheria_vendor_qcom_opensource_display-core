@@ -57,7 +57,7 @@ int DisplayConstraintProvider::GetCapabilities(BufferDescriptor desc, Capability
 
 int DisplayConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferConstraints *data) {
   if (format_data_map_.find(desc.format) == format_data_map_.end()) {
-    DLOGE("Could not find entry for format %lu", static_cast<uint64_t>(desc.format));
+    DLOGW("Could not find entry for format %lu", static_cast<uint64_t>(desc.format));
     return -1;
   }
 
@@ -81,7 +81,7 @@ int DisplayConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferCon
               pixel_format_modifier),
           false);  // false indicates not ubwc
       if (mmm_color_format < 0) {
-        DLOGE("Failed to get format mapping to use mmm_color_fmt");
+        DLOGW("Failed to get format mapping to use mmm_color_fmt");
         return -1;
       }
       switch (component_type) {
@@ -129,13 +129,13 @@ int DisplayConstraintProvider::GetConstraints(BufferDescriptor desc, BufferConst
   return 0;
 #endif
   if (constraint_set_map_.empty()) {
-    DLOGE("DisplayConstraintProvider constraint set map is empty");
+    DLOGW("DisplayConstraintProvider constraint set map is empty");
     return -1;
   }
   if (constraint_set_map_.find(desc.format) != constraint_set_map_.end()) {
     *out = constraint_set_map_.at(desc.format);
   } else {
-    DLOGE("DisplayConstraintProvider could not find entry for format %lu",
+    DLOGW("DisplayConstraintProvider could not find entry for format %lu",
           static_cast<uint64_t>(desc.format));
   }
   return 0;

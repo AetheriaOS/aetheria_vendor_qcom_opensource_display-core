@@ -14,6 +14,12 @@ namespace snapalloc {
 UBWCPolicy *UBWCPolicy::instance_{nullptr};
 std::mutex UBWCPolicy::ubwc_policy_mutex_;
 
+UBWCPolicy::UBWCPolicy() {
+  constraint_parser_ = SnapConstraintParser::GetInstance();
+  graphics_provider_ = GraphicsConstraintProvider::GetInstance();
+  debug_ = Debug::GetInstance();
+}
+
 UBWCPolicy *UBWCPolicy::GetInstance(
     std::map<vendor_qti_hardware_display_common_PixelFormat, FormatData> format_data_map) {
   std::lock_guard<std::mutex> lock(ubwc_policy_mutex_);
@@ -27,18 +33,22 @@ UBWCPolicy *UBWCPolicy::GetInstance(
 
 void UBWCPolicy::Init(
     std::map<vendor_qti_hardware_display_common_PixelFormat, FormatData> format_data_map) {
-  SnapConstraintParser *parser = SnapConstraintParser::GetInstance();
   if (!format_data_map.empty()) {
     format_data_map_ = format_data_map;
   } else {
-    parser->ParseFormats(&format_data_map_);
+    constraint_parser_->ParseFormats(&format_data_map_);
   }
 #ifndef __ANDROID__
-  parser->ParseAlignments("/vendor/etc/display/ubwc_alignments.json", &constraint_set_map_);
+  constraint_parser_->ParseAlignments("/vendor/etc/display/ubwc_alignments.json",
+                                      &constraint_set_map_);
 #endif
 }
 
 bool UBWCPolicy::IsUBWCAlloc(BufferDescriptor desc) {
+  if (debug_->IsUBWCDisabled()) {
+    return false;
+  }
+
   // Explicit UBWC formats passed by the clients.Ignore the usage bits and allow UBWC.
   if (GetPixelFormatModifier(desc) ==
       static_cast<uint64_t>(vendor_qti_hardware_display_common_PixelFormatModifier::
@@ -70,11 +80,10 @@ bool UBWCPolicy::IsUBWCAlloc(BufferDescriptor desc) {
 
   if (enable && (desc.usage & vendor_qti_hardware_display_common_BufferUsage::GPU_TEXTURE ||
                  desc.usage & vendor_qti_hardware_display_common_BufferUsage::GPU_RENDER_TARGET)) {
-    GraphicsConstraintProvider *graphics_provider = GraphicsConstraintProvider::GetInstance();
     vendor_qti_hardware_display_common_PixelFormatModifier pixel_format_modifier =
         static_cast<vendor_qti_hardware_display_common_PixelFormatModifier>(
             GetPixelFormatModifier(desc));
-    enable = graphics_provider->IsUBWCSupportedByGPU(desc.format, pixel_format_modifier);
+    enable = graphics_provider_->IsUBWCSupportedByGPU(desc.format, pixel_format_modifier);
   }
 
   if (IsAstc(desc.format)) {
@@ -118,7 +127,7 @@ uint64_t UBWCPolicy::GetMetaPlaneSize(uint64_t width, uint64_t height, uint32_t 
   int meta_height = 0;
   meta_height = ALIGN(((height + block_height - 1) / block_height), scanline_align);
   meta_width = ALIGN(((width + block_width - 1) / block_width), stride_align);
-  if (OVERFLOW((uint64_t)meta_width, (uint64_t)meta_height)) {
+  if (OVERFLOW_MUL((uint64_t)meta_width, (uint64_t)meta_height)) {
     DLOGW("%s: Size overflow! %d x %d", meta_width, meta_height);
     return 0;
   }
@@ -191,11 +200,10 @@ int UBWCPolicy::OffTargetAlloc(BufferDescriptor desc, AllocData *out_ad,
           plane_constraints.stride.horizontal_stride_align,
           plane_constraints.scanline.scanline_align, ubwc_constraints.size_align_bytes);
     } else {
-      OVERFLOW_ERR_RETURN(desc.width, bpp);
+      OVERFLOW_ERR_RETURN(desc.width, bpp, OverflowType::MUL);
       OVERFLOW_ERR_RETURN(
-          (ALIGN(desc.width * bpp,
-                 plane_constraints.stride.horizontal_stride_align)),
-          (ALIGN(desc.height, plane_constraints.scanline.scanline_align)));
+          (ALIGN(desc.width * bpp, plane_constraints.stride.horizontal_stride_align)),
+          (ALIGN(desc.height, plane_constraints.scanline.scanline_align)), OverflowType::MUL);
       plane_size =
           ALIGN(((ALIGN(desc.width * bpp, plane_constraints.stride.horizontal_stride_align)) *
                  (ALIGN(desc.height, plane_constraints.scanline.scanline_align))),
@@ -228,11 +236,11 @@ int UBWCPolicy::OffTargetAlloc(BufferDescriptor desc, AllocData *out_ad,
         format_data.planes[plane_index].vertical_subsampling;
     PlaneConstraints plane_layout_constraint = ubwc_constraints.planes.at(plane_index);
     // TODO: factor in subsampling here - off-target tests
-    OVERFLOW_ERR_RETURN(desc.width, bpp);
+    OVERFLOW_ERR_RETURN(desc.width, bpp, OverflowType::MUL);
     out_layout->planes[plane_index].horizontal_stride_in_bytes =
         ALIGN(desc.width * bpp, plane_layout_constraint.stride.horizontal_stride);
     // TODO: factor in subsampling here - off-target tests
-    OVERFLOW_ERR_RETURN(desc.height, bpp);
+    OVERFLOW_ERR_RETURN(desc.height, bpp, OverflowType::MUL);
     out_layout->planes[plane_index].scanlines =
         ALIGN(desc.height * bpp, plane_layout_constraint.scanline.scanline);
     out_layout->planes[plane_index].size_in_bytes =
@@ -260,7 +268,6 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
 #endif
 
 #ifdef __ANDROID__
-  SnapConstraintParser *parser = SnapConstraintParser::GetInstance();
   if (format_data_map_.empty()) {
     DLOGE("Error while reading the format data");
     return Error::UNSUPPORTED;
@@ -293,7 +300,7 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
   }
 
   MmmColorFormatMapper mapper = MmmColorFormatMapper();
-  unsigned int mmm_color_format = 0;
+  int mmm_color_format = 0;
   vendor_qti_hardware_display_common_PixelFormatModifier pixel_format_modifier =
       static_cast<vendor_qti_hardware_display_common_PixelFormatModifier>(
           GetPixelFormatModifier(desc));
@@ -302,6 +309,16 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
   if (mmm_color_format != -1) {
     // Double the number of planes to account for meta planes
     out_layout->plane_count = format_data.planes.size() * 2;
+    if (IsYuv(desc.format)) {
+      OVERFLOW_ERR_RETURN(mapper.GetYStride(mmm_color_format, desc.width) * out_layout->bpp,
+                          mapper.GetYScanlines(mmm_color_format, desc.height), OverflowType::MUL);
+    } else if (IsRgb(desc.format)) {
+      OVERFLOW_ERR_RETURN(mapper.GetRgbStride(mmm_color_format, desc.width) * out_layout->bpp,
+                          mapper.GetRgbScanlines(mmm_color_format, desc.height), OverflowType::MUL);
+    } else {
+      DLOGD_IF(enable_logs, "Overflow check skipped for format %d", static_cast<int>(desc.format));
+    }
+
     out_ad->size = mapper.GetBufferSize(mmm_color_format, desc.width, height);
     if ((pixel_format_modifier == PIXEL_FORMAT_MODIFIER_UBWC_FLEX) ||
         (pixel_format_modifier == PIXEL_FORMAT_MODIFIER_UBWC_FLEX_2_BATCH) ||
@@ -380,10 +397,14 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
         default:
           break;
       }
+      OVERFLOW_ERR_RETURN(out_layout->planes[meta_plane_index].horizontal_stride_in_bytes,
+                          out_layout->planes[meta_plane_index].scanlines, OverflowType::MUL);
       out_layout->planes[meta_plane_index].size_in_bytes =
           ALIGN((out_layout->planes[meta_plane_index].horizontal_stride_in_bytes *
                  out_layout->planes[meta_plane_index].scanlines),
                 alignment);
+      OVERFLOW_ERR_RETURN(out_layout->planes[data_plane_index].horizontal_stride_in_bytes,
+                          out_layout->planes[data_plane_index].scanlines, OverflowType::MUL);
       out_layout->planes[data_plane_index].size_in_bytes =
           ALIGN((out_layout->planes[data_plane_index].horizontal_stride_in_bytes *
                  out_layout->planes[data_plane_index].scanlines),
@@ -393,6 +414,16 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
                out_layout->planes[data_plane_index].size_in_bytes);
       out_layout->planes[meta_plane_index].offset_in_bytes = meta_offset;
 
+      OVERFLOW_ERR_RETURN(meta_offset, out_layout->planes[meta_plane_index].size_in_bytes,
+                          OverflowType::ADD);
+      OVERFLOW_ERR_RETURN(out_layout->planes[data_plane_index].size_in_bytes,
+                          out_layout->planes[meta_plane_index].size_in_bytes, OverflowType::ADD);
+      OVERFLOW_ERR_RETURN((out_layout->planes[data_plane_index].size_in_bytes +
+                           out_layout->planes[meta_plane_index].size_in_bytes),
+                          meta_offset, OverflowType::ADD);
+      OVERFLOW_ERR_RETURN((out_layout->planes[data_plane_index].size_in_bytes +
+                           out_layout->planes[meta_plane_index].size_in_bytes),
+                          out_layout->size_in_bytes, OverflowType::ADD);
       out_layout->planes[data_plane_index].offset_in_bytes =
           meta_offset + out_layout->planes[meta_plane_index].size_in_bytes;
       meta_offset += (out_layout->planes[meta_plane_index].size_in_bytes +
@@ -415,18 +446,17 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
   } else {
     // TODO: meta plane handling (if needed)
     DLOGD_IF(enable_logs, "using graphics to get UBWC allocation");
-    GraphicsConstraintProvider *graphics_provider = GraphicsConstraintProvider::GetInstance();
     vendor_qti_hardware_display_common_PixelFormatModifier pixel_format_modifier =
         static_cast<vendor_qti_hardware_display_common_PixelFormatModifier>(
             GetPixelFormatModifier(desc));
-    if (graphics_provider->IsUBWCSupportedByGPU(desc.format, pixel_format_modifier)) {
+    if (graphics_provider_->IsUBWCSupportedByGPU(desc.format, pixel_format_modifier)) {
       int size = 0;
-      if (graphics_provider != nullptr) {
+      if (graphics_provider_ != nullptr) {
         vendor_qti_hardware_display_common_GraphicsMetadata graphics_metadata;
 
-        int ret = graphics_provider->GetInitialMetadata(desc, &graphics_metadata, true);
+        int ret = graphics_provider_->GetInitialMetadata(desc, &graphics_metadata, true);
         if (!ret) {
-          size = graphics_provider->AdrenoGetAlignedGpuBufferSize(graphics_metadata.data);
+          size = graphics_provider_->AdrenoGetAlignedGpuBufferSize(graphics_metadata.data);
           if (size > 0)
             out_ad->size = size;
         }
@@ -435,7 +465,7 @@ Error UBWCPolicy::GetUBWCAlloc(BufferDescriptor desc, UBWCCapabilities caps, All
       // Plane layout
       BufferConstraints data;
       int status = 0;
-      status = graphics_provider->BuildConstraints(desc, &data);
+      status = graphics_provider_->BuildConstraints(desc, &data);
       if (status != 0) {
         DLOGE("Error while getting constraints from graphics libs");
         return Error::NO_RESOURCES;
