@@ -1130,6 +1130,14 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
     return kErrorNone;
   }
 
+  // If DemuraTn license is present only, need to query the unity config from
+  // parserManager during Demura license validate permission.
+  error = SendPanelIdToParserManager();
+  if (error) {
+    DLOGE("Failed to setup parser manager, error %d", error);
+    return error;
+  }
+
   std::shared_ptr<FeatureLicenseIntf> feat_license_intf =
       feature_license_factory_->CreateFeatureLicenseIntf();
   if (!feat_license_intf) {
@@ -1163,9 +1171,9 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
   ret = feat_license_intf->ProcessOps(kValidatePermission, demura_pl, &out_pl);
   if (ret) {
     DLOGE("Failed to get the license permission for Demura. Error:%d", ret);
-    return kErrorUndefined;
+  } else {
+    demura_allowed_ = *allowed;
   }
-  demura_allowed_ = *allowed;
 
   AntiAgingValidatePermissionInput *aa_input = nullptr;
   ret = aa_pl.CreatePayload<AntiAgingValidatePermissionInput>(aa_input);
@@ -1178,9 +1186,9 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
   ret = feat_license_intf->ProcessOps(kValidatePermission, aa_pl, &out_pl);
   if (ret) {
     DLOGE("Failed to get the license permission for Anti-aging. Error:%d", ret);
-    return kErrorUndefined;
+  } else {
+    demuratn_allowed_ = *allowed;
   }
-  demuratn_allowed_ = *allowed;
 #endif
 
   DLOGI("Demura enable allowed %d, Anti-aging enable allowed %d", demura_allowed_,
@@ -1196,8 +1204,8 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
   }
 
   if (demura_allowed_ && demuratn_allowed_ && demuratn_factory_) {
-    demuratn_permanent_disabled_ = GetDemuraTnUserCtrl();
-    if (!demuratn_permanent_disabled_) {
+    demuratn_user_disabled_ = GetDemuraTnUserCtrl();
+    if (!demuratn_user_disabled_) {
       error = SetupDemuraTn();
       if (error != kErrorNone) {
         DLOGW("Failed to setup DemuraTn, Error = %d", error);
@@ -1209,11 +1217,7 @@ DisplayError DisplayBuiltIn::SetupDemuraT0AndTn() {
 }
 
 DisplayError DisplayBuiltIn::SetupDemuraT0() {
-  DisplayError error = SendPanelIdToParserManager();
-  if (error) {
-    DLOGE("Failed to setup parser manager, error %d", error);
-    return error;
-  }
+  DisplayError error = kErrorNone;
 
   error = SetupDemura();
   if (error != kErrorNone) {
@@ -1387,6 +1391,12 @@ DisplayError DisplayBuiltIn::SetUpCommit(LayerStack *layer_stack) {
   DTRACE_SCOPED();
   last_panel_mode_ = client_ctx_.hw_panel_info.mode;
   PreCommit(layer_stack);
+  if (pending_cycles_for_poms_setup_ && !avoid_vsync_enable_) {
+    avoid_vsync_enable_ = true;
+    vsync_enable_pending_ |= vsync_enable_;
+    // Need to disable vsync while POMS in progress as it can't be processed by driver.
+    SetVsyncStatus(false /*Disable vsync events.*/);
+  }
 
   return DisplayBase::SetUpCommit(layer_stack);
 }
@@ -1400,15 +1410,19 @@ DisplayError DisplayBuiltIn::CommitLocked(LayerStack *layer_stack) {
 }
 
 DisplayError DisplayBuiltIn::PostCommit() {
+  DisplayError err = kErrorNone;
   DisplayBase::PostCommit();
   // Mutex scope
   {
     lock_guard<recursive_mutex> obj(brightness_lock_);
     if (pending_brightness_) {
       Fence::Wait(retire_fence_);
-      SetPanelBrightness(cached_brightness_);
+      err = SetPanelBrightness(cached_brightness_, true);
       pending_brightness_ = false;
     }
+  }
+  if (err == kErrorNone) {
+    HandleDemuraScreenRefresh();
   }
 
   if (commit_event_enabled_) {
@@ -1447,7 +1461,7 @@ DisplayError DisplayBuiltIn::PostCommit() {
   }
   dpps_info_.Init(this, client_ctx_.hw_panel_info.panel_name, this, prop_intf_);
 
-  if (demuratn_ && !demuratn_permanent_disabled_)
+  if (demuratn_ && !demuratn_user_disabled_)
     EnableDemuraTn(true);
 
   HandleQsyncPostCommit();
@@ -1456,6 +1470,11 @@ DisplayError DisplayBuiltIn::PostCommit() {
 
   pending_commit_ = false;
   lower_fps_ = false;
+
+  if (pending_cycles_for_poms_setup_ > 0) {
+    pending_cycles_for_poms_setup_--;
+    avoid_vsync_enable_ = !!pending_cycles_for_poms_setup_;
+  }
 
   return kErrorNone;
 }
@@ -1534,8 +1553,11 @@ DisplayError DisplayBuiltIn::SetDisplayState(DisplayState state, bool teardown,
   }
 
   if (secure_event_ == kTUITransitionEnd && state == kStateOff) {
-    SetPanelBrightness(cached_brightness_);
+    error = SetPanelBrightness(cached_brightness_, true);
     pending_brightness_ = false;
+    if (error == kErrorNone) {
+      HandleDemuraScreenRefresh();
+    }
   }
 
   if (client_ctx_.hw_panel_info.mode != panel_mode) {
@@ -1559,6 +1581,12 @@ DisplayError DisplayBuiltIn::SetDisplayState(DisplayState state, bool teardown,
       !comp_manager_->GetDemuraStatusForDisplay(display_id_) &&
       (state == kStateOn || state == kStateDoze)) {
     comp_manager_->SetDemuraStatusForDisplay(display_id_, true);
+
+    // Enable default idx if demura calib files are reloaded
+    if (demura_calib_files_reloaded_) {
+      demura_calib_files_reloaded_ = false;
+      demura_current_idx_ = kDemuraDefaultIdx;
+    }
     SetDemuraIntfStatus(true, demura_current_idx_);
   }
 
@@ -1623,6 +1651,11 @@ DisplayError DisplayBuiltIn::SetDisplayMode(uint32_t mode) {
       comp_manager_->SetIdleTimeoutMs(display_comp_ctx_, 0, 0);
       switch_to_cmd_ = true;
     }
+
+    // Assumption: POMS needs setup time in between 30ms to 70ms.
+    // Calculate maximum number of cycles needed for POMS setup as per current FPS
+    // configuration by considering minimum ~70ms setup time for POMS.
+    pending_cycles_for_poms_setup_ = (UINT32(client_ctx_.display_attributes.fps) >> 4) + 1;
   }
 
   // Request for a new draw cycle. New display mode will get applied on next draw cycle.
@@ -1632,74 +1665,55 @@ DisplayError DisplayBuiltIn::SetDisplayMode(uint32_t mode) {
   return error;
 }
 
-DisplayError DisplayBuiltIn::SetPanelBrightness(float brightness) {
-  lock_guard<recursive_mutex> obj(brightness_lock_);
+DisplayError DisplayBuiltIn::SetPanelBrightness(float brightness, bool return_error) {
+  DisplayError err = kErrorNone;
+  {
+    lock_guard<recursive_mutex> obj(brightness_lock_);
 
-  if (brightness != -1.0f && !(0.0f <= brightness && brightness <= 1.0f)) {
-    DLOGE("Bad brightness value = %f", brightness);
-    return kErrorParameters;
-  }
-
-  // -1.0f = off, 0.0f = min, 1.0f = max
-  float level_remainder = 0.0f;
-  int level = 0;
-  if (brightness == -1.0f) {
-    level = 0;
-  } else {
-    // Node only supports int level, so store the float remainder for accurate GetPanelBrightness
-    float max = client_ctx_.hw_panel_info.panel_max_brightness;
-    float min = client_ctx_.hw_panel_info.panel_min_brightness;
-    if (min >= max) {
-      DLOGE("Minimum brightness is greater than or equal to maximum brightness");
-      return kErrorDriverData;
+    if (brightness != -1.0f && !(0.0f <= brightness && brightness <= 1.0f)) {
+      DLOGE("Bad brightness value = %f", brightness);
+      return kErrorParameters;
     }
-    float t = (brightness * (max - min)) + min;
-    level = static_cast<int>(t);
-    level_remainder = t - level;
-  }
 
-  DisplayError err = dpu_core_mux_->SetPanelBrightness(level);
-  if (enable_brightness_drm_prop_) {
-    event_handler_->Refresh();
-  }
-  if (err == kErrorNone) {
-    level_remainder_ = level_remainder;
-    pending_brightness_ = false;
-    comp_manager_->SetBacklightLevel(display_comp_ctx_, level);
-    DLOGI_IF(kTagDisplay, "Setting brightness to level %d (%f percent)", level,
-             brightness * 100);
-
-    if (demura_intended_ && comp_manager_->GetDemuraStatusForDisplay(display_id_)) {
-      if (!demura_) {
-        DLOGE("demura_ is nullptr");
-        return kErrorParameters;
+    // -1.0f = off, 0.0f = min, 1.0f = max
+    float level_remainder = 0.0f;
+    int level = 0;
+    if (brightness == -1.0f) {
+      level = 0;
+    } else {
+      // Node only supports int level, so store the float remainder for accurate GetPanelBrightness
+      float max = client_ctx_.hw_panel_info.panel_max_brightness;
+      float min = client_ctx_.hw_panel_info.panel_min_brightness;
+      if (min >= max) {
+        DLOGE("Minimum brightness is greater than or equal to maximum brightness");
+        return kErrorDriverData;
       }
-
-      GenericPayload pl;
-      int32_t *need_screen_refresh = nullptr;
-      int rc = 0;
-      if ((rc = pl.CreatePayload<int32_t>(need_screen_refresh))) {
-        DLOGE("Failed to create payload for need_screen_refresh, error = %d", rc);
-        return kErrorParameters;
-      }
-
-      rc = demura_->GetParameter(kDemuraFeatureParamNeedScreenRefresh, &pl);
-      if (rc) {
-        DLOGE("Failed to get need screen refresh, error %d", rc);
-        return kErrorParameters;
-      }
-
-      if (*need_screen_refresh) {
-        event_handler_->Refresh();
-      }
+      float t = (brightness * (max - min)) + min;
+      level = static_cast<int>(t);
+      level_remainder = t - level;
     }
-  } else if (err == kErrorDeferred) {
-    // TODO(user): I8508d64a55c3b30239c6ed2886df391407d22f25 causes mismatch between perceived
-    // power state and actual panel power state. Requires a rework. Below check will set up
-    // deferment of brightness operation if DAL reports defer use case.
-    cached_brightness_ = brightness;
-    pending_brightness_ = true;
-    return kErrorNone;
+
+    err = dpu_core_mux_->SetPanelBrightness(level);
+    if (enable_brightness_drm_prop_) {
+      event_handler_->Refresh();
+    }
+    if (err == kErrorNone) {
+      level_remainder_ = level_remainder;
+      pending_brightness_ = false;
+      comp_manager_->SetBacklightLevel(display_comp_ctx_, level);
+      DLOGI_IF(kTagDisplay, "Setting brightness to level %d (%f percent)", level, brightness * 100);
+    } else if (err == kErrorDeferred) {
+      // TODO(user): I8508d64a55c3b30239c6ed2886df391407d22f25 causes mismatch between perceived
+      // power state and actual panel power state. Requires a rework. Below check will set up
+      // deferment of brightness operation if DAL reports defer use case.
+      cached_brightness_ = brightness;
+      pending_brightness_ = true;
+      return return_error ? kErrorDeferred : kErrorNone;
+    }
+  }
+
+  if (!return_error && err == kErrorNone) {
+    HandleDemuraScreenRefresh();
   }
 
   return err;
@@ -1829,17 +1843,22 @@ void DisplayBuiltIn::SetVsyncStatus(bool enable) {
   DTRACE_BEGIN(trace_name.c_str());
   if (enable) {
     // Enable if vsync is still enabled.
-    hw_events_intf_->SetEventState(HWEvent::VSYNC, vsync_enable_);
-    pending_vsync_enable_ = false;
+    vsync_enable_pending_ |= vsync_enable_;
+    vsync_enable_ = false;
+    SetVSyncStateLocked(vsync_enable_pending_);
   } else {
     hw_events_intf_->SetEventState(HWEvent::VSYNC, false);
-    pending_vsync_enable_ = true;
   }
   DTRACE_END();
 }
 
 void DisplayBuiltIn::IdleTimeout() {
   DTRACE_SCOPED();
+  if (pending_cycles_for_poms_setup_ > 0) {
+    pending_cycles_for_poms_setup_ = 0;
+    avoid_vsync_enable_ = false;
+  }
+
   if ((state_ == kStateOff) || avr_step_enabled_) {
     return;
   }
@@ -1868,6 +1887,10 @@ void DisplayBuiltIn::IdlePowerCollapse() {
     validated_ = false;
     comp_manager_->ProcessIdlePowerCollapse(display_comp_ctx_);
     event_handler_->HandleEvent(kIdleTimeout);
+    if (pending_cycles_for_poms_setup_ > 0) {
+      pending_cycles_for_poms_setup_ = 0;
+      avoid_vsync_enable_ = false;
+    }
   }
 }
 
@@ -2585,12 +2608,13 @@ DisplayError DisplayBuiltIn::ControlIdlePowerCollapse(bool enable, bool synchron
           display_type_);
     return kErrorPermission;
   }
-  if (client_ctx_.hw_panel_info.mode == kModeVideo) {
-    DLOGW("Idle power collapse not supported for video mode panel.");
-    return kErrorNotSupported;
+
+  if ((client_ctx_.hw_panel_info.mode == kModeCommand) || client_ctx_.hw_panel_info.vhm_support) {
+    validated_ = false;
+    return dpu_core_mux_->ControlIdlePowerCollapse(enable, synchronous);
   }
-  validated_ = false;
-  return dpu_core_mux_->ControlIdlePowerCollapse(enable, synchronous);
+
+  return kErrorNotSupported;
 }
 
 DisplayError DisplayBuiltIn::GetSupportedDSIClock(std::vector<uint64_t> *bitclk_rates) {
@@ -3772,6 +3796,11 @@ DisplayError DisplayBuiltIn::SetDemuraState(int state) {
 
   if (!demura_intended_ && state) {
     if (demura_allowed_) {
+      error = SendPanelIdToParserManager();
+      if (error) {
+        DLOGE("Failed to setup parser manager, error %d", error);
+        return error;
+      }
       DLOGI("Start Demura feature now");
       if ((error = SetupDemuraT0()) != kErrorNone) {
         DLOGE("Failed to enable Demura dynamically, error = %d", error);
@@ -3819,6 +3848,7 @@ DisplayError DisplayBuiltIn::SetDemuraState(int state) {
 }
 
 DisplayError DisplayBuiltIn::SetDemuraConfig(int demura_idx) {
+  ClientLock lock(disp_mutex_);
   int ret = 0;
   GenericPayload pl;
   uConfigIdx *idx = nullptr;
@@ -3963,6 +3993,24 @@ DisplayError DisplayBuiltIn::GetCoprStats(std::vector<int> *stats) {
   if (ret)
     DLOGE("Failed to get COPR stats ret %d", ret);
   return ret;
+}
+
+DisplayError DisplayBuiltIn::GetScalerCount(uint32_t *scaler_count) {
+  int enable_ai_scaler = 0;
+  Debug::Get()->GetProperty(ENABLE_AI_SCALER_PROP, &enable_ai_scaler);
+  *scaler_count = 0;
+
+  if (client_ctx_.hw_panel_info.is_primary_panel && enable_ai_scaler) {
+    for (auto &res_info : hw_resource_info_) {
+      *scaler_count = std::max(*scaler_count, res_info.hw_ai_scaler_count);
+    }
+  } else {
+    for (auto &res_info : hw_resource_info_) {
+      *scaler_count = std::max(*scaler_count, res_info.hw_dest_scalar_info.count);
+    }
+  }
+
+  return kErrorNone;
 }
 
 DisplayError EventProxyInfo::Init(const std::string &panel_name, DisplayInterface *intf,
@@ -4403,6 +4451,18 @@ DisplayError DisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) {
     case kTypeTriggerDemuraOemPlugIn:
       ret = TriggerDemuraOemPlugIn(data);
       break;
+    case kTypeReloadDemuraCalibFiles:
+      ret = ReloadDemuraCalibFiles(data);
+      break;
+    case kTypeDemuraDisplayEventsCtrl:
+      ret = SetDemuraDisplayEventsCtrl(data);
+      break;
+    case kTypeQueryDemuraTnInfo:
+      ret = QueryDemuraTnInfo(data);
+      break;
+    case kTypeDemuraTnBatchId:
+      ret = SetDemuraTnBatchId(data);
+      break;
     default:
       DLOGE("Invalid type %d", type);
       ret = kErrorParameters;
@@ -4541,6 +4601,35 @@ DisplayError DisplayBuiltIn::StartService(TvmDispServiceManagerParams service) {
   return kErrorNone;
 }
 
+DisplayError DisplayBuiltIn::HandleDemuraScreenRefresh() {
+  if (demura_intended_ && comp_manager_->GetDemuraStatusForDisplay(display_id_)) {
+    if (!demura_) {
+      DLOGE("demura_ is nullptr");
+      return kErrorParameters;
+    }
+
+    GenericPayload pl;
+    int32_t *need_screen_refresh = nullptr;
+    int rc = 0;
+    if ((rc = pl.CreatePayload<int32_t>(need_screen_refresh))) {
+      DLOGE("Failed to create payload for need_screen_refresh, error = %d", rc);
+      return kErrorParameters;
+    }
+
+    rc = demura_->GetParameter(kDemuraFeatureParamNeedScreenRefresh, &pl);
+    if (rc) {
+      DLOGE("Failed to get need screen refresh, error %d", rc);
+      return kErrorParameters;
+    }
+
+    if (*need_screen_refresh) {
+      event_handler_->Refresh();
+    }
+  }
+
+  return kErrorNone;
+}
+
 DisplayError DisplayBuiltIn::SetDemuraTnEventsCtrl(void *data) {
   int ret = 0;
   bool *ctrl_ptr = nullptr;
@@ -4576,13 +4665,13 @@ DisplayError DisplayBuiltIn::SetDemuraTnUserCtrl(void *data) {
   }
 
   bool user_ctrl = *(reinterpret_cast<uint32_t *>(data)) ? true : false;
-  if (!user_ctrl) {
-    ret = EnableDemuraTn(user_ctrl);
+  if (demuratn_user_disabled_ == false) {
+    ret = EnableDemuraTn(false);
     if (ret != kErrorNone) {
       return ret;
     }
   }
-  demuratn_permanent_disabled_ = user_ctrl;
+  demuratn_user_disabled_ = true;
 
   int error = UpdateDemuraTnUserCtrl(user_ctrl);
   if (error) {
@@ -4711,6 +4800,118 @@ DisplayError DisplayBuiltIn::TriggerDemuraOemPlugIn(void *data) {
   event_handler_->Refresh();
 
   DLOGI("Trigger demura oem plugin success");
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetDemuraTnBatchId(void *data) {
+  int ret = 0;
+  GenericPayload payload = {};
+  uint32_t *batch_id = nullptr;
+
+  if (!data || !demuratn_) {
+    DLOGE("Data %pK demuratn_ %pK", data, demuratn_.get());
+    return kErrorUndefined;
+  }
+
+  ret = payload.CreatePayload<uint32_t>(batch_id);
+  if (ret) {
+    DLOGE("Failed to create the payload, ret %d", ret);
+    return kErrorUndefined;
+  }
+  *batch_id = *(reinterpret_cast<uint32_t *>(data));
+
+  ret = demuratn_->SetParameter(kDemuraTnCoreUvmParamBatchId, payload);
+  if (ret) {
+    DLOGE("Set batch id failed ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  DLOGI("Set batch id %d success", *batch_id);
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::ReloadDemuraCalibFiles(void *data) {
+  (void)data;
+  int ret = 0;
+
+  // OEM will reload demura calib files during device suspend
+  // the new calib files will take effect after device resume
+  if (state_ != kStateOff) {
+    DLOGW("Not supported in display state %d", state_);
+    return kErrorNotSupported;
+  }
+
+  if (!demura_intended_) {
+    DLOGW("Demura is not enabled");
+    return kErrorNone;
+  }
+
+  if (!pm_intf_) {
+    DLOGE("Invalid parser manager intf");
+    return kErrorUndefined;
+  }
+
+  // Re-parse all demura files
+  GenericPayload pl = {};
+  if ((ret = pm_intf_->SetParameter(kDemuraParserManagerReparseDemuraFiles, pl))) {
+    DLOGE("Failed to reparse demura calib files, ret %d", ret);
+    return kErrorResources;
+  }
+
+  // Reconfig demura with new data
+  bool *b = nullptr;
+  GenericPayload reconfig_pl = {};
+  if ((ret = reconfig_pl.CreatePayload<bool>(b))) {
+    DLOGE("Failed to create payload, ret %d", ret);
+    return kErrorUndefined;
+  }
+  *b = true;
+  if ((ret = demura_->SetParameter(kDemuraFeatureParamPendingReconfig, reconfig_pl))) {
+    DLOGE("Failed to set reconfig parameter for demura %d", ret);
+    return kErrorUndefined;
+  }
+
+  demura_calib_files_reloaded_ = true;
+  DLOGI("Reload demura calib files success");
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetDemuraDisplayEventsCtrl(void *data) {
+  (void)data;
+  int ret = 0;
+
+  if (!demura_intended_ || !demura_dynamic_enabled_) {
+    DLOGW("Demura is not enabled");
+    return kErrorNone;
+  }
+
+  GenericPayload pl = {};
+  if ((ret = demura_->SetParameter(kDemuraFeatureParamDispEventState, pl))) {
+    DLOGE("Failed to set DispEventState for demura %d", ret);
+    return kErrorUndefined;
+  }
+
+  DLOGI("Set demura disply event state success");
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::QueryDemuraTnInfo(void *data) {
+  (void)data;
+  int ret = 0;
+
+  if (!demuratn_) {
+    DLOGE("Not supported, demuratn intf is null");
+    return kErrorNotSupported;
+  }
+
+  GenericPayload payload = {};
+  ret = demuratn_->GetParameter(kDemuraTnCoreUvmParamQueryInfo, &payload);
+  if (ret) {
+    DLOGE("Failed to query information from Tn %d", ret);
+    return kErrorUndefined;
+  }
+
+  DLOGI("Query demuraTn infomation done");
   return kErrorNone;
 }
 

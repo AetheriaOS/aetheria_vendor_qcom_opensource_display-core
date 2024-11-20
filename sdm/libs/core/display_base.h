@@ -130,7 +130,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   virtual bool IsUnderscanSupported() {
     return false;
   }
-  virtual DisplayError SetPanelBrightness(float brightness) {
+  virtual DisplayError SetPanelBrightness(float brightness, bool return_error = false) {
     return kErrorNotSupported;
   }
   virtual DisplayError SetBppMode(uint32_t bpp) {
@@ -309,6 +309,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   }
   virtual DisplayError EnableCopr(bool en) { return kErrorNotSupported; }
   virtual DisplayError GetCoprStats(std::vector<int> *stats) { return kErrorNotSupported; }
+  virtual DisplayError GetScalerCount(uint32_t *scaler_count) { return kErrorNotSupported; }
   void HandleSelfRefresh();
 
  protected:
@@ -405,6 +406,8 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   DisplayError DisableDestinationScalar();
   void SetSelfRefreshRefCount(uint32_t sr_ref_count);
   uint32_t GetSelfRefreshRefCount();
+  DisplayError ValidateExtendedDisplayResolutions(vector<pair<uint32_t, uint32_t>> ext_disp_res,
+                                                  vector<pair<uint32_t, uint32_t>> *fin_disp_res);
 
   DisplayMutex disp_mutex_;
   std::thread commit_thread_;
@@ -462,6 +465,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   bool disable_llcc_during_aod_ = false;
   bool custom_mixer_resolution_ = false;
   bool vsync_enable_pending_ = false;
+  bool avoid_vsync_enable_ = false;
   HWPowerState pending_power_state_ = kPowerStateNone;
   QSyncMode qsync_mode_ = kQSyncModeNone;
   std::bitset<kUpdateAVRFlagMax> needs_avr_update_ = {};

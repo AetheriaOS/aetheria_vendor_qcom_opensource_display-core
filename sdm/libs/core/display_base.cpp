@@ -3085,7 +3085,7 @@ DisplayError DisplayBase::SetVSyncState(bool enable) {
 }
 
 DisplayError DisplayBase::SetVSyncStateLocked(bool enable) {
-  if ((state_ == kStateOff || secure_event_ != kSecureEventMax) && enable) {
+  if ((state_ == kStateOff || avoid_vsync_enable_ || secure_event_ != kSecureEventMax) && enable) {
     DLOGW("Can't enable vsync when display %d-%d is powered off or SecureDisplay/TUI in progress",
           display_id_, display_type_);
     vsync_enable_pending_ = true;
@@ -4284,7 +4284,7 @@ DisplayError DisplayBase::HandleSecureEvent(SecureEvent secure_event, bool *need
     }
 
     // Disable Destination Scalar for TUI Use Case
-    if (client_ctx_.hw_panel_info.mode != kModeCommand) {
+    if ((client_ctx_.hw_panel_info.mode != kModeCommand) && !(enable_ai_scaler_)) {
       if ((mixer_width != display_width) || (mixer_height != display_height)) {
         err = DisableDestinationScalar();
         if (err != kErrorNone) {
@@ -5168,6 +5168,29 @@ void DisplayBase::HandleSelfRefresh() {
   // Signal to wake-up the Commit Thread for Self-Refresh
   DLOGI_IF(kTagSelfRefresh, "Notify Commit Thread to perform Self-Refresh ...");
   lock.NotifyWorker();
+}
+
+DisplayError DisplayBase::ValidateExtendedDisplayResolutions(
+    vector<pair<uint32_t, uint32_t>> ext_disp_res, vector<pair<uint32_t, uint32_t>> *fin_disp_res) {
+  vector<pair<uint32_t, uint32_t>> extended_res = {};
+  uint32_t align_x = client_ctx_.display_attributes.is_device_split ? 4 : 2;
+  uint32_t align_y = 2;
+  uint32_t width = 0;
+  uint32_t height = 0;
+
+  for (uint32_t idx = 0; idx < ext_disp_res.size(); ++idx) {
+    width = ext_disp_res.at(idx).first;
+    height = ext_disp_res.at(idx).second;
+    if ((width % align_x == 0) && (height % align_y == 0)) {
+      extended_res.push_back(ext_disp_res.at(idx));
+    }
+  }
+
+  if (!extended_res.size())
+    return kErrorNotSupported;
+
+  *fin_disp_res = extended_res;
+  return kErrorNone;
 }
 
 }  // namespace sdm
