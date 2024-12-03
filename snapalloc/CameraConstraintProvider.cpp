@@ -85,7 +85,7 @@ CamxPixelFormat CameraConstraintProvider::GetCameraPixelFormat(int snap_format, 
   if (snap_to_camera_pixel_format_.find(snap_desc) != snap_to_camera_pixel_format_.end()) {
     format = static_cast<CamxPixelFormat>(snap_to_camera_pixel_format_.at(snap_desc));
   } else {
-    DLOGW("%s: No map for format: 0x%x", __FUNCTION__, snap_format);
+    DLOGW("%s: No map for format: 0x%x - modifier : %d", __FUNCTION__, snap_format, modifier);
   }
   return format;
 }
