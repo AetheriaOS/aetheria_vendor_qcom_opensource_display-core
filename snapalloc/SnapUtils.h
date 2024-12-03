@@ -242,6 +242,7 @@ bool CheckWidthConstraints(
     vendor_qti_hardware_display_common_PixelFormat format, int width);
 bool CheckHeightConstraints(
     vendor_qti_hardware_display_common_PixelFormat format, int height);
+int GetBatchSize(vendor_qti_hardware_display_common_PixelFormatModifier modifier);
 
 #define QTI_VT_TIMESTAMP 10000
 #define IS_VENDOR_METADATA_TYPE(x) (x >= QTI_VT_TIMESTAMP)
