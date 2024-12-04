@@ -24,7 +24,7 @@
 
 /*
 * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
-* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+* Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
 * SPDX-License-Identifier: BSD-3-Clause-Clear
 */
 
@@ -322,6 +322,7 @@ DisplayError DisplayBuiltIn::Init() {
     abc_prop_ = abc_tvm_enabled_;
 #endif
 
+    DisabelDemuraForHandOff();
     Debug::Get()->GetProperty(ENABLE_DEMURA, &demura_prop_);
     if (demura_prop_) {  // Create parser manager for demura
       pm_intf_ = pf_factory_->CreateDemuraParserManager(ipc_intf_, buffer_allocator_);
@@ -5125,6 +5126,24 @@ int DisplayBuiltIn::HandleTvmServiceEvent(const TvmServiceCbEvent &event) {
 int DisplayBuiltIn::Notify(const TvmServiceCbEvent &event) {
   std::thread([=] { DisplayBuiltIn::HandleTvmServiceEvent(event); }).detach();
   return 0;
+}
+
+DisplayError DisplayBuiltIn::DisabelDemuraForHandOff() {
+  if (!prop_intf_) {
+    DLOGE("prop_intf_ is nullptr");
+    return kErrorParameters;
+  }
+
+  PanelFeaturePropertyInfo payload = {};
+  payload.prop_id = kPanelFeatureDemuraInitCfg;
+
+  int ret = prop_intf_->SetPanelFeature(payload);
+  if (ret) {
+    DLOGE("Failed to SetPanelFeature, ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  return kErrorNone;
 }
 
 }  // namespace sdm
