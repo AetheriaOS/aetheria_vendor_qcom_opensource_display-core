@@ -265,6 +265,9 @@ enum struct DRMProperty {
   FRAME_INTERVAL,
   USECASE_IDX,
   BRIGHTNESS,
+#ifdef CONNECTOR_PROP_UDFPS
+  FINGERPRINT_MASK,
+#endif
 
   // Insert above
   MAX
