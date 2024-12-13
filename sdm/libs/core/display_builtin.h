@@ -261,11 +261,13 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError EnableCopr(bool en) override;
   DisplayError GetCoprStats(std::vector<int> *stats) override;
   DisplayError GetScalerCount(uint32_t *scaler_count) override;
+  DisplayError DumpDemuraSurface(const char *dir_path, uint32_t frame_index) override;
 
   // Implement the HWEventHandlers
   DisplayError VSync(int64_t timestamp) override;
   DisplayError Blank(bool blank) override { return kErrorNone; }
   void IdleTimeout() override;
+  void TriggerIdleTimeout() override;
   void CECMessage(char *message) override {}
   void IdlePowerCollapse() override;
   void PingPongTimeout() override;
@@ -345,6 +347,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   DisplayError SetDemuraDisplayEventsCtrl(void *data);
   DisplayError QueryDemuraTnInfo(void *data);
   DisplayError SetDemuraTnBatchId(void *data);
+  DisplayError SetDemuraTnAodHandlerCtrl(void *data);
 
   const uint32_t kPuTimeOutMs = 1000;
   std::vector<HWEvent> event_list_;
@@ -397,6 +400,7 @@ class DisplayBuiltIn : public DisplayBase, HWEventHandler, DppsPropIntf {
   std::shared_ptr<DemuraTnCleanupIntf> demuratn_cleanup_intf_;
   bool demuratn_user_disabled_ = false;
   bool abc_enabled_ = false;
+  bool abc_tvm_enabled_ = false;
   bool abc_prop_ = false;
   bool enable_dpps_dyn_fps_ = false;
   HWDisplayMode last_panel_mode_ = kModeDefault;

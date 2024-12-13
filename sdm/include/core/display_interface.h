@@ -378,6 +378,8 @@ enum PanelFeatureVendorServiceType {
   kTypeQueryDemuraTnInfo = 8,
   /* Setter: int */
   kTypeDemuraTnBatchId = 9,
+  /* Setter: None */
+  kTypeDemuraTnAodHandlerCtrl = 10,
   PanelFeatureVendorServiceTypeMax,
 };
 
@@ -446,6 +448,9 @@ class DisplayEventHandler {
 
   /*! @brief Event handler to notify CWB Done */
   virtual void NotifyCwbDone(int32_t status, const LayerBuffer& buffer) { }
+
+  /*! @brief Event handler to trigger Timeout event on connected Builtin displays */
+  virtual void TimeoutOnBuiltins() {}
 
  protected:
   virtual ~DisplayEventHandler() { }
@@ -1515,6 +1520,21 @@ class DisplayInterface {
   virtual DisplayError ValidateExtendedDisplayResolutions(
       std::vector<std::pair<uint32_t, uint32_t>> ext_disp_res,
       std::vector<std::pair<uint32_t, uint32_t>> *fin_disp_res) = 0;
+
+  /*! @brief Dump Demura surface layer.
+
+   @param[in] dir_path: path to save dump data
+   @param[in] frame_index: current input frame index
+
+   @return \link DisplayError \endlink
+  */
+  virtual DisplayError DumpDemuraSurface(const char *dir_path, uint32_t frame_index) = 0;
+
+  /*! @brief Method to trigger Timeout event on current display
+
+   @return \link void \endlink
+  */
+  virtual void TriggerIdleTimeout() = 0;
 
  protected:
   virtual ~DisplayInterface() { }
