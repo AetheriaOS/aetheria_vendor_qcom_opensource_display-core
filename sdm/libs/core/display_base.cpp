@@ -1727,14 +1727,6 @@ DisplayError DisplayBase::SetUpCommit(LayerStack *layer_stack) {
     hw_events_intf_->SetEventState(HWEvent::PANEL_DEAD, true);
   }
 
-  // Drop commits for mirrored display, if CWB is enabled and mirroring source display is
-  // already down.
-  if (layer_stack->output_buffer && display_type_ != kVirtual && mirror_src_display_id_ != -1 &&
-      !comp_manager_->IsActiveDisplay(mirror_src_display_id_)) {
-    validated_ = false;
-    return kErrorPermission;
-  }
-
   // Allow commit as pending doze/pending_power_on is handled as a part of draw cycle
   if (!active_ && (pending_power_state_ == kPowerStateNone)) {
     validated_ = false;
@@ -3469,7 +3461,7 @@ bool DisplayBase::NeedsMixerReconfiguration(LayerStack *layer_stack, uint32_t *n
     LayerRect dst_domain = {0.0f, 0.0f, FLOAT(*new_mixer_width), FLOAT(*new_mixer_height)};
 
     MapRect(fb_rect, dst_domain, layer->dst_rect, &layer_dst_rect);
-    if (NeedsDownScale(layer->src_rect, layer_dst_rect, needs_rotation)) {
+    if ((!enable_ai_scaler_) && NeedsDownScale(layer->src_rect, layer_dst_rect, needs_rotation)) {
       *new_mixer_width = display_width;
       *new_mixer_height = display_height;
     }
