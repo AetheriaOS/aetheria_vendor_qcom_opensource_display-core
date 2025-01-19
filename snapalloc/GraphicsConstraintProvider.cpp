@@ -90,6 +90,13 @@ static bool AdrenoAlignmentRequired(vendor_qti_hardware_display_common_BufferUsa
 int GraphicsConstraintProvider::GetInitialMetadata(
     BufferDescriptor desc, vendor_qti_hardware_display_common_GraphicsMetadata *graphics_metadata,
     bool is_ubwc_enabled) {
+  // Due to a plane alignment calculation delta for metadata blob for YV12,
+  // do not initialize graphics metadata blob
+  // TODO: remove once support is added from adreno API
+  if (desc.format == YV12) {
+    return Error::UNSUPPORTED;
+  }
+
   uint64_t pixel_format_modifier = GetPixelFormatModifier(desc);
   auto adreno_format = GetGpuPixelFormat(
       desc.format,
@@ -293,8 +300,20 @@ int GraphicsConstraintProvider::BuildConstraints(BufferDescriptor desc, BufferCo
                            pixel_format_modifier));
       if (LINK_adreno_compute_fmt_aligned_width_and_height &&
           gpu_format != ADRENO_PIXELFORMAT_UNKNOWN) {
+        int input_width = desc.width;
+        int input_height = desc.height;
+        if ((desc.format == vendor_qti_hardware_display_common_PixelFormat::YV12) &&
+            ((plane.components[0].type == PLANE_LAYOUT_COMPONENT_TYPE_CB) ||
+             (plane.components[0].type == PLANE_LAYOUT_COMPONENT_TYPE_CR))) {
+          // Input width and height need to be adjusted for subsampling
+          // for the chroma planes for YV12,
+          // as the API does not differentiate based on the plane
+          input_width /= 2;
+          input_height /= 2;
+        }
+
         LINK_adreno_compute_fmt_aligned_width_and_height(
-            desc.width, desc.height, format_data.planes.size(), gpu_format, 1 /*num_samples*/,
+            input_width, input_height, format_data.planes.size(), gpu_format, 1 /*num_samples*/,
             tile_mode, raster_mode, padding_threshold, (int *)&aligned_w, (int *)&aligned_h);
 
         plane_layout.stride.horizontal_stride =

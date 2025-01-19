@@ -483,7 +483,6 @@ Error SnapConstraintManager::AlignmentToAlignedConstraints(BufferDescriptor desc
   auto format_data = format_data_map_.at(desc.format);
   DLOGD_IF(enable_logs, "alignment.size_align_bytes %d", alignment.size_align_bytes);
   aligned->size_align_bytes = alignment.size_align_bytes;
-
   if (!alignment.planes.empty()) {
     DLOGD_IF(enable_logs, "alignment.planes.size() %d", alignment.planes.size());
     for (int i = 0; i < alignment.planes.size(); i++) {
@@ -520,14 +519,20 @@ Error SnapConstraintManager::AlignmentToAlignedConstraints(BufferDescriptor desc
           OVERFLOW_ERR_RETURN(desc.width, (format_data.planes[0].sample_increment_bits / 8),
                               OverflowType::MUL);
           plane.stride.horizontal_stride =
-              ALIGN(desc.width * (format_data.planes[0].sample_increment_bits / 8),
+              ALIGN(desc.width * format_data.planes[0].sample_increment_bits / 8,
                     alignment.planes[i].stride.horizontal_stride_align);
         }
         if ((IsYuv(desc.format)) &&
             ((alignment.planes[i].components[0] == PLANE_LAYOUT_COMPONENT_TYPE_CB) ||
              (alignment.planes[i].components[0] == PLANE_LAYOUT_COMPONENT_TYPE_CR))) {
-          plane.scanline.scanline =
-              ALIGN(((desc.height + 1) >> 1), alignment.planes[i].scanline.scanline_align);
+          int height = desc.height;
+          if (format_data.planes[i].vertical_subsampling == 2) {
+            // height + 1 to avoid height being rounded down due to truncation when dividing by
+            // vertical_subsampling
+            height = height + 1;
+          }
+          plane.scanline.scanline = ALIGN((height / format_data.planes[i].vertical_subsampling),
+                                          alignment.planes[i].scanline.scanline_align);
         } else {
           plane.scanline.scanline = ALIGN(desc.height, alignment.planes[i].scanline.scanline_align);
         }
