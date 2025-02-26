@@ -361,6 +361,7 @@ class DisplayBuiltIn : public DisplayBase,
   int CreateServiceManager();
   int HandleTvmServiceEvent(const TvmServiceCbEvent &event);
   DisplayError DisabelDemuraForHandOff();
+  DisplayError ValidateDemuraLicense();
 
   const uint32_t kPuTimeOutMs = 1000;
   std::map<uint32_t, std::vector<HWEvent>> event_list_;
@@ -446,6 +447,7 @@ class DisplayBuiltIn : public DisplayBase,
   int demura_prop_ = 0;
   bool demura_calib_files_reloaded_ = false;
   VmFileXferClientFactIntfExtn *factory_extn_ = nullptr;
+  std::shared_ptr<FeatureLicenseIntf> feat_license_intf_ = nullptr;
 };
 
 }  // namespace sdm
