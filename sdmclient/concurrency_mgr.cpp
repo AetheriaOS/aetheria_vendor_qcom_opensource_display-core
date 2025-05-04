@@ -27,10 +27,11 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Changes from Qualcomm Technologies, Inc. are provided under the following license:
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
+
 #include <algorithm>
 #include <bitset>
 #include <core/buffer_allocator.h>
@@ -1731,7 +1732,7 @@ DisplayError ConcurrencyMgr::GetDisplayBrightnessSupport(Display display,
 }
 
 DisplayError ConcurrencyMgr::SetDisplayBrightness(Display display,
-                                                  float brightness) {
+                                                  float brightness, bool performing_commit) {
   if (display >= kNumDisplays) {
     return kErrorParameters;
   }
