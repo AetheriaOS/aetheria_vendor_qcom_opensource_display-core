@@ -27,10 +27,11 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Changes from Qualcomm Technologies, Inc. are provided under the following license:
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
+
 #include <algorithm>
 #include <bitset>
 #include <core/buffer_allocator.h>
@@ -1344,19 +1345,6 @@ void ConcurrencyMgr::HandleSecureSession() {
     return;
   }
 
-  // If there are any ongoing non-secure virtual displays, we need to destroy
-  // them.
-  bool is_active_virtual_display = false;
-  for (auto &map_info : disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_VIRTUAL)) {
-    if (map_info.disp_type == kVirtual) {
-      is_active_virtual_display = true;
-      client_id = map_info.client_id;
-    }
-  }
-  if (is_active_virtual_display) {
-    disp_->DestroyVirtualDisplay(client_id);
-  }
-
   // If it is called during primary prepare/commit, we need to pause any ongoing
   // commit on external/virtual display.
   bool found_active_secure_display = false;
@@ -1731,7 +1719,7 @@ DisplayError ConcurrencyMgr::GetDisplayBrightnessSupport(Display display,
 }
 
 DisplayError ConcurrencyMgr::SetDisplayBrightness(Display display,
-                                                  float brightness) {
+                                                  float brightness, bool performing_commit) {
   if (display >= kNumDisplays) {
     return kErrorParameters;
   }
