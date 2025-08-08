@@ -825,7 +825,7 @@ void SDMDisplay::BuildLayerStack() {
       DLOGV_IF(kTagClient,
                "Layer [%" PRIu64
                "] marked as skip due to null client target handle "
-               "for display [%" PRIu64 "]-[%" PRIu64 "]",
+               "for display [%" PRIu64 "]-[%" PRIu32 "]",
                sdm_layer->GetId(), id_, type_);
     }
 
@@ -834,7 +834,7 @@ void SDMDisplay::BuildLayerStack() {
       DLOGV_IF(kTagClient,
                "Layer [%" PRIu64
                "] marked as skip due to client requested composition "
-               "for display [%" PRIu64 "]-[%" PRIu64 "]",
+               "for display [%" PRIu64 "]-[%" PRIu32 "]",
                sdm_layer->GetId(), id_, type_);
     } else if (requested_composition == SDMCompositionType::COMP_SOLID_COLOR) {
       layer->flags.solid_fill = true;
@@ -845,7 +845,7 @@ void SDMDisplay::BuildLayerStack() {
       DLOGV_IF(kTagClient,
                "Layer [%" PRIu64
                "] marked as skip due to unsupported dataspace "
-               "for display [%" PRIu64 "]-[%" PRIu64 "]",
+               "for display [%" PRIu64 "]-[%" PRIu32 "]",
                sdm_layer->GetId(), id_, type_);
     }
 
@@ -929,7 +929,7 @@ void SDMDisplay::BuildLayerStack() {
       DLOGV_IF(kTagClient,
                "Layer [%" PRIu64
                "] marked as skip due to non-integral source crop "
-               "for display [%" PRIu64 "]-[%" PRIu64 "]",
+               "for display [%" PRIu64 "]-[%" PRIu32 "]",
                sdm_layer->GetId(), id_, type_);
     }
 
@@ -950,7 +950,7 @@ void SDMDisplay::BuildLayerStack() {
       DLOGV_IF(kTagClient,
                "Layer [%" PRIu64
                "] marked as skip due to layer dimming on solid fill "
-               "for display [%" PRIu64 "]-[%" PRIu64 "]",
+               "for display [%" PRIu64 "]-[%" PRIu32 "]",
                sdm_layer->GetId(), id_, type_);
     }
 
