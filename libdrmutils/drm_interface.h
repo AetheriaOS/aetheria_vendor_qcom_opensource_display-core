@@ -66,6 +66,10 @@
 #ifndef __DRM_INTERFACE_H__
 #define __DRM_INTERFACE_H__
 
+#ifndef TARGET_INCLUDES_NEO
+#include <display/drm/msm_drm_aiqe.h>
+#endif
+
 #include <map>
 #include <string>
 #include <utility>
@@ -76,9 +80,7 @@
 
 #include "xf86drm.h"
 #include "xf86drmMode.h"
-#include <display/drm/msm_drm_aiqe.h>
 #include <display/drm/msm_drm_pp.h>
-#include <display/drm/msm_drm_aiqe.h>
 #include <display/drm/sde_drm.h>
 #include <drm/msm_drm.h>
 namespace sde_drm {
@@ -306,6 +308,12 @@ enum struct DRMOps {
    *      DRMRect  - Image ROI Rectangle
    */
   PLANE_SET_IMG_SIZE_RECT,
+  /*
+   * Op: Sets plane color mask override
+   * Arg: uint32_t - Plane ID
+   *      uint32_t - layer color mask override
+   */
+  PLANE_SET_COLOR_MASK_OVERRIDE,
   /*
    * Op: Activate or deactivate a CRTC
    * Arg: uint32_t - CRTC ID
@@ -1399,6 +1407,13 @@ enum struct DRMAvrStepState {
   NONE = 0,
   ENABLE,
   DISABLE,
+};
+
+enum struct DRMReserveColor {
+  RED = 1 << 0,
+  GREEN = 1 << 1,
+  BLUE = 1 << 2,
+  ALPHA = 1 << 3,
 };
 
 /* DRM Atomic Request Property Set.

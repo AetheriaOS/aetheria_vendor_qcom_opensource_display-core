@@ -314,6 +314,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   virtual DisplayError DumpDemuraSurface(const char *dir_path, uint32_t frame_index) {
     return kErrorNotSupported;
   }
+  DisplayError SetRGBASplit(int32_t split_enable);
 
  protected:
   struct DisplayMutex {
@@ -414,6 +415,8 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
                                                   vector<pair<uint32_t, uint32_t>> *fin_disp_res);
 
   DisplayMutex disp_mutex_;
+  bool need_async_poweroff_wait_ = false;
+  SyncPoints cached_sync_points_;
   std::thread commit_thread_;
   DisplayId display_id_info_ = {};
   int32_t display_id_ = -1;
@@ -529,6 +532,7 @@ class DisplayBase : public DisplayInterface, public CompManagerEventHandler {
   bool enable_hal_self_refresh_ = false;
   int hal_refresh_headroom_ = 4;  // In msec
   bool is_mirror_mode_active_ = false;
+  int rgba_split_enable_ = false;
 
  private:
   // Max tolerable power-state-change wait-times in milliseconds.

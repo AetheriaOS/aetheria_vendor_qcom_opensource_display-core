@@ -27,10 +27,11 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Changes from Qualcomm Technologies, Inc. are provided under the following license:
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
+
 #include <algorithm>
 #include <bitset>
 #include <core/buffer_allocator.h>
@@ -205,6 +206,11 @@ DisplayError ConcurrencyMgr::Init(BufferAllocator *buffer_allocator, SocketHandl
   disable_get_screen_decorator_support_ = (value == 1);
   DLOGI("disable_get_screen_decorator_support: %d",
         disable_get_screen_decorator_support_);
+
+  value = 0;
+  Debug::Get()->GetProperty(ENABLE_SELECTIVE_PANEL_DEAD, &value);
+  selective_panel_dead_ = (value == 1);
+  DLOGI("selective_panel_dead: %d", selective_panel_dead_);
 
   auto err = InitSubModules(debug);
   if (err != kErrorNone) {
@@ -1235,7 +1241,7 @@ void ConcurrencyMgr::CompositorSync(CompositorSyncType sync_type) {
   }
 }
 
-void ConcurrencyMgr::PerformDisplayPowerReset() {
+void ConcurrencyMgr::PerformDisplayPowerReset(int32_t recovery_display) {
   disp_->RemoveDisconnectedPluggableDisplays();
 
   // Wait until all commands are flushed.
@@ -1254,6 +1260,9 @@ void ConcurrencyMgr::PerformDisplayPowerReset() {
   for (Display display = SDM_DISPLAY_PRIMARY; display < kNumDisplays;
        display++) {
     if (sdm_display_[display] != NULL) {
+      if (selective_panel_dead_ && (display != recovery_display)) {
+        continue;
+      }
       last_power_mode[display] = sdm_display_[display]->GetCurrentPowerMode();
       DLOGI("Powering off display = %d", INT32(display));
       status = sdm_display_[display]->SetPowerMode(SDMPowerMode::POWER_MODE_OFF,
@@ -1268,6 +1277,9 @@ void ConcurrencyMgr::PerformDisplayPowerReset() {
   for (Display display = SDM_DISPLAY_PRIMARY; display < kNumDisplays;
        display++) {
     if (sdm_display_[display] != NULL) {
+      if (selective_panel_dead_ && (display != recovery_display)) {
+        continue;
+      }
       SDMPowerMode mode = last_power_mode[display];
       DLOGI("Setting display %d to mode = %d", INT32(display), mode);
       status = sdm_display_[display]->SetPowerMode(mode, false /* teardown */);
@@ -1308,14 +1320,18 @@ void ConcurrencyMgr::PerformDisplayPowerReset() {
   }
 }
 
-void ConcurrencyMgr::DisplayPowerReset() {
+void ConcurrencyMgr::DisplayPowerReset(int32_t display) {
   // Do Power Reset in a different thread to avoid blocking of SDM event thread
   // when disconnecting display.
-  std::thread(&ConcurrencyMgr::PerformDisplayPowerReset, this).detach();
+  std::thread(&ConcurrencyMgr::PerformDisplayPowerReset, this, display).detach();
 }
 
 void ConcurrencyMgr::VmReleaseDone(Display display) {
   tui_->VmReleaseDone(display);
+}
+
+void ConcurrencyMgr::VmReclaimDone(Display display) {
+  tui_->VmReclaimDone(display);
 }
 
 void ConcurrencyMgr::HandleSecureSession() {
@@ -1338,19 +1354,6 @@ void ConcurrencyMgr::HandleSecureSession() {
     // No secure session active. No secure session transition to handle. Skip
     // remaining steps.
     return;
-  }
-
-  // If there are any ongoing non-secure virtual displays, we need to destroy
-  // them.
-  bool is_active_virtual_display = false;
-  for (auto &map_info : disp_->GetDisplayMapInfo(qdutilsDisplayType::DISPLAY_VIRTUAL)) {
-    if (map_info.disp_type == kVirtual) {
-      is_active_virtual_display = true;
-      client_id = map_info.client_id;
-    }
-  }
-  if (is_active_virtual_display) {
-    disp_->DestroyVirtualDisplay(client_id);
   }
 
   // If it is called during primary prepare/commit, we need to pause any ongoing
@@ -1727,7 +1730,7 @@ DisplayError ConcurrencyMgr::GetDisplayBrightnessSupport(Display display,
 }
 
 DisplayError ConcurrencyMgr::SetDisplayBrightness(Display display,
-                                                  float brightness) {
+                                                  float brightness, bool performing_commit) {
   if (display >= kNumDisplays) {
     return kErrorParameters;
   }

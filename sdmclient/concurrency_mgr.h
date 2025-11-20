@@ -27,8 +27,8 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Changes from Qualcomm Innovation Center, Inc. are provided under the following license:
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Changes from Qualcomm Technologies, Inc. are provided under the following license:
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 #ifndef __CONCURRENCY_MGR_H__
@@ -416,7 +416,7 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   GetDisplayCapabilities(Display display,
                          vector<SDMDisplayCapability> *capabilities);
   DisplayError GetDisplayBrightnessSupport(Display display, bool *outSupport);
-  DisplayError SetDisplayBrightness(Display display, float brightness);
+  DisplayError SetDisplayBrightness(Display display, float brightness, bool performing_commit);
   DisplayError WaitForResources(bool wait_for_resources,
                                 Display active_builtin_id,
                                 Display display_id) override;
@@ -485,12 +485,13 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   int GetDisplayConfigGroup(uint64_t display, DisplayConfigGroupInfo variable_config);
 
   // SDMDisplayEventHandler
-  virtual void DisplayPowerReset();
-  virtual void PerformDisplayPowerReset();
+  virtual void DisplayPowerReset(int32_t display);
+  virtual void PerformDisplayPowerReset(int32_t display);
   virtual void PerformQsyncCallback(Display display, bool qsync_enabled,
                                     uint32_t refresh_rate,
                                     uint32_t qsync_refresh_rate);
   virtual void VmReleaseDone(Display display);
+  virtual void VmReclaimDone(Display display);
   virtual DisplayError NotifyCwbDone(int dpy_index, int32_t status,
                                      uint64_t handle_id);
   virtual int NotifyIdleStatus(bool idle_status);
@@ -536,7 +537,15 @@ class ConcurrencyMgr : public SDMDisplaySideBandIntf,
   DisplayError SetABCState(uint64_t display_id, bool state);
   DisplayError SetABCReconfig(uint64_t display_id);
   DisplayError SetABCMode(uint64_t display_id, string mode_name);
+  DisplayError SetAIScalerMode(uint64_t display_id, uint32_t mode_id) { return kErrorNone; }
   DisplayError SetPanelFeatureConfig(Display display, int32_t type, void *data);
+  bool CheckLayerBufferBinding(uint64_t display_id, int64_t layer_id, const SnapHandle *buffer) {
+    // This function interface is implemented  for a composer command BufferSlotsToClear, where
+    // it helps to figure out active slot to avoid releasing corresponding associated buffer.
+    // So, if it will be really needed by its dependent implementation, then it must be
+    // true to avoid release of active slot buffer.
+    return true;
+  }
 
   static const int locker_count_ = pluggable_lock_index_ + 1;
   static Locker locker_[locker_count_];
@@ -668,6 +677,7 @@ private:
   std::shared_ptr<IPCIntf> ipc_intf_ = nullptr;
   Locker primary_display_lock_;
   bool primary_pending_ = true;
+  bool selective_panel_dead_ = false;
 
   std::map<uint64_t, std::future<DisplayError>> commit_done_future_;
   bool disable_get_screen_decorator_support_ = false;
