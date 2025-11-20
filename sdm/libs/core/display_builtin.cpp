@@ -80,6 +80,7 @@ static uint64_t GetTimeInMs(struct timespec ts) {
   return (ts.tv_sec * 1000 + (ts.tv_nsec + 500000) / 1000000);
 }
 
+#ifndef TARGET_INCLUDES_NEO
 DisplayError DisplayBuiltIn::SetupAiqe() {
   int value = 0;
   char value_str[200] = {0};
@@ -191,6 +192,7 @@ DisplayError DisplayBuiltIn::SetupAiqe() {
 
   return kErrorNone;
 }
+#endif
 
 DisplayError DisplayBuiltIn::Init() {
   ClientLock lock(disp_mutex_);
@@ -246,7 +248,8 @@ DisplayError DisplayBuiltIn::Init() {
             HWEvent::BACKLIGHT_EVENT,
             HWEvent::POWER_EVENT,
             HWEvent::MMRM,
-            HWEvent::VM_RELEASE_EVENT};
+            HWEvent::VM_RELEASE_EVENT,
+            HWEvent::VM_RECLAIM_EVENT};
   if (client_ctx_.hw_panel_info.mode == kModeCommand) {
     events.push_back(HWEvent::IDLE_POWER_COLLAPSE);
   }
@@ -426,7 +429,9 @@ DisplayError DisplayBuiltIn::Init() {
 
   NoiseInit();
   InitCWBBuffer();
+#ifndef TARGET_INCLUDES_NEO
   SetupAiqe();
+#endif
 
   left_frame_roi_.resize(core_count_);
   right_frame_roi_.resize(core_count_);
@@ -504,8 +509,10 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
   uint32_t new_mixer_height = 0;
   uint32_t display_width = client_ctx_.display_attributes.x_pixels;
   uint32_t display_height = client_ctx_.display_attributes.y_pixels;
+#ifndef TARGET_INCLUDES_NEO
   GenericPayload bool_payload;
   bool *force_update;
+#endif
 
   DisplayError error = HandleDemuraLayer(layer_stack);
   if (error != kErrorNone) {
@@ -555,6 +562,7 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
     }
   }
 
+#ifndef TARGET_INCLUDES_NEO
   if (ssrc_feature_enabled_) {
     if (bool_payload.CreatePayload(force_update) != 0) {
       DLOGE("Unable to create force update payload");
@@ -567,6 +575,7 @@ DisplayError DisplayBuiltIn::PrePrepare(LayerStack *layer_stack) {
       return kErrorNotSupported;
     }
   }
+#endif
 
   return kErrorNotValidated;
 }
@@ -3459,6 +3468,11 @@ void DisplayBuiltIn::HandleVmReleaseEvent() {
     event_handler_->HandleEvent(kVmReleaseDone);
 }
 
+void DisplayBuiltIn::HandleVmReclaimEvent() {
+  if (event_handler_)
+    event_handler_->HandleEvent(kVmReclaimDone);
+}
+
 DisplayError DisplayBuiltIn::GetQsyncFps(uint32_t *qsync_fps) {
   ClientLock lock(disp_mutex_);
   return dpu_core_mux_->GetQsyncFps(qsync_fps);
@@ -4109,6 +4123,7 @@ DisplayError DisplayBuiltIn::PanelBacklightInfo(
   return event_proxy_info_.PanelBacklightInfo(client_name, enable, cb_intf);
 }
 
+#ifndef TARGET_INCLUDES_NEO
 DisplayError DisplayBuiltIn::EnableCopr(bool en) {
   DisplayError ret = kErrorNone;
 
@@ -4137,6 +4152,7 @@ DisplayError DisplayBuiltIn::GetCoprStats(std::vector<int> *stats) {
     DLOGE("Failed to get COPR stats ret %d", ret);
   return ret;
 }
+#endif
 
 DisplayError DisplayBuiltIn::GetScalerCount(uint32_t *scaler_count) {
   int enable_ai_scaler = 0;
@@ -4243,6 +4259,7 @@ EventProxyInfo::PanelOprInfo(const std::string &client_name, bool enable,
   return kErrorNone;
 }
 
+#ifndef TARGET_INCLUDES_NEO
 DisplayError EventProxyInfo::EnableCopr(const std::string &client_name, bool enable,
                                         SdmDisplayCbInterface<CoprEventPayload> *cb_intf) {
   if (!event_proxy_intf_.get()) {
@@ -4295,6 +4312,7 @@ int CoprInfo::Notify(const CoprEventPayload &payload) {
 
   return 0;
 }
+#endif
 
 DisplayError EventProxyInfo::SetPaHistCollection(
     const std::string &client_name, bool enable,
@@ -4384,6 +4402,7 @@ DisplayError EventProxyInfo::PanelBacklightInfo(
   return kErrorNone;
 }
 
+#ifndef TARGET_INCLUDES_NEO
 DisplayError DisplayBuiltIn::SetSsrcMode(const std::string &mode) {
   DisplayError ret = kErrorNotSupported;
 
@@ -4407,6 +4426,7 @@ DisplayError DisplayBuiltIn::SetSsrcMode(const std::string &mode) {
   needs_validate_ = true;
   return ret;
 }
+#endif
 
 DisplayError DisplayBuiltIn::SetAVRStepState(bool enable) {
   ClientLock lock(disp_mutex_);
@@ -4506,6 +4526,11 @@ DisplayError DisplayBuiltIn::SetABCReconfig() {
     return kErrorUndefined;
   }
 
+  if (!abc_prop_) {
+    DLOGI("ABC feature is not enabled");
+    return kErrorUndefined;
+  }
+
   if (!comp_manager_->GetDemuraStatusForDisplay(display_id_)) {
     return kErrorUndefined;
   }
@@ -4529,6 +4554,12 @@ DisplayError DisplayBuiltIn::SetABCReconfig() {
 
   if (SetDemuraIntfStatus(true)) {
     DLOGE("Failed to set ABC Status on Display %d", display_id_);
+    return kErrorUndefined;
+  }
+
+  DisplayError error = ExportABCFiles();
+  if (error) {
+    DLOGE("Failed to export ABC files, error %d", error);
     return kErrorUndefined;
   }
 
@@ -4624,6 +4655,9 @@ DisplayError DisplayBuiltIn::SetPanelFeatureConfig(int32_t type, void *data) {
     case kTypeDemuraTnAodHandlerCtrl:
       ret = SetDemuraTnAodHandlerCtrl(data);
       break;
+    case kTypeDemuraTnAgingSurfTransfer:
+      ret = SetDemuraTnAgingSurfTransfer(data);
+      break;
     default:
       DLOGE("Invalid type %d", type);
       ret = kErrorParameters;
@@ -4676,6 +4710,19 @@ DisplayError DisplayBuiltIn::ExportDemuraFiles() {
   return kErrorNone;
 }
 
+DisplayError DisplayBuiltIn::ExportABCFiles() {
+  if (IsPrimaryDisplay() && abc_tvm_enabled_ && demura_) {
+    GenericPayload in;
+    int ret = demura_->SetParameter(kDemuraFeatureParamExportFiles, in);
+    if (ret != 0) {
+      DLOGW("Failed to export ABC files");
+      return kErrorUndefined;
+    }
+  }
+
+  return kErrorNone;
+}
+
 DisplayError DisplayBuiltIn::StartTvmServices() {
   if (!abc_prop_ && !demura_prop_) {
     return kErrorNone;
@@ -4707,15 +4754,6 @@ DisplayError DisplayBuiltIn::StartTvmServices() {
         DLOGE("Failed to init DemuraTnCleanupIntf, ret %d", ret);
         demuratn_cleanup_intf_.reset();
       }
-    }
-  }
-
-  if (abc_prop_ && abc_tvm_enabled_ && demura_) {
-    GenericPayload in;
-    int ret = demura_->SetParameter(kDemuraFeatureParamExportFiles, in);
-    if (ret != 0) {
-      DLOGW("Failed to export ABC files");
-      return kErrorUndefined;
     }
   }
 
@@ -4771,6 +4809,7 @@ int DisplayBuiltIn::CreateServiceManager() {
 
 int DisplayBuiltIn::StartVmFileServiceAndExportFiles() {
   int ret = 0;
+  DisplayError error = kErrorNone;
 
   if (!service_manager_intf_) {
     DLOGE("Invalid service manager");
@@ -4789,11 +4828,17 @@ int DisplayBuiltIn::StartVmFileServiceAndExportFiles() {
 
   // Export files
   if (demura_prop_) {
-    DisplayError error = ExportDemuraFiles();
+    error = ExportDemuraFiles();
     if (error) {
       DLOGE("Failed to export demura files, error %d", error);
       return -EINVAL;
     }
+  }
+
+  error = ExportABCFiles();
+  if (error) {
+    DLOGE("Failed to export ABC files, error %d", error);
+    return -EINVAL;
   }
 
   if (!factory_extn_) {
@@ -5152,6 +5197,29 @@ DisplayError DisplayBuiltIn::SetDemuraTnAodHandlerCtrl(void *data) {
   }
 
   DLOGI("Set aod handler ctrl done");
+  return kErrorNone;
+}
+
+DisplayError DisplayBuiltIn::SetDemuraTnAgingSurfTransfer(void *data) {
+  (void)data;
+  if (demuratn_enabled_) {
+    DLOGE("Pls disable demuraTn temporarily before aging surface transfer");
+    return kErrorUndefined;
+  }
+
+  if (!demuratn_) {
+    DLOGE("Demuratn_ is %pK", demuratn_.get());
+    return kErrorUndefined;
+  }
+
+  GenericPayload payload = {};
+  int ret = demuratn_->SetParameter(kDemuraTnCoreUvmParamAgingSurfTransfer, payload);
+  if (ret) {
+    DLOGE("Set demuraTn aging surface transfer failed ret %d", ret);
+    return kErrorUndefined;
+  }
+
+  DLOGI("Set demuraTn aging surface transfer done");
   return kErrorNone;
 }
 

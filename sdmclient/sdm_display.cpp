@@ -817,18 +817,36 @@ void SDMDisplay::BuildLayerStack() {
 
     Layer *layer = sdm_layer->GetSDMLayer();
     layer->flags = {}; // Reset earlier flags
+    SDMCompositionType requested_composition = sdm_layer->GetClientRequestedCompositionType();
+
     // Mark all layers to skip, when client target handle is NULL
-    if (sdm_layer->GetClientRequestedCompositionType() ==
-            SDMCompositionType::COMP_CLIENT ||
-        !client_target_->GetSDMLayer()->input_buffer.buffer_id) {
+    if (!client_target_->GetSDMLayer()->input_buffer.buffer_id) {
       layer->flags.skip = true;
-    } else if (sdm_layer->GetClientRequestedCompositionType() ==
-               SDMCompositionType::COMP_SOLID_COLOR) {
+      DLOGV_IF(kTagClient,
+               "Layer [%" PRIu64
+               "] marked as skip due to null client target handle "
+               "for display [%" PRIu64 "]-[%" PRIu64 "]",
+               sdm_layer->GetId(), id_, type_);
+    }
+
+    if (requested_composition == SDMCompositionType::COMP_CLIENT) {
+      layer->flags.skip = true;
+      DLOGV_IF(kTagClient,
+               "Layer [%" PRIu64
+               "] marked as skip due to client requested composition "
+               "for display [%" PRIu64 "]-[%" PRIu64 "]",
+               sdm_layer->GetId(), id_, type_);
+    } else if (requested_composition == SDMCompositionType::COMP_SOLID_COLOR) {
       layer->flags.solid_fill = true;
     }
 
     if (!sdm_layer->IsDataSpaceSupported()) {
       layer->flags.skip = true;
+      DLOGV_IF(kTagClient,
+               "Layer [%" PRIu64
+               "] marked as skip due to unsupported dataspace "
+               "for display [%" PRIu64 "]-[%" PRIu64 "]",
+               sdm_layer->GetId(), id_, type_);
     }
 
     if (swap_interval_zero_) {
@@ -908,10 +926,14 @@ void SDMDisplay::BuildLayerStack() {
         !layer->flags.single_buffer && !layer->flags.solid_fill && !is_video &&
         !layer->flags.is_game) {
       layer->flags.skip = true;
+      DLOGV_IF(kTagClient,
+               "Layer [%" PRIu64
+               "] marked as skip due to non-integral source crop "
+               "for display [%" PRIu64 "]-[%" PRIu64 "]",
+               sdm_layer->GetId(), id_, type_);
     }
 
-    if (!layer->flags.skip && (sdm_layer->GetClientRequestedCompositionType() ==
-                               SDMCompositionType::COMP_CURSOR)) {
+    if (!layer->flags.skip && (requested_composition == SDMCompositionType::COMP_CURSOR)) {
       // Currently we support only one SDMursor & only at top most z-order
       if ((*sdm_layer_stack_->layer_set_.rbegin())->GetId() ==
           sdm_layer->GetId()) {
@@ -925,6 +947,11 @@ void SDMDisplay::BuildLayerStack() {
     if (layer->flags.solid_fill && layer->layer_brightness != 1.0f) {
       layer->flags.skip = true;
       layer->flags.solid_fill = false;
+      DLOGV_IF(kTagClient,
+               "Layer [%" PRIu64
+               "] marked as skip due to layer dimming on solid fill "
+               "for display [%" PRIu64 "]-[%" PRIu64 "]",
+               sdm_layer->GetId(), id_, type_);
     }
 
     if (layer->flags.skip) {
@@ -1589,6 +1616,13 @@ DisplayError SDMDisplay::HandleEvent(DisplayEvent event) {
             id_);
     }
   } break;
+  case kVmReclaimDone: {
+    if (event_handler_) {
+      event_handler_->VmReclaimDone(id_);
+    } else {
+      DLOGW("Cannot execute VmReclaimDone (client_id = %" PRId64 "), event_handler_ is null", id_);
+    }
+  } break;
   case kIdleTimeout:
     ReqPerfHintRelease();
     break;
@@ -1671,8 +1705,7 @@ DisplayError SDMDisplay::PostPrepareLayerStack(uint32_t *out_num_types,
       layer_requests_[sdm_layer->GetId()] = SDMLayerRequest::ClearClientTarget;
     }
 
-    SDMCompositionType requested_composition =
-        sdm_layer->GetClientRequestedCompositionType();
+    SDMCompositionType requested_composition = sdm_layer->GetClientRequestedCompositionType();
     // Set SDM composition to SDM3 type in SDMLayer
     sdm_layer->SetComposition(composition);
     SDMCompositionType device_composition =
@@ -1935,7 +1968,6 @@ DisplayError SDMDisplay::CommitLayerStack(void) {
     // A commit is successfully submitted, start flushing on failure now
     // onwards.
     flush_on_error_ = true;
-    first_cycle_ = false;
   } else {
     if (error == kErrorShutDown) {
       shutdown_pending_ = true;
@@ -1984,6 +2016,7 @@ SDMDisplay::PostCommitLayerStack(shared_ptr<Fence> *out_retire_fence) {
   flush_ = false;
   skip_commit_ = false;
   client_target_3_1_set_ = false;
+  first_cycle_ = false;
 
   if (display_pause_pending_) {
     DLOGI("Pause display %d-%d", sdm_id_, type_);
