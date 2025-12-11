@@ -1570,7 +1570,7 @@ bool DPUColorManager::CompareSDEDisplayModes(vector<SDEDisplayMode>& mode) {
 
   for (int i = 1; i < mode.size(); i++) {
     if ((mode[0].id != mode[i].id) && (mode[0].type != mode[i].type) &&
-          (mode[0].name != mode[i].name))
+          (strcmp(mode[0].name, mode[i].name) != 0))
       is_same_mode = false;
   }
 
