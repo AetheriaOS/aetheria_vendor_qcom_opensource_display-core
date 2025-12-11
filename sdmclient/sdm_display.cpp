@@ -826,7 +826,8 @@ void SDMDisplay::BuildLayerStack() {
                "Layer [%" PRIu64
                "] marked as skip due to null client target handle "
                "for display [%" PRIu64 "]-[%" PRIu64 "]",
-               sdm_layer->GetId(), id_, type_);
+               static_cast<uint64_t>(sdm_layer->GetId()),
+               static_cast<uint64_t>(id_), static_cast<uint64_t>(type_));
     }
 
     if (requested_composition == SDMCompositionType::COMP_CLIENT) {
@@ -835,7 +836,7 @@ void SDMDisplay::BuildLayerStack() {
                "Layer [%" PRIu64
                "] marked as skip due to client requested composition "
                "for display [%" PRIu64 "]-[%" PRIu64 "]",
-               sdm_layer->GetId(), id_, type_);
+               sdm_layer->GetId(), static_cast<uint64_t>(id_), static_cast<uint64_t>(type_));
     } else if (requested_composition == SDMCompositionType::COMP_SOLID_COLOR) {
       layer->flags.solid_fill = true;
     }
@@ -846,7 +847,7 @@ void SDMDisplay::BuildLayerStack() {
                "Layer [%" PRIu64
                "] marked as skip due to unsupported dataspace "
                "for display [%" PRIu64 "]-[%" PRIu64 "]",
-               sdm_layer->GetId(), id_, type_);
+               sdm_layer->GetId(), static_cast<uint64_t>(id_), static_cast<uint64_t>(type_));
     }
 
     if (swap_interval_zero_) {
@@ -930,7 +931,7 @@ void SDMDisplay::BuildLayerStack() {
                "Layer [%" PRIu64
                "] marked as skip due to non-integral source crop "
                "for display [%" PRIu64 "]-[%" PRIu64 "]",
-               sdm_layer->GetId(), id_, type_);
+               sdm_layer->GetId(), static_cast<uint64_t>(id_), static_cast<uint64_t>(type_));
     }
 
     if (!layer->flags.skip && (requested_composition == SDMCompositionType::COMP_CURSOR)) {
@@ -951,7 +952,7 @@ void SDMDisplay::BuildLayerStack() {
                "Layer [%" PRIu64
                "] marked as skip due to layer dimming on solid fill "
                "for display [%" PRIu64 "]-[%" PRIu64 "]",
-               sdm_layer->GetId(), id_, type_);
+               sdm_layer->GetId(), static_cast<uint64_t>(id_), static_cast<uint64_t>(type_));
     }
 
     if (layer->flags.skip) {
@@ -1066,7 +1067,7 @@ DisplayError SDMDisplay::SetLayerType(LayerId layer_id, SDMLayerTypes type) {
   if (map_layer == sdm_layer_stack_->layer_map_.end()) {
     DLOGW("display [%" PRIu64 "]-[%" PRIu64 "] SetLayerType (%" PRIu64
           ") failed to find layer",
-          id_, type_, layer_id);
+          static_cast<uint64_t>(id_), static_cast<uint64_t>(type_), static_cast<uint64_t>(layer_id));
     return kErrorNotSupported;
   }
 
@@ -1401,7 +1402,8 @@ DisplayError SDMDisplay::SetActiveConfig(Config config) {
       }
     }
   } else {
-    DLOGE("Invalid config: %d for display [%" PRIu64 "]-[%" PRIu64 "]", config, id_, type_);
+    DLOGE("Invalid config: %d for display [%" PRIu64 "]-[%" PRIu64 "]", config,
+        static_cast<uint64_t>(id_), static_cast<uint64_t>(type_));
     return kErrorParameters;
   }
 
@@ -1423,8 +1425,8 @@ DisplayError SDMDisplay::SetActiveConfig(Config config) {
     pending_first_commit_config_ = false;
   }
 
-  DLOGI("Active configuration changed to: %d for display [%" PRIu64 "]-[%" PRIu64 "]", config, id_,
-        type_);
+  DLOGI("Active configuration changed to: %d for display [%" PRIu64 "]-[%" PRIu64 "]", config,
+        static_cast<uint64_t>(id_), static_cast<uint64_t>(type_));
 
   {
     std::lock_guard<std::mutex> lock(active_config_lock_);
@@ -2139,11 +2141,11 @@ void SDMDisplay::DumpInputBuffers() {
     Fence::Wait(layer->input_buffer.acquire_fence);
 
     if (!handle) {
-      DLOGW("Buffer handle is detected as null for layer: %s(%d) out of %lu "
+      /*DLOGW("Buffer handle is detected as null for layer: %s(%lu) out of %lu "
             "layers with layer "
             "flag value: %u",
             layer->layer_name.c_str(), layer->layer_id,
-            layer_stack_.layers.size(), layer->flags);
+            layer_stack_.layers.size(), layer->flags);*/
       continue;
     }
 
@@ -3047,7 +3049,8 @@ DisplayError SDMDisplay::SetActiveConfigWithConstraints(
   DTRACE_SCOPED();
 
   if (variable_config_map_.find(config) == variable_config_map_.end()) {
-    DLOGE("Invalid config: %d for display [%" PRIu64 "]-[%" PRIu64 "]", config, id_, type_);
+    DLOGE("Invalid config: %d for display [%" PRIu64 "]-[%" PRIu64 "]", config,
+        static_cast<uint64_t>(id_), static_cast<uint64_t>(type_));
     return kErrorNotSupported;
   }
 
@@ -3055,7 +3058,7 @@ DisplayError SDMDisplay::SetActiveConfigWithConstraints(
     DLOGE(
         "Seamless switch to the config: %d, is not allowed! for display "
         "[%" PRIu64 "]-[%" PRIu64 "]",
-        config, id_, type_);
+        config, static_cast<uint64_t>(id_), static_cast<uint64_t>(type_));
     return kSeamlessNotAllowed;
   }
 
@@ -3780,7 +3783,7 @@ SDMDisplay::GetReadbackBufferFenceForClient(CWBClient client,
       DLOGV_IF(
           kTagQDCM,
           "Need to wait for release fence, and retry to get it for client:%d, "
-          "buffer_id: %u",
+          "buffer_id: %lu",
           client, handle_id);
       status = kCWBReleaseFencePending;
     }
@@ -3799,10 +3802,10 @@ SDMDisplay::GetReadbackBufferFenceForClient(CWBClient client,
       status == kCWBReleaseFenceWaitTimedOut) {
     DLOGV_IF(kTagQDCM,
              "Fence is available, but either fence wait is timed-out, or "
-             "CWB Manager is not yet notified for client:%d, buffer_id: %u",
+             "CWB Manager is not yet notified for client:%d, buffer_id: %lu",
              client, handle_id);
   } else if (status == kCWBReleaseFenceUnknownError) {
-    DLOGE("CWB Manager notified unknown error for client:%d, buffer_id: %u",
+    DLOGE("CWB Manager notified unknown error for client:%d, buffer_id: %lu",
           client, handle_id);
   }
 
@@ -4007,7 +4010,7 @@ void SDMDisplay::NotifyCwbDone(int32_t status, const LayerBuffer &buffer) {
 
     const auto map_cwb_buffer = cwb_buffer_map_.find(handle_id);
     if (map_cwb_buffer == cwb_buffer_map_.end()) {
-      DLOGV_IF(kTagClient, "CWB Buffer(id = %u) not found in buffer-client map",
+      DLOGV_IF(kTagClient, "CWB Buffer(id = %lu) not found in buffer-client map",
                handle_id);
       return;
     }
@@ -4039,7 +4042,7 @@ void SDMDisplay::NotifyCwbDone(int32_t status, const LayerBuffer &buffer) {
 
   DLOGV_IF(
       kTagClient,
-      "CWB notified for client = %d with buffer = %u, return status = %s(%d)",
+      "CWB notified for client = %d with buffer = %lu, return status = %s(%d)",
       client, handle_id,
       (!status)                   ? "Handled"
       : (status == kErrorTimeOut) ? "Timedout"
@@ -4150,8 +4153,8 @@ DisplayError SDMDisplay::FinalizeDisplayConfig(bool check_pending_config, Config
 
   if (variable_config_map_.find(new_config) == variable_config_map_.end()) {
     if (!check_pending_config) {
-      DLOGE("Invalid config index : %u for display [%" PRIu64 "]-[%" PRIu64 "]", new_config, id_,
-            type_);
+      DLOGE("Invalid config index : %u for display [%" PRIu64 "]-[%" PRIu64 "]", new_config,
+            static_cast<uint64_t>(id_), static_cast<uint64_t>(type_));
       return kErrorParameters;
     }
 
@@ -4168,7 +4171,8 @@ DisplayError SDMDisplay::FinalizeDisplayConfig(bool check_pending_config, Config
       DLOGW(
           "Failed to set new real config:%d from current real config:%d! Error: %d"
           " for display [%" PRIu64 "]-[%" PRIu64 "]",
-          new_real_config, current_real_config, error, id_, type_);
+          new_real_config, current_real_config, error, static_cast<uint64_t>(id_),
+          static_cast<uint64_t>(type_));
       return kErrorNotSupported;
     }
   }
@@ -4177,7 +4181,7 @@ DisplayError SDMDisplay::FinalizeDisplayConfig(bool check_pending_config, Config
   DLOGV_IF(kTagClient,
            "Active configuration changed from config %d to %d"
            " for display [%" PRIu64 "]-[%" PRIu64 "]",
-           current_config, new_config, id_, type_);
+           current_config, new_config, static_cast<uint64_t>(id_), static_cast<uint64_t>(type_));
   // Update client visible configuration
   active_config_index_ = new_config;
   // Cache refresh rate set by client.
