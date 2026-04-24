@@ -1804,6 +1804,7 @@ DisplayError DisplayBuiltIn::SetPanelBrightness(float brightness, bool return_er
       level_remainder = t - level;
     }
 
+    abc_brightness_level_ = level;
     err = dpu_core_mux_->SetPanelBrightness(level);
     if (enable_brightness_drm_prop_) {
       event_handler_->Refresh();
@@ -2018,6 +2019,7 @@ void DisplayBuiltIn::IdlePowerCollapse() {
 }
 
 DisplayError DisplayBuiltIn::ClearLUTs() {
+  ClientLock lock(disp_mutex_);
   validated_ = false;
   comp_manager_->ProcessIdlePowerCollapse(display_comp_ctx_);
   return kErrorNone;
@@ -2433,6 +2435,7 @@ std::string DisplayBuiltIn::Dump() {
   os << " clk: " << display_attributes.clock_khz;
   os << " Topology: " << display_attributes.topology;
   os << " Qsync mode: " << active_qsync_mode_;
+  os << " RGBA Split Mode enable: " << rgba_split_enable_;
   os << " CAC enabled: " << disp_layer_stack_->stack_info.enable_cac;
   os << std::noboolalpha;
 
@@ -3018,6 +3021,7 @@ DisplayError DisplayBuiltIn::BuildLayerStackStats(LayerStack *layer_stack) {
   stack_info.wide_color_primaries.clear();
   stack_info.enable_cac = enable_cac_;
   stack_info.cac_config = cac_config_;
+  stack_info.rgba_split_enable = rgba_split_enable_;
 
   int index = 0;
   for (auto &layer : layers) {
@@ -3271,6 +3275,7 @@ PrimariesTransfer DisplayBuiltIn::GetBlendSpaceFromStcColorMode(
 DisplayError DisplayBuiltIn::GetConfig(DisplayConfigFixedInfo *fixed_info) {
   ClientLock lock(disp_mutex_);
   fixed_info->is_cmdmode = (client_ctx_.hw_panel_info.mode == kModeCommand);
+  fixed_info->vhm_support = client_ctx_.hw_panel_info.vhm_support;
   bool hdr_supported = true;
   bool has_concurrent_writeback = true;
 
@@ -4599,6 +4604,30 @@ DisplayError DisplayBuiltIn::SetABCMode(const string &mode_name) {
     DLOGE("Unable to setup ABC layer on Display %d", display_id_);
     return kErrorUndefined;
   }
+
+#ifdef TRUSTED_VM
+  if (abc_brightness_level_ >= 0) {
+    int ret = 0;
+    GenericPayload pl;
+    uint32_t *brightness_level = nullptr;
+    ret = pl.CreatePayload<uint32_t>(brightness_level);
+    if (ret) {
+      DLOGE("Failed to create kDemuraFeatureParamUpdateBrightness payload");
+      return kErrorUndefined;
+    }
+
+    // Set the ABC feature with new brightness level and updated mode name
+    *brightness_level = abc_brightness_level_;
+    ret = demura_->SetParameter(kDemuraFeatureParamUpdateBrightness, pl);
+    if (ret) {
+      DLOGE("Failed to set brightness level for ABC feature %d", ret);
+      return kErrorUndefined;
+    }
+
+    abc_brightness_level_ = -1;
+    return kErrorNone;
+  }
+#endif
 
   // Set the ABC feature with updated mode name
   GenericPayload pl;

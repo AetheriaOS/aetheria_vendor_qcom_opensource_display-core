@@ -625,6 +625,7 @@ DisplayError SDMDisplay::Init() {
   display_intf_->GetConfig(&fixed_info);
   is_cmd_mode_ = fixed_info.is_cmdmode;
 
+  SDMDebugHandler::Get()->GetProperty(RGBA_SPLIT_SUPPORT, &rgba_split_support_);
   game_supported_ = display_intf_->GameEnhanceSupported();
 
   if (!sdm_layer_stack_) {
@@ -819,8 +820,9 @@ void SDMDisplay::BuildLayerStack() {
     layer->flags = {}; // Reset earlier flags
     SDMCompositionType requested_composition = sdm_layer->GetClientRequestedCompositionType();
 
-    // Mark all layers to skip, when client target handle is NULL
-    if (!client_target_->GetSDMLayer()->input_buffer.buffer_id) {
+    // Mark all layers to skip, when client target handle is NULL in default draw
+    if ((!client_target_->GetSDMLayer()->input_buffer.buffer_id) &&
+        (draw_method_ == kDrawDefault)) {
       layer->flags.skip = true;
       DLOGV_IF(kTagClient,
                "Layer [%" PRIu64
@@ -1593,7 +1595,7 @@ DisplayError SDMDisplay::HandleEvent(DisplayEvent event) {
     // most likely result in a failure since ESD/HWR has been requested during
     // this time period.
     if (event_handler_) {
-      event_handler_->DisplayPowerReset();
+      event_handler_->DisplayPowerReset(id_);
     } else {
       DLOGW("Cannot execute DisplayPowerReset (client_id = %" PRId64
             "), event_handler_ is null",
@@ -4206,4 +4208,18 @@ DisplayError SDMDisplay::GetParentConfig(Config *config) {
 
   return kErrorNotSupported;
 }
+
+DisplayError SDMDisplay::SetRGBASplit(int32_t split_enable) {
+  if (!rgba_split_support_) {
+    DLOGW("Feature not supported on display: %" PRId64 " %d-%d", id_, sdm_id_, type_);
+    return kErrorNotSupported;
+  }
+
+  DisplayError error = display_intf_->SetRGBASplit(split_enable);
+  DLOGI("Feature %s on display : %" PRId64 " %d-%d", split_enable ? "enabled" : "disabled", id_,
+        sdm_id_, type_, split_enable);
+
+  return error;
+}
+
 }  // namespace sdm

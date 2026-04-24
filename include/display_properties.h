@@ -180,6 +180,7 @@
 #define ANTI_AGING_RECALIB_TIMER_DIVIDER     DISPLAY_PROP("demura_recalib_timer_divider")
 #define ANTI_AGING_ENABLE_LOGGING            DISPLAY_PROP("antiaging_enable_logging")
 #define ANTI_AGING_DISABLE_AOD_HANDLER       DISPLAY_PROP("antiaging_disable_aod_handler")
+#define ANTI_AGING_SERVICE_RETRY_WAIT_TIME   DISPLAY_PROP("antiaging_service_retry_wait_time")
 
 // PERF hint properties
 #define ENABLE_PERF_HINT_LARGE_COMP_CYCLE    DISPLAY_PROP("enable_perf_hint_large_comp_cycle")
@@ -220,6 +221,9 @@
 #define AIQE_SSRC_DEFAULT_MODE         DISPLAY_PROP("default_aiqe_ssrc_mode")
 #define AIQE_COPR_ENABLE               DISPLAY_PROP("enable_aiqe_copr")
 
+// RGBA Split feature
+#define RGBA_SPLIT_SUPPORT             DISPLAY_PROP("rgba_split_support")
+
 // Add all vendor.display properties above
 
 #define DISABLE_AHARDWARE_BUFFER_PROP        GRALLOC_PROP("disable_ahardware_buffer")
@@ -243,6 +247,7 @@
 #define WINDOW_RECT_PROP                     DISPLAY_PROP("window_rect")
 #define WINDOW_RECT_PROP_SECONDARY           DISPLAY_PROP("window_rect_secondary")
 #define ENABLE_WINDOW_RECT_MASK              DISPLAY_PROP("enable_window_rect_mask")
+#define DISABLE_RC_OFFSET_FLIP               DISPLAY_PROP("disable_rc_offset_flip")
 #define DISABLE_IDLE_TIME_HDR                DISPLAY_PROP("disable_idle_time_hdr")
 #define DISABLE_IDLE_TIME_VIDEO              DISPLAY_PROP("disable_idle_time_video")
 #define DISABLE_IDLE_FPS_SWITCH              DISPLAY_PROP("disable_idle_fps_switch")
@@ -268,6 +273,7 @@
 #define HAL_REFRESH_HEADROOM                 DISPLAY_PROP("hal_refresh_headroom")
 #define BUILTIN_MIRRORING                    DISPLAY_PROP("builtin_mirroring")
 #define BUILTIN_PRESENTATION                 DISPLAY_PROP("builtin_presentation")
+#define ENABLE_SELECTIVE_PANEL_DEAD          DISPLAY_PROP("selective_panel_dead")
 
 // Enable AI Scaler
 #define ENABLE_AI_SCALER_PROP                DISPLAY_PROP("enable_ai_scaler")

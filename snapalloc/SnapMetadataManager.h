@@ -1,5 +1,7 @@
-// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause-Clear
+/*
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
 
 #ifndef __SNAP_METADATA_MANAGER_H__
 #define __SNAP_METADATA_MANAGER_H__
@@ -45,9 +47,12 @@ class SnapMetadataManager {
   uint32_t GetCustomContentMetadataSize(vendor_qti_hardware_display_common_PixelFormat format,
                                         vendor_qti_hardware_display_common_BufferUsage usage);
   Error GetMetadataState(SnapHandleInternal *hnd, vendor_qti_hardware_display_common_MetadataType type, bool *out);
+  bool IsFormatSupportedByGPU(BufferDescriptor desc);
   typedef Error (SnapMetadataManager::*MetadataHelper)(SnapMetadata *metadata,
                                                        SnapHandleInternal *handle, void *in_set,
                                                        void *out_get, BufferDescriptor *buf_des);
+  Error GetViewToImport(SnapHandleInternal *hnd, const uint32_t view_requested, uint32_t *view);
+  Error GetBaseView(SnapHandleInternal *hnd, uint32_t *view);
 
  private:
   ~SnapMetadataManager();
@@ -244,6 +249,8 @@ class SnapMetadataManager {
   Error ThreeDimensionalRefInfoHelper(SnapMetadata *metadata, SnapHandleInternal *handle,
                                       void *in_set = nullptr, void *out_get = nullptr,
                                       BufferDescriptor *buf_des = nullptr);
+  Error ViewIdHelper(SnapMetadata *metadata, SnapHandleInternal *handle, void *in_set = nullptr,
+                     void *out_get = nullptr, BufferDescriptor *buf_des = nullptr);
 
   struct DRMFormatDescriptor {
     uint32_t drm_format;
@@ -472,6 +479,7 @@ class SnapMetadataManager {
           {BASE_VIEW, &SnapMetadataManager::BaseViewHelper},
           {MULTI_VIEW_INFO, &SnapMetadataManager::MultiViewHelper},
           {THREE_DIMENSIONAL_REF_INFO, &SnapMetadataManager::ThreeDimensionalRefInfoHelper},
+          {VIEW_ID, &SnapMetadataManager::ViewIdHelper},
   };
   struct metadata_traits {
     bool is_settable;
@@ -543,6 +551,7 @@ class SnapMetadataManager {
           {BASE_VIEW, {false}},
           {MULTI_VIEW_INFO, {false}},
           {THREE_DIMENSIONAL_REF_INFO, {true}},
+          {VIEW_ID, {true}},
       };
 };
 }  // namespace snapalloc
