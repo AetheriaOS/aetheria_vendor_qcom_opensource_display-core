@@ -1,3 +1,7 @@
+soong_namespace {
+    imports: ["vendor/xiaomi/peridot"],
+}
+
 cc_library_shared {
     name: "vendor.qti.hardware.display.snapalloc-impl",
     sanitize: {
