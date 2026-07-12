@@ -1,5 +1,5 @@
 soong_namespace {
-    imports: ["vendor/xiaomi/peridot", "hardware/qcom-caf/sm8750"],
+    imports: ["vendor/xiaomi/peridot", "hardware/qcom-caf/sm8750", "vendor/qcom/opensource/commonsys-intf/display"],
 }
 
 cc_library_shared {
@@ -17,7 +17,6 @@ cc_library_shared {
         "libsync",
     ],
     header_libs: [
-        "libvmmem_headers",
         "display_intf_headers",
         "snapalloc_interface_headers",
         "common_interface_headers",
