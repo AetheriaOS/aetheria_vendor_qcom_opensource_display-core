@@ -1,5 +1,5 @@
 soong_namespace {
-    imports: ["vendor/xiaomi/peridot"],
+    imports: ["vendor/xiaomi/peridot", "hardware/qcom-caf/sm8450-6.6"],
 }
 
 cc_library_shared {
